@@ -2,8 +2,15 @@
 {% block title %}{{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} Results{% endblock %}
 {% block content %}
 <style>
-    .subj-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; font-family: 'Inter', sans-serif; }
-    
+    .subj-wrap {
+        max-width: 1300px;
+        margin: 0 auto;
+        padding: 40px 24px;
+        width: 100%;
+        box-sizing: border-box;
+        font-family: 'Inter', sans-serif;
+    }
+
     /* ── Header Area ── */
     .subj-hero {
         background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
@@ -58,8 +65,13 @@
         font-weight: 500;
     }
 
-    .badge { font-weight: 700; border-radius: 6px; padding: 5px 10px; font-size: 0.8rem; }
-    
+    .badge {
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+
     /* ── Modern Switch Design ── */
     .permission-switch {
         position: relative;
@@ -69,7 +81,11 @@
         cursor: pointer;
         user-select: none;
     }
-    .switch-input { display: none; }
+
+    .switch-input {
+        display: none;
+    }
+
     .switch-rail {
         position: relative;
         width: 46px;
@@ -78,6 +94,7 @@
         border-radius: 999px;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
     .switch-knob {
         position: absolute;
         top: 3px;
@@ -86,16 +103,20 @@
         height: 18px;
         background-color: white;
         border-radius: 50%;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .switch-input:checked + .switch-rail {
-        background-color: #10b981; /* emerald-500 */
+
+    .switch-input:checked+.switch-rail {
+        background-color: #10b981;
+        /* emerald-500 */
         box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
     }
-    .switch-input:checked + .switch-rail .switch-knob {
+
+    .switch-input:checked+.switch-rail .switch-knob {
         transform: translateX(22px);
     }
+
     .switch-label {
         font-size: 11px;
         font-weight: 700;
@@ -104,38 +125,170 @@
         min-width: 55px;
         text-align: left;
     }
-    .label-allowed { color: #059669; }
-    .label-blocked { color: #64748b; }
-    
-    .switch-loading .switch-rail { opacity: 0.6; cursor: not-allowed; }
 
-    .card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.07); overflow-x: auto; }
-    .card h2 { margin:0 0 16px 0; font-size:16px; border-bottom:2px solid #007bff; padding-bottom:8px; color:#2c3e50; }
-    .res-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .res-table th { background:#f8f9fa; padding:10px 12px; text-align:left; border-bottom:2px solid #dee2e6; font-weight:700; color:#555; }
-    .res-table td { padding:10px 12px; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
-    .res-table tr:hover td { background:#f8f9fa; }
-    .badge { display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700; }
-    .badge-submitted { background:#d4edda; color:#155724; }
-    .badge-auto_submitted { background:#fff3cd; color:#856404; }
-    .badge-in_progress { background:#cce5ff; color:#004085; }
-    .badge-not_taken { background:#e9ecef; color:#6c757d; }
-    .badge-info { background:#d1ecf1; color:#0c5460; }
-    .tab-warn { background:#fff3cd; color:#856404; font-weight:700; padding:2px 8px; border-radius:4px; font-size:12px; }
-    .tab-ok { color:#aaa; font-size:12px; }
-    .btn { padding:8px 16px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
-    .btn-secondary { background:#6c757d; color:#fff; }
-    .btn-danger { background:#dc3545; color:#fff; }
-    .btn-danger:hover { background:#c82333; }
+    .label-allowed {
+        color: #059669;
+    }
+
+    .label-blocked {
+        color: #64748b;
+    }
+
+    .switch-loading .switch-rail {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
+        overflow-x: auto;
+    }
+
+    .card h2 {
+        margin: 0 0 16px 0;
+        font-size: 16px;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 8px;
+        color: #2c3e50;
+    }
+
+    .res-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .res-table th {
+        background: #f8f9fa;
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 700;
+        color: #555;
+    }
+
+    .res-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+
+    .res-table tr:hover td {
+        background: #f8f9fa;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .badge-submitted {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .badge-auto_submitted {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .badge-in_progress {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    .badge-not_taken {
+        background: #e9ecef;
+        color: #6c757d;
+    }
+
+    .badge-info {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .tab-warn {
+        background: #fff3cd;
+        color: #856404;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+    .tab-ok {
+        color: #aaa;
+        font-size: 12px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 7px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: #fff;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: #fff;
+    }
+
+    .btn-danger:hover {
+        background: #c82333;
+    }
 
     @media (max-width: 768px) {
-        .subj-wrap { padding: 20px 16px; }
-        .subj-hero { padding: 24px 20px; border-radius: 16px; }
-        .subj-title-group h1 { font-size: 1.5rem !important; }
-        .subj-hero-top { flex-direction: column; align-items: flex-start; gap: 16px; }
-        .subj-actions { width: 100%; justify-content: flex-start; }
-        .btn { width: 100%; justify-content: center; }
-        .res-table { display: block; overflow-x: auto; white-space: nowrap; }
+        .subj-wrap {
+            padding: 20px 16px;
+        }
+
+        .subj-hero {
+            padding: 24px 20px;
+            border-radius: 16px;
+        }
+
+        .subj-title-group h1 {
+            font-size: 1.5rem !important;
+        }
+
+        .subj-hero-top {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .subj-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .res-table {
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
     }
 </style>
 <div class="subj-wrap">
@@ -158,17 +311,33 @@
 
 
     <!-- Class Mode Status Bar -->
-    <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; border-radius: 10px;">
-        <span style="font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em;">Class Mode:</span>
+    <div
+        style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; border-radius: 10px;">
+        <span
+            style="font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em;">Class
+            Mode:</span>
         {% if exam.class_mode == 'Face-to-Face' %}
-        <span class="badge" style="background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; font-size: 12px; padding: 4px 10px; display: flex; align-items: center; gap: 6px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span class="badge"
+            style="background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; font-size: 12px; padding: 4px 10px; display: flex; align-items: center; gap: 6px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
             Face-to-Face Class
         </span>
-        <small style="color: #94a3b8; font-style: italic;">(Students must be allowed individually or via "Allow All")</small>
+        <small style="color: #94a3b8; font-style: italic;">(Students must be allowed individually or via "Allow
+            All")</small>
         {% else %}
-        <span class="badge" style="background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; font-size: 12px; padding: 4px 10px; display: flex; align-items: center; gap: 6px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+        <span class="badge"
+            style="background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; font-size: 12px; padding: 4px 10px; display: flex; align-items: center; gap: 6px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                </path>
+            </svg>
             Virtual Class
         </span>
         <small style="color: #94a3b8; font-style: italic;">(Students are allowed by default)</small>
@@ -177,16 +346,27 @@
 
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h2 style="margin: 0; border: none; padding: 0; font-size: 1.1rem; color: #1e293b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">STUDENT {{ 'QUIZ' if exam.exam_type == 'quiz' else 'EXAM' }} PERFORMANCE</h2>
+            <h2
+                style="margin: 0; border: none; padding: 0; font-size: 1.1rem; color: #1e293b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
+                STUDENT {{ 'QUIZ' if exam.exam_type == 'quiz' else 'EXAM' }} PERFORMANCE</h2>
         </div>
-        
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; display: flex; gap: 12px; align-items: center;">
-            <button type="button" class="btn" style="background:#28a745; color:#fff; padding:6px 16px; font-size:13px;" onclick="updateAllPermissions('allow_all')">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+
+        <div
+            style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; display: flex; gap: 12px; align-items: center;">
+            <button type="button" class="btn" style="background:#28a745; color:#fff; padding:6px 16px; font-size:13px;"
+                onclick="updateAllPermissions('allow_all')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
                 Allow All
             </button>
-            <button type="button" class="btn" style="background:#dc3545; color:#fff; padding:6px 16px; font-size:13px;" onclick="updateAllPermissions('deselect_all')">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+            <button type="button" class="btn" style="background:#dc3545; color:#fff; padding:6px 16px; font-size:13px;"
+                onclick="updateAllPermissions('deselect_all')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                </svg>
                 Deselect All
             </button>
         </div>
@@ -201,12 +381,15 @@
                     <th>Percentage</th>
                     <th>Status</th>
                     <th style="display: flex; align-items: center; gap: 6px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                            </path>
                             <line x1="12" y1="9" x2="12" y2="13"></line>
                             <line x1="12" y1="17" x2="12.01" y2="17"></line>
                         </svg>
-                        Suspicious Activity
+                        Switch Tab Detected
                     </th>
                     <th>Submitted</th>
                     <th style="text-align: center;">Allowed to Take</th>
@@ -214,74 +397,87 @@
                 </tr>
             </thead>
             <tbody>
-            {% for r in results %}
-            <tr>
-                <td><strong>{{ r.student_name }}</strong></td>
-                <td>{{ r.grade_level }}</td>
-                <td>{{ (r.score|round|int) if r.score is not none else '—' }} / {{ (r.total_points|round|int) if r.total_points is not none else '—' }}</td>
-                <td>
-                    {% if r.total_points and r.score is not none %}
-                    {{ "%.1f"|format(r.score / r.total_points * 100) }}%
-                    {% else %}—{% endif %}
-                </td>
-                <td><span class="badge badge-{{ r.status|lower|replace(' ', '_') }}">{{ r.status|replace('_',' ')|capitalize }}</span></td>
-                <td>
-                    {% if r.switch_count > 0 %}
-<button type="button"
-        class="tab-warn"
-        style="display:inline-flex; align-items:center; gap:4px; border:none; cursor:pointer;"
-        onclick="openIncidentModal('{{ r.result_id }}', '{{ r.student_name|e }}')">
-    ⚠ {{ r.switch_count }} incident{{ 's' if r.switch_count > 1 else '' }}
-</button>
-{% else %}
-<span class="tab-ok">None</span>
-{% endif %}
-                </td>
-                <td>{{ r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '—' }}</td>
-                <td style="text-align: center;">
-                    <div class="permission-container" id="container-{{ r.enrollment_id }}">
-                        <label class="permission-switch">
-                            <input type="checkbox" class="switch-input"
-                                   onchange="togglePermission('{{ r.enrollment_id }}', this.checked)"
-                                   {% if r.is_allowed %}checked{% endif %}>
-                            <div class="switch-rail">
-                                <div class="switch-knob"></div>
-                            </div>
-                            <span class="switch-label {{ 'label-allowed' if r.is_allowed else 'label-blocked' }}">
-                                {{ 'Allowed' if r.is_allowed else 'Blocked' }}
-                            </span>
-                        </label>
-                    </div>
-                </td>
-
-
-                <!-- ── Action buttons ── -->
-                <td style="display:flex; gap:8px;">
-                    {% set ctype = 'quiz' if exam.exam_type == 'quiz' else 'exam' %}
-                    {% if r.result_id %}
-                    <form method="POST"
-                          action="{{ url_for('teacher.teacher_exam_reset', exam_id=exam.exam_id, enrollment_id=r.enrollment_id) }}"
-                          onsubmit="return confirm('Reset the {{ ctype }} attempt of {{ r.student_name }}? They will be able to retake it.');"
-                          style="margin:0;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-danger"
-                                style="width: 95px; padding:4px 0; justify-content: center; font-size:12px; display: inline-flex; align-items: center; gap: 4px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                            Reset
+                {% for r in results %}
+                <tr>
+                    <td><strong>{{ r.student_name }}</strong></td>
+                    <td>{{ r.grade_level }}</td>
+                    <td>{{ (r.score|round|int) if r.score is not none else '—' }} / {{ (r.total_points|round|int) if
+                        r.total_points is not none else '—' }}</td>
+                    <td>
+                        {% if r.total_points and r.score is not none %}
+                        {{ "%.1f"|format(r.score / r.total_points * 100) }}%
+                        {% else %}—{% endif %}
+                    </td>
+                    <td><span class="badge badge-{{ r.status|lower|replace(' ', '_') }}">{{ r.status|replace('_','
+                            ')|capitalize }}</span></td>
+                    <td>
+                        {% if r.switch_count > 0 %}
+                        <button type="button" class="tab-warn"
+                            style="display:inline-flex; align-items:center; gap:4px; border:none; cursor:pointer;"
+                            onclick="openIncidentModal('{{ r.result_id }}', '{{ r.student_name|e }}')">
+                            ⚠ {{ r.switch_count }} incident{{ 's' if r.switch_count > 1 else '' }}
                         </button>
-                    </form>
-                    {% else %}
-                    <button type="button" class="btn btn-secondary" 
+                        {% else %}
+                        <span class="tab-ok">None</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '—' }}</td>
+                    <td style="text-align: center;">
+                        <div class="permission-container" id="container-{{ r.enrollment_id }}">
+                            <label class="permission-switch">
+                                <input type="checkbox" class="switch-input"
+                                    onchange="togglePermission('{{ r.enrollment_id }}', this.checked)" {% if
+                                    r.is_allowed %}checked{% endif %}>
+                                <div class="switch-rail">
+                                    <div class="switch-knob"></div>
+                                </div>
+                                <span class="switch-label {{ 'label-allowed' if r.is_allowed else 'label-blocked' }}">
+                                    {{ 'Allowed' if r.is_allowed else 'Blocked' }}
+                                </span>
+                            </label>
+                        </div>
+                    </td>
+
+
+                    <!-- ── Action buttons ── -->
+                    <td style="display:flex; gap:8px;">
+                        {% set ctype = 'quiz' if exam.exam_type == 'quiz' else 'exam' %}
+                        {% if r.result_id %}
+                        <form method="POST"
+                            action="{{ url_for('teacher.teacher_exam_reset', exam_id=exam.exam_id, enrollment_id=r.enrollment_id) }}"
+                            onsubmit="return confirm('Reset the {{ ctype }} attempt of {{ r.student_name }}? They will be able to retake it.');"
+                            style="margin:0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-danger"
+                                style="width: 95px; padding:4px 0; justify-content: center; font-size:12px; display: inline-flex; align-items: center; gap: 4px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Reset
+                            </button>
+                        </form>
+                        {% else %}
+                        <button type="button" class="btn btn-secondary"
                             style="width: 95px; padding:4px 0; justify-content: center; font-size:12px; background:#17a2b8; color:#fff; display: inline-flex; align-items: center; gap: 4px;"
                             onclick="openRescheduleModal('{{ r.enrollment_id }}', '{{ r.student_name }}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        Resched
-                    </button>
-                    {% endif %}
-                </td>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            Resched
+                        </button>
+                        {% endif %}
+                    </td>
 
-            </tr>
-            {% endfor %}
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
         {% else %}
@@ -291,19 +487,20 @@
 </div>
 
 <div id="incidentModal"
-     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; align-items:center; justify-content:center; font-family: 'Inter', sans-serif;">
-    <div style="max-width:500px; width:90%; background:#fff; padding:24px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1);">
-        <h3 id="incidentModalTitle" style="margin-top:0; color:#1e293b; font-weight:700; font-size:1.25rem; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">Suspicious Activity</h3>
+    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; align-items:center; justify-content:center; font-family: 'Inter', sans-serif;">
+    <div
+        style="max-width:500px; width:90%; background:#fff; padding:24px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1);">
+        <h3 id="incidentModalTitle"
+            style="margin-top:0; color:#1e293b; font-weight:700; font-size:1.25rem; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">
+            Switch Tab Detected</h3>
 
         <div id="incidentModalBody" style="max-height:60vh; overflow-y:auto; color:#334155; margin-top:12px;">
             Loading...
         </div>
 
         <div style="display:flex; justify-content:flex-end; margin-top:20px; padding-top:12px;">
-            <button type="button"
-                    class="btn btn-secondary"
-                    onclick="closeIncidentModal()"
-                    style="background:#64748b; color:#fff; padding:8px 16px; border-radius:6px; font-weight:600;">
+            <button type="button" class="btn btn-secondary" onclick="closeIncidentModal()"
+                style="background:#64748b; color:#fff; padding:8px 16px; border-radius:6px; font-weight:600;">
                 Close
             </button>
         </div>
@@ -311,273 +508,281 @@
 </div>
 
 <!-- Reschedule Modal -->
-<div id="rescheduleModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
-    <div class="card" style="max-width:400px; margin:100px auto; position:relative; background:#fff; padding:24px; border-radius:12px;">
-        <h2 id="modalTitle" style="font-size:18px; margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Reschedule</h2>
+<div id="rescheduleModal" class="modal"
+    style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+    <div class="card"
+        style="max-width:400px; margin:100px auto; position:relative; background:#fff; padding:24px; border-radius:12px;">
+        <h2 id="modalTitle" style="font-size:18px; margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">
+            Reschedule</h2>
         <form id="rescheduleForm">
             <input type="hidden" id="resched_enrollment_id">
             <input type="hidden" id="resched_item_id" value="{{ exam.exam_id }}">
             <input type="hidden" id="resched_item_type" value="{{ exam.exam_type }}">
-            
+
             <div style="margin:20px 0;">
-                <label style="display:block; font-size:13px; margin-bottom:8px; color:#555;">New Scheduled Start (Date & Time)</label>
-                <input type="datetime-local" id="new_due_date" required min="{{ min_date }}" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-family:inherit;">
+                <label style="display:block; font-size:13px; margin-bottom:8px; color:#555;">New Scheduled Start (Date &
+                    Time)</label>
+                <input type="datetime-local" id="new_due_date" required min="{{ min_date }}"
+                    style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-family:inherit;">
                 <small style="color:#666; font-size:11px; display:block; margin-top:4px;">
-                    The student can take the quiz/exam starting from this time for the duration set in the quiz settings.
+                    The student can take the quiz/exam starting from this time for the duration set in the quiz
+                    settings.
                 </small>
             </div>
-            
+
             <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" class="btn btn-secondary" onclick="closeRescheduleModal()" style="background:#f1f3f5; color:#495057;">Cancel</button>
-                <button type="submit" class="btn btn-primary" style="background:#007bff; color:#fff;">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeRescheduleModal()"
+                    style="background:#f1f3f5; color:#495057;">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="background:#007bff; color:#fff;">Save
+                    Changes</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-function openRescheduleModal(enrollmentId, studentName) {
-    document.getElementById('modalTitle').innerText = 'Reschedule: ' + studentName;
-    document.getElementById('resched_enrollment_id').value = enrollmentId;
-    
-    // Set min date to current time
-    const now = new Date();
-    const offset = now.getTimezoneOffset() * 60000;
-    const localISOTime = new Date(now - offset).toISOString().slice(0, 16);
-    document.getElementById('new_due_date').setAttribute('min', localISOTime);
-    
-    document.getElementById('rescheduleModal').style.display = 'block';
-}
+    function openRescheduleModal(enrollmentId, studentName) {
+        document.getElementById('modalTitle').innerText = 'Reschedule: ' + studentName;
+        document.getElementById('resched_enrollment_id').value = enrollmentId;
 
-function closeRescheduleModal() {
-    document.getElementById('rescheduleModal').style.display = 'none';
-}
+        // Set min date to current time
+        const now = new Date();
+        const offset = now.getTimezoneOffset() * 60000;
+        const localISOTime = new Date(now - offset).toISOString().slice(0, 16);
+        document.getElementById('new_due_date').setAttribute('min', localISOTime);
 
-document.getElementById('rescheduleForm').onsubmit = function(e) {
-    e.preventDefault();
-    const data = {
-        enrollment_id: document.getElementById('resched_enrollment_id').value,
-        item_id: document.getElementById('resched_item_id').value,
-        item_type: document.getElementById('resched_item_type').value,
-        new_due_date: document.getElementById('new_due_date').value
-    };
-
-    fetch('/teacher/reschedule', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(res => {
-        if (res.ok) {
-            alert('Rescheduled successfully!');
-            location.reload();
-        } else {
-            alert('Error: ' + res.error);
-        }
-    })
-    .catch(err => {
-        alert('Failed to save changes.');
-        console.error(err);
-    });
-};
-
-function togglePermission(enrollmentId, isAllowed) {
-    const container = document.getElementById(`container-${enrollmentId}`);
-    const label = container.querySelector('.switch-label');
-    
-    // UI Feedback: Update label immediately
-    if (isAllowed) {
-        label.textContent = 'Allowed';
-        label.classList.remove('label-blocked');
-        label.classList.add('label-allowed');
-    } else {
-        label.textContent = 'Blocked';
-        label.classList.remove('label-allowed');
-        label.classList.add('label-blocked');
+        document.getElementById('rescheduleModal').style.display = 'block';
     }
 
-    const data = {
-        action: 'toggle',
-        enrollment_id: enrollmentId,
-        is_allowed: isAllowed
+    function closeRescheduleModal() {
+        document.getElementById('rescheduleModal').style.display = 'none';
+    }
+
+    document.getElementById('rescheduleForm').onsubmit = function (e) {
+        e.preventDefault();
+        const data = {
+            enrollment_id: document.getElementById('resched_enrollment_id').value,
+            item_id: document.getElementById('resched_item_id').value,
+            item_type: document.getElementById('resched_item_type').value,
+            new_due_date: document.getElementById('new_due_date').value
+        };
+
+        fetch('/teacher/reschedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+            .then(response => response.json())
+            .then(res => {
+                if (res.ok) {
+                    alert('Rescheduled successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + res.error);
+                }
+            })
+            .catch(err => {
+                alert('Failed to save changes.');
+                console.error(err);
+            });
     };
 
-    container.classList.add('switch-loading');
+    function togglePermission(enrollmentId, isAllowed) {
+        const container = document.getElementById(`container-${enrollmentId}`);
+        const label = container.querySelector('.switch-label');
 
-    fetch('/teacher/exams/{{ exam.exam_id }}/permissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(res => {
-        container.classList.remove('switch-loading');
-        if (!res.ok) {
-            alert('Error updating permission: ' + res.error);
-            location.reload();
-        }
-    })
-    .catch(err => {
-        container.classList.remove('switch-loading');
-        alert('Failed to update permission.');
-        console.error(err);
-        location.reload();
-    });
-}
-
-function updateAllPermissions(action) {
-    const msg = action === 'allow_all' ? 'Allow all students to take this exam?' : 'Deselect access for all students?';
-    if (!confirm(msg)) return;
-
-    const data = { action: action };
-
-    fetch('/teacher/exams/{{ exam.exam_id }}/permissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(res => {
-        if (res.ok) {
-            location.reload();
+        // UI Feedback: Update label immediately
+        if (isAllowed) {
+            label.textContent = 'Allowed';
+            label.classList.remove('label-blocked');
+            label.classList.add('label-allowed');
         } else {
-            alert('Error: ' + res.error);
+            label.textContent = 'Blocked';
+            label.classList.remove('label-allowed');
+            label.classList.add('label-blocked');
         }
-    })
-    .catch(err => {
-        alert('Failed to update permissions.');
-        console.error(err);
-    });
-}
-function formatIncidentTime(dateValue) {
-    if (!dateValue) return '';
 
-    const date = new Date(dateValue);
+        const data = {
+            action: 'toggle',
+            enrollment_id: enrollmentId,
+            is_allowed: isAllowed
+        };
 
-    return new Intl.DateTimeFormat('en-PH', {
-        timeZone: 'Asia/Manila',
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-    }).format(date);
-}
+        container.classList.add('switch-loading');
 
-function openIncidentModal(resultId, studentName) {
-    const modal = document.getElementById('incidentModal');
-    const body = document.getElementById('incidentModalBody');
-    const title = document.getElementById('incidentModalTitle');
+        fetch('/teacher/exams/{{ exam.exam_id }}/permissions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+            .then(response => response.json())
+            .then(res => {
+                container.classList.remove('switch-loading');
+                if (!res.ok) {
+                    alert('Error updating permission: ' + res.error);
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                container.classList.remove('switch-loading');
+                alert('Failed to update permission.');
+                console.error(err);
+                location.reload();
+            });
+    }
 
-    title.textContent = 'Suspicious Activity — ' + studentName;
-    body.innerHTML = 'Loading...';
-    modal.style.display = 'flex';
+    function updateAllPermissions(action) {
+        const msg = action === 'allow_all' ? 'Allow all students to take this exam?' : 'Deselect access for all students?';
+        if (!confirm(msg)) return;
 
-    fetch('/teacher/exams/incidents/' + resultId)
-        .then(r => r.json())
-        .then(data => {
-            if (!data.ok) {
-                body.innerHTML = 'Unable to load incidents.';
-                return;
-            }
+        const data = { action: action };
 
-            if (!data.incidents.length) {
-                body.innerHTML = 'No incidents found.';
-                return;
-            }
+        fetch('/teacher/exams/{{ exam.exam_id }}/permissions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+            .then(response => response.json())
+            .then(res => {
+                if (res.ok) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + res.error);
+                }
+            })
+            .catch(err => {
+                alert('Failed to update permissions.');
+                console.error(err);
+            });
+    }
+    function formatIncidentTime(dateValue) {
+        if (!dateValue) return '';
 
-            body.innerHTML = data.incidents.map(item => {
-                const labels = {
-                    page_hidden: 'Tab Switch / App Minimized',
-                    window_blur: 'Window Lost Focus (Floating App / Tapped Outside)',
-                    possible_split_screen: 'Split Screen / Window Shrink Detected',
-                    fullscreen_exit: 'Exited Fullscreen Mode',
-                    tab_switch: 'Tab Switch',
-                    left_exam_page: 'Navigated Away / Left Exam Page'
-                };
+        const date = new Date(dateValue);
 
-                const label = labels[item.reason] || item.reason;
+        return new Intl.DateTimeFormat('en-PH', {
+            timeZone: 'Asia/Manila',
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        }).format(date);
+    }
 
-                return `
+    function openIncidentModal(resultId, studentName) {
+        const modal = document.getElementById('incidentModal');
+        const body = document.getElementById('incidentModalBody');
+        const title = document.getElementById('incidentModalTitle');
+
+        title.textContent = 'Switch Tab Detected — ' + studentName;
+        body.innerHTML = 'Loading...';
+        modal.style.display = 'flex';
+
+        fetch('/teacher/exams/incidents/' + resultId)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) {
+                    body.innerHTML = 'Unable to load incidents.';
+                    return;
+                }
+
+                if (!data.incidents.length) {
+                    body.innerHTML = 'No incidents found.';
+                    return;
+                }
+
+                body.innerHTML = data.incidents.map(item => {
+                    const labels = {
+                        page_hidden: 'Tab Switch / App Minimized',
+                        window_blur: 'Window Lost Focus (Floating App / Tapped Outside)',
+                        possible_split_screen: 'Split Screen / Window Shrink Detected',
+                        fullscreen_exit: 'Exited Fullscreen Mode',
+                        tab_switch: 'Tab Switch',
+                        left_exam_page: 'Navigated Away / Left Exam Page'
+                    };
+
+                    const label = labels[item.reason] || item.reason;
+
+                    return `
                     <div style="padding:12px 0; border-bottom:1px solid #f1f5f9; display:flex; flex-direction:column; gap:4px;">
                         <strong style="color:#0f172a; font-size:0.95rem;">${label}</strong>
                         <small style="color:#64748b; font-size:0.85rem;">${formatIncidentTime(item.switched_at)}</small>
                     </div>
                 `;
-            }).join('');
-        });
-}
-
-function closeIncidentModal() {
-    document.getElementById('incidentModal').style.display = 'none';
-}
-let teacherResultSnapshot = null;
-let teacherStatusChecking = false;
-
-async function checkTeacherResults() {
-
-    if (teacherStatusChecking) {
-        return;
+                }).join('');
+            });
     }
 
-    teacherStatusChecking = true;
+    function closeIncidentModal() {
+        document.getElementById('incidentModal').style.display = 'none';
+    }
+    let teacherResultSnapshot = null;
+    let teacherStatusChecking = false;
 
-    try {
-        const response = await fetch(
-            '/teacher/exams/'
-            + '{{ exam.exam_id }}'
-            + '/results-status',
-            {
-                method: 'GET',
-                cache: 'no-store'
+    async function checkTeacherResults() {
+
+        if (teacherStatusChecking) {
+            return;
+        }
+
+        teacherStatusChecking = true;
+
+        try {
+            const response = await fetch(
+                '/teacher/exams/'
+                + '{{ exam.exam_id }}'
+                + '/results-status',
+                {
+                    method: 'GET',
+                    cache: 'no-store'
+                }
+            );
+
+            if (!response.ok) {
+                return;
             }
-        );
 
-        if (!response.ok) {
-            return;
+            const data = await response.json();
+
+            if (!data.ok) {
+                return;
+            }
+
+            const snapshot = JSON.stringify(
+                data.results
+            );
+
+            if (teacherResultSnapshot === null) {
+                teacherResultSnapshot = snapshot;
+                return;
+            }
+
+            if (
+                snapshot
+                !== teacherResultSnapshot
+            ) {
+                window.location.reload();
+            }
+
+        } catch (error) {
+            console.error(
+                'Teacher result check failed:',
+                error
+            );
+
+        } finally {
+            teacherStatusChecking = false;
         }
-
-        const data = await response.json();
-
-        if (!data.ok) {
-            return;
-        }
-
-        const snapshot = JSON.stringify(
-            data.results
-        );
-
-        if (teacherResultSnapshot === null) {
-            teacherResultSnapshot = snapshot;
-            return;
-        }
-
-        if (
-            snapshot
-            !== teacherResultSnapshot
-        ) {
-            window.location.reload();
-        }
-
-    } catch (error) {
-        console.error(
-            'Teacher result check failed:',
-            error
-        );
-
-    } finally {
-        teacherStatusChecking = false;
     }
-}
 
-setInterval(
-    checkTeacherResults,
-    3000
-);
+    setInterval(
+        checkTeacherResults,
+        3000
+    );
 
-checkTeacherResults();
+    checkTeacherResults();
 </script>
 {% endblock %}

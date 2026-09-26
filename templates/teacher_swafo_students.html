@@ -29,7 +29,9 @@
   .wrap {
     max-width: 1300px;
     margin: 0 auto;
-    padding: 40px 28px;
+    padding: 40px 24px;
+    box-sizing: border-box;
+    width: 100%;
   }
 
   /* ── Hero Banner ── */
@@ -78,12 +80,15 @@
     background: rgba(255, 255, 255, 0.18);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 10px 20px;
-    border-radius: 14px;
+    padding: 8px 18px;
+    border-radius: 12px;
     font-weight: 800;
-    font-size: .9rem;
-    letter-spacing: .02em;
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
     z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   /* ── Stats Cards ── */
@@ -104,6 +109,12 @@
     gap: 18px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     transition: transform .2s ease, box-shadow .2s ease;
+    min-width: 0;
+  }
+
+  .stat-card>div:last-child {
+    min-width: 0;
+    flex: 1;
   }
 
   .stat-card:hover {
@@ -136,6 +147,8 @@
     color: var(--mu);
     letter-spacing: .05em;
     margin-top: 5px;
+    white-space: normal;
+    word-break: break-word;
   }
 
   /* ── Filter Form ── */
@@ -240,9 +253,23 @@
     letter-spacing: .03em;
   }
 
-  .status-submitted { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-  .status-draft { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-  .status-not_started { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+  .status-submitted {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+
+  .status-draft {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+  }
+
+  .status-not_started {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+  }
 
   .btn-view {
     display: inline-flex;
@@ -267,13 +294,198 @@
     transform: translateY(-1px);
   }
 
-  @media(max-width: 900px) {
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  /* ── Pagination ── */
+  .pagination-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding: 16px 24px;
+    background: var(--card);
+    border: 1px solid var(--bd);
+    border-radius: 20px;
+    flex-wrap: wrap;
+    gap: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   }
 
-  @media(max-width: 600px) {
-    .stats-grid { grid-template-columns: 1fr; }
-    .swafo-hero { flex-direction: column; text-align: center; padding: 28px 20px; }
+  .pagination-info {
+    font-size: .88rem;
+    font-weight: 600;
+    color: var(--mu);
+  }
+
+  .pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-page {
+    padding: 8px 16px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    color: var(--tx);
+    font-size: .85rem;
+    font-weight: 700;
+    text-decoration: none;
+    border: 1px solid var(--bd);
+    transition: all .18s;
+  }
+
+  .btn-page:hover:not(.disabled) {
+    background: var(--p);
+    color: #fff;
+    border-color: var(--p);
+  }
+
+  .btn-page.disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .page-current {
+    font-size: .88rem;
+    font-weight: 800;
+    color: var(--p);
+    padding: 0 8px;
+  }
+
+  @media(max-width: 900px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+  }
+
+  @media(max-width: 768px) {
+    .wrap {
+      padding: 0 0 80px !important;
+      box-sizing: border-box;
+      width: 100% !important;
+    }
+
+    .swafo-hero {
+      padding: 18px 14px;
+      margin-bottom: 16px;
+      border-radius: 16px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .swafo-hero h1 {
+      font-size: 1.35rem;
+    }
+
+    .swafo-hero p {
+      font-size: 0.84rem;
+    }
+
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .stat-card {
+      padding: 14px 12px;
+      gap: 10px;
+      border-radius: 14px;
+      box-sizing: border-box;
+      min-width: 0;
+    }
+
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+    }
+
+    .stat-val {
+      font-size: 1.4rem;
+    }
+
+    .stat-lbl {
+      font-size: .7rem;
+      letter-spacing: .03em;
+      margin-top: 3px;
+    }
+
+    .filter-card {
+      padding: 14px 12px;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-direction: column;
+      align-items: stretch;
+      border-radius: 14px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .filter-input,
+    .btn-filter {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .table-card {
+      border-radius: 16px;
+      overflow: hidden;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .pagination-wrap {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 14px 16px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+  }
+
+  @media(max-width: 480px) {
+    .swafo-hero {
+      padding: 16px 14px;
+    }
+
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .stat-card {
+      padding: 10px 8px;
+      gap: 8px;
+      border-radius: 12px;
+    }
+
+    .stat-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+    }
+
+    .stat-icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .stat-val {
+      font-size: 1.25rem;
+    }
+
+    .stat-lbl {
+      font-size: .65rem;
+      line-height: 1.2;
+    }
   }
 </style>
 
@@ -294,7 +506,12 @@
   <div class="stats-grid">
     <div class="stat-card">
       <div class="stat-icon" style="background: #eff6ff; color: #1e3a8a;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
       </div>
       <div>
         <div class="stat-val">{{ stats.total if stats else 0 }}</div>
@@ -303,7 +520,9 @@
     </div>
     <div class="stat-card">
       <div class="stat-icon" style="background: #ecfdf5; color: #059669;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
       </div>
       <div>
         <div class="stat-val">{{ stats.submitted if stats else 0 }}</div>
@@ -312,7 +531,10 @@
     </div>
     <div class="stat-card">
       <div class="stat-icon" style="background: #fffbeb; color: #d97706;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+        </svg>
       </div>
       <div>
         <div class="stat-val">{{ stats.draft if stats else 0 }}</div>
@@ -321,7 +543,10 @@
     </div>
     <div class="stat-card">
       <div class="stat-icon" style="background: #f8fafc; color: #64748b;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
       </div>
       <div>
         <div class="stat-val">{{ stats.not_started if stats else 0 }}</div>
@@ -332,30 +557,33 @@
 
   <!-- FILTER & SEARCH -->
   <form method="GET" action="/teacher/swafo/students" class="filter-card">
-    <input type="text" name="search" value="{{ search }}" placeholder="Maghanap ng mag-aaral sa pamamagitan ng pangalan..." class="filter-input" style="flex: 1; min-width: 240px;">
+    <input type="text" name="search" value="{{ search }}"
+      placeholder="Maghanap ng mag-aaral sa pamamagitan ng pangalan..." class="filter-input"
+      style="flex: 1; min-width: 240px;">
     <select name="status" class="filter-input">
-      <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Lahat ng Status</option>
-      <option value="submitted" {% if status_filter == 'submitted' %}selected{% endif %}>Submitted</option>
-      <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
-      <option value="not_started" {% if status_filter == 'not_started' %}selected{% endif %}>Not Started</option>
+      <option value="all" {% if status_filter=='all' %}selected{% endif %}>All Status</option>
+      <option value="submitted" {% if status_filter=='submitted' %}selected{% endif %}>Submitted</option>
+      <option value="draft" {% if status_filter=='draft' %}selected{% endif %}>Draft</option>
+      <option value="not_started" {% if status_filter=='not_started' %}selected{% endif %}>Not Started</option>
     </select>
     <button type="submit" class="btn-filter">Filter</button>
   </form>
 
   <!-- DATA TABLE -->
   <div class="table-card">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Mag-aaral</th>
-          <th>Baitang & Seksyon</th>
-          <th>Status ng Record</th>
-          <th>Huling Na-update</th>
-          <th style="text-align: right;">Aksyon</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if students %}
+    <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Mag-aaral</th>
+            <th>Baitang & Seksyon</th>
+            <th>Status ng Record</th>
+            <th>Huling Na-update</th>
+            <th style="text-align: right;">Aksyon</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if students %}
           {% for s in students %}
           <tr>
             <td>
@@ -367,11 +595,11 @@
             </td>
             <td>
               {% if s.record_status == 'submitted' %}
-                <span class="status-badge status-submitted">Submitted</span>
+              <span class="status-badge status-submitted">Submitted</span>
               {% elif s.record_status == 'draft' %}
-                <span class="status-badge status-draft">Draft</span>
+              <span class="status-badge status-draft">Draft</span>
               {% else %}
-                <span class="status-badge status-not_started">Not Started</span>
+              <span class="status-badge status-not_started">Not Started</span>
               {% endif %}
             </td>
             <td style="color: var(--mu); font-size: .85rem; font-weight: 500;">
@@ -384,16 +612,43 @@
             </td>
           </tr>
           {% endfor %}
-        {% else %}
+          {% else %}
           <tr>
             <td colspan="5" style="text-align: center; padding: 48px; color: var(--mu); font-weight: 600;">
               Walang nahanap na rekord ng mag-aaral.
             </td>
           </tr>
-        {% endif %}
-      </tbody>
-    </table>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
   </div>
 
-</div>
-{% endblock %}
+  <!-- PAGINATION -->
+  {% if total_pages and total_pages > 1 %}
+  <div class="pagination-wrap">
+    <div class="pagination-info">
+      Showing {{ (page - 1) * 15 + 1 }} &ndash; {{ page * 15 if page * 15 < total_count else total_count }} of {{
+        total_count }} students </div>
+        <div class="pagination-controls">
+          {% if has_prev %}
+          <a href="?page={{ page - 1 }}&search={{ search }}&status={{ status_filter }}" class="btn-page">&laquo;
+            Previous</a>
+          {% else %}
+          <span class="btn-page disabled">&laquo; Previous</span>
+          {% endif %}
+
+          <span class="page-current">Page {{ page }} of {{ total_pages }}</span>
+
+          {% if has_next %}
+          <a href="?page={{ page + 1 }}&search={{ search }}&status={{ status_filter }}" class="btn-page">Next
+            &raquo;</a>
+          {% else %}
+          <span class="btn-page disabled">Next &raquo;</span>
+          {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endblock %}

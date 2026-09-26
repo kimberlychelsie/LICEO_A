@@ -2675,7 +2675,7 @@ def student_exam_tab_switch():
 
     except Exception as e:
         db.rollback()
-        print("Error logging suspicious activity:", e)
+        print("Error logging switch tab:", e)
 
         return jsonify({
             "ok": False

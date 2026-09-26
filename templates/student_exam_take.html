@@ -3,10 +3,16 @@
 {% block content %}
 <style>
   /* ── Reset system UI (hide sidebar, topbar, chatbot during exam) ── */
-  .sidebar, .topbar, .sb-overlay, .chatbot-container,
-  #chatbot-widget, #chatbot-toggle, #chatbot-box {
+  .sidebar,
+  .topbar,
+  .sb-overlay,
+  .chatbot-container,
+  #chatbot-widget,
+  #chatbot-toggle,
+  #chatbot-box {
     display: none !important;
   }
+
   .main-wrap {
     margin: 0 !important;
     padding: 0 !important;
@@ -18,8 +24,10 @@
     overflow-x: hidden;
     box-sizing: border-box;
   }
-  
-  *, *:before, *:after {
+
+  *,
+  *:before,
+  *:after {
     box-sizing: inherit;
   }
 
@@ -30,7 +38,8 @@
     left: 0;
     right: 0;
     height: 60px;
-    background: #1e3a8a; /* Deep Blue */
+    background: #1e3a8a;
+    /* Deep Blue */
     color: #ffffff;
     display: flex;
     align-items: center;
@@ -38,7 +47,7 @@
     padding: 0 24px;
     padding-top: env(safe-area-inset-top, 0px);
     z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
   .topbar-brand {
@@ -59,14 +68,16 @@
     cursor: default;
     user-select: none;
   }
+
   .topbar-avatar-img {
     width: 36px;
     height: 36px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid rgba(255,255,255,0.4);
+    border: 2px solid rgba(255, 255, 255, 0.4);
     flex-shrink: 0;
   }
+
   .topbar-avatar-initial {
     width: 36px;
     height: 36px;
@@ -78,7 +89,7 @@
     justify-content: center;
     font-weight: 800;
     font-size: 14px;
-    border: 2px solid rgba(255,255,255,0.4);
+    border: 2px solid rgba(255, 255, 255, 0.4);
     flex-shrink: 0;
   }
 
@@ -196,8 +207,20 @@
     justify-content: space-between;
     gap: 12px;
   }
-  .progress-bar-wrap { flex: 1; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
-  .progress-bar-fill { height: 100%; background: #3b82f6; transition: width .3s; }
+
+  .progress-bar-wrap {
+    flex: 1;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: #3b82f6;
+    transition: width .3s;
+  }
 
   /* ── Question card ── */
   .q-card {
@@ -206,27 +229,75 @@
     border-radius: 20px;
     padding: 30px;
     margin-bottom: 14px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   }
 
-  .q-text { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 24px; line-height: 1.6; }
+  .q-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+
   .choice-item {
-    display: flex; align-items: center; gap: 15px; padding: 15px 20px; border: 2px solid #f1f5f9;
-    border-radius: 12px; cursor: pointer; transition: all .2s; background: #f8fafc; margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 20px;
+    border: 2px solid #f1f5f9;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all .2s;
+    background: #f8fafc;
+    margin-bottom: 10px;
   }
-  .choice-item:hover { border-color: #3b82f6; background: #eff6ff; }
-  .choice-item:has(input:checked) { border-color: #3b82f6; background: #eff6ff; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
-  
+
+  .choice-item:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+  }
+
+  .choice-item:has(input:checked) {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+
   .next-btn {
-    background: #1e3a8a; color: #fff; border: none; border-radius: 12px; padding: 14px 40px;
-    font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    background: #1e3a8a;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 40px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
   }
-  .next-btn:hover { background: #1e40af; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(30,58,138,0.3); }
-  .next-btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
 
-  @keyframes spin { 100% { transform: rotate(360deg); } }
+  .next-btn:hover {
+    background: #1e40af;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+  }
 
-  .question-section { display: none; }
+  .next-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  @keyframes spin {
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  .question-section {
+    display: none;
+  }
 
   @media (max-width: 768px) {
     .exam-container {
@@ -247,7 +318,7 @@
       width: 100%;
       box-sizing: border-box;
     }
-    
+
     .custom-topbar {
       padding: 0 15px;
       box-sizing: border-box;
@@ -258,7 +329,7 @@
       box-sizing: border-box;
       width: 100%;
     }
-    
+
     .q-card-header {
       flex-direction: column !important;
       align-items: flex-start !important;
@@ -271,24 +342,30 @@
   /* ── Fullscreen layout fix (mobile + desktop) ── */
 
   /* Allow scrolling inside fullscreen on all browsers */
-  :fullscreen html, :-webkit-full-screen html,
-  :fullscreen body, :-webkit-full-screen body {
+  :fullscreen html,
+  :-webkit-full-screen html,
+  :fullscreen body,
+  :-webkit-full-screen body {
     overflow-y: auto !important;
     height: 100% !important;
   }
 
   /* Use dvh (dynamic viewport height) on browsers that support it
      to account for Android navigation bar in fullscreen */
-  :fullscreen .exam-container, :-webkit-full-screen .exam-container {
+  :fullscreen .exam-container,
+  :-webkit-full-screen .exam-container {
     margin-top: 80px !important;
     padding-top: 24px !important;
     min-height: calc(100dvh - 80px);
-    padding-bottom: 40px; /* extra space above nav bar */
+    padding-bottom: 40px;
+    /* extra space above nav bar */
   }
 
   /* Fallback for browsers without dvh */
   @supports not (height: 100dvh) {
-    :fullscreen .exam-container, :-webkit-full-screen .exam-container {
+
+    :fullscreen .exam-container,
+    :-webkit-full-screen .exam-container {
       margin-top: 80px !important;
       padding-top: 24px !important;
       min-height: calc(100vh - 80px);
@@ -296,7 +373,8 @@
   }
 
   /* Ensure the fullscreen root takes full space */
-  :fullscreen, :-webkit-full-screen {
+  :fullscreen,
+  :-webkit-full-screen {
     background: #f8fafc !important;
     width: 100% !important;
     height: 100% !important;
@@ -306,10 +384,14 @@
   /* Mobile: extra bottom padding so Next/Submit button isn't hidden
      behind the Android navigation bar in fullscreen */
   @media (max-width: 768px) {
-    :fullscreen .q-footer, :-webkit-full-screen .q-footer {
+
+    :fullscreen .q-footer,
+    :-webkit-full-screen .q-footer {
       padding-bottom: 24px;
     }
-    :fullscreen .exam-container, :-webkit-full-screen .exam-container {
+
+    :fullscreen .exam-container,
+    :-webkit-full-screen .exam-container {
       padding-bottom: 80px;
     }
   }
@@ -318,17 +400,23 @@
 <!-- Custom Blue Topbar -->
 <header class="custom-topbar">
   <div class="topbar-brand">
-    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+      <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+    </svg>
     <span>LICEO LMS</span>
   </div>
   <div class="topbar-avatar-btn" title="{{ session.get('full_name') or session.get('student_name') or 'Student' }}">
     {% set profile_img = session.get('profile_image') or live_profile_image %}
     {% if profile_img %}
-      <img src="{% if profile_img.startswith('http') or profile_img.startswith('/') %}{{ profile_img }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ profile_img) }}{% endif %}" class="topbar-avatar-img" alt="Profile">
+    <img
+      src="{% if profile_img.startswith('http') or profile_img.startswith('/') %}{{ profile_img }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ profile_img) }}{% endif %}"
+      class="topbar-avatar-img" alt="Profile">
     {% else %}
-      <div class="topbar-avatar-initial">
-        {{ (session.get('full_name') or session.get('student_name') or session.get('username') or 'S')[0] | upper }}
-      </div>
+    <div class="topbar-avatar-initial">
+      {{ (session.get('full_name') or session.get('student_name') or session.get('username') or 'S')[0] | upper }}
+    </div>
     {% endif %}
   </div>
 </header>
@@ -351,7 +439,8 @@
     <p style="color: #64748b; font-size: 0.95rem; margin: 0 0 24px; line-height: 1.6;">
       Please read the exam rules carefully.
     </p>
-    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; text-align: left; margin-bottom: 28px;">
+    <div
+      style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; text-align: left; margin-bottom: 28px;">
       <ul style="margin: 0; padding: 0 0 0 18px; color: #334155; font-size: 0.9rem; line-height: 2;">
         <li>The exam will run in <strong>fullscreen mode</strong>.</li>
         <li>Exiting fullscreen will be recorded as a <strong>violation</strong>.</li>
@@ -372,9 +461,9 @@
 </div>
 
 
-  <!-- Exam Content -->
-  <div class="exam-container">
-    <main class="exam-content">
+<!-- Exam Content -->
+<div class="exam-container">
+  <main class="exam-content">
     <!-- Exam Title & Timer Header -->
     <div class="exam-hero">
       <div class="exam-hero-content">
@@ -401,188 +490,197 @@
     </div>
 
     <form method="POST" id="examForm">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="result_id"    value="{{ result_id }}" />
-    <input type="hidden" name="tab_switches" id="tabSwitchInput" value="0" />
-    <input type="hidden" name="submit_type"  id="submitType" value="manual" />
-  
-    {% set mcq_questions = questions | selectattr("question_type", "equalto", "mcq") | list %}
-    {% set tf_questions = questions | selectattr("question_type", "equalto", "truefalse") | list %}
-    {% set match_questions = questions | selectattr("question_type", "equalto", "matching") | list %}
-    {% set global_index = namespace(value=0) %}
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="result_id" value="{{ result_id }}" />
+      <input type="hidden" name="tab_switches" id="tabSwitchInput" value="0" />
+      <input type="hidden" name="submit_type" id="submitType" value="manual" />
 
-    <!-- MCQ Section -->
-    <div id="section-mc" class="question-section">
-      {% for q in mcq_questions %}
-      {% set global_index.value = global_index.value + 1 %}
-      <div class="q-card" id="mc-q{{ loop.index0 }}" style="display:none;">
-        <div class="q-card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
-          <div style="display:flex; gap:10px; align-items:center;">
-            <span style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">MULTIPLE CHOICE</span>
-            <span style="background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px;">{{ q.points }} PT</span>
+      {% set mcq_questions = questions | selectattr("question_type", "equalto", "mcq") | list %}
+      {% set tf_questions = questions | selectattr("question_type", "equalto", "truefalse") | list %}
+      {% set match_questions = questions | selectattr("question_type", "equalto", "matching") | list %}
+      {% set global_index = namespace(value=0) %}
+
+      <!-- MCQ Section -->
+      <div id="section-mc" class="question-section">
+        {% for q in mcq_questions %}
+        {% set global_index.value = global_index.value + 1 %}
+        <div class="q-card" id="mc-q{{ loop.index0 }}" style="display:none;">
+          <div class="q-card-header"
+            style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
+            <div style="display:flex; gap:10px; align-items:center;">
+              <span
+                style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">MULTIPLE
+                CHOICE</span>
+              <span
+                style="background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px;">{{
+                q.points }} PT</span>
+            </div>
+            <div style="font-weight: 700; color: #64748b; font-size: 0.9rem;">
+              Question {{ global_index.value }} of {{ questions|length }}
+            </div>
           </div>
-          <div style="font-weight: 700; color: #64748b; font-size: 0.9rem;">
-            Question {{ global_index.value }} of {{ questions|length }}
-          </div>
-        </div>
-        <div class="q-text">{{ q.question_text }}</div>
-        {% if q.choices %}
-        <div class="choices-grid">
-          {% for key, val in q.choices.items() %}
-          <label class="choice-item">
-            <input type="radio" name="answer_{{ q.question_id }}" value="{{ key }}"
-                   onchange="saveAnswer('answer_{{ q.question_id }}', '{{ key }}')"/>
-            <span class="choice-key">{{ key }}.</span>
-            <span>{{ val }}</span>
-          </label>
-          {% endfor %}
-        </div>
-        {% endif %}
-        {# --- Here is the logic for the MCQ last question --- #}
-        {% set is_mcq_last = loop.last and (tf_questions|length == 0 and match_questions|length == 0) %}
-        <div class="q-footer" style="border-top: 2px solid #f1f5f9; padding-top: 16px; margin-top: 24px; display: flex; justify-content: flex-end;">
-          <button
-            type="{% if is_mcq_last %}submit{% else %}button{% endif %}"
-            class="next-btn submit-btn"
-            {% if not is_mcq_last %}onclick="nextMC()"{% endif %}
-          >
-            {% if loop.last %}
-              {% if tf_questions|length > 0 or match_questions|length > 0 %}
-                Next Section →
-              {% else %}
-                ✅ Submit
-              {% endif %}
-            {% else %}
-              Next →
-            {% endif %}
-          </button>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  
-    <!-- True/False Section -->
-    <div id="section-tf" class="question-section">
-      {% for q in tf_questions %}
-      {% set global_index.value = global_index.value + 1 %}
-      <div class="q-card" id="tf-q{{ loop.index0 }}" style="display:none;">
-        <div class="q-card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
-          <div style="display:flex; gap:10px; align-items:center;">
-            <span style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">TRUE OR FALSE</span>
-            <span style="background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px;">{{ q.points }} PT</span>
-          </div>
-          <div style="font-weight: 700; color: #64748b; font-size: 0.9rem;">
-            Question {{ global_index.value }} of {{ questions|length }}
-          </div>
-        </div>
-        <div class="q-text">{{ q.question_text }}</div>
-        <div class="choices-grid">
-          <label class="choice-item">
-            <input type="radio" name="answer_{{ q.question_id }}" value="True"
-                   onchange="saveAnswer('answer_{{ q.question_id }}', 'True')"/>
-            <span class="choice-key">A.</span><span>True</span>
-          </label>
-          <label class="choice-item">
-            <input type="radio" name="answer_{{ q.question_id }}" value="False"
-                   onchange="saveAnswer('answer_{{ q.question_id }}', 'False')"/>
-            <span class="choice-key">B.</span><span>False</span>
-          </label>
-        </div>
-        {# --- Here is the logic for the TF last question --- #}
-        {% set is_tf_last = loop.last and match_questions|length == 0 %}
-        <div class="q-footer" style="border-top: 2px solid #f1f5f9; padding-top: 16px; margin-top: 24px; display: flex; justify-content: flex-end;">
-          <button
-            type="{% if is_tf_last %}submit{% else %}button{% endif %}"
-            class="next-btn submit-btn"
-            {% if not is_tf_last %}onclick="nextTF()"{% endif %}
-          >
-            {% if loop.last %}
-              {% if match_questions|length > 0 %}
-                Next Section →
-              {% else %}
-                ✅ Submit
-              {% endif %}
-            {% else %}
-              Next →
-            {% endif %}
-          </button>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  
-    <!-- Matching Section -->
-    <div id="section-match" class="question-section">
-      {% for q in match_questions %}
-      {% set global_index.value = global_index.value + 1 %}
-      <div class="q-card" id="match-q{{ loop.index0 }}" style="display:none;">
-        <div class="q-card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
-          <div style="display:flex; gap:10px; align-items:center;">
-            <span style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">MATCHING</span>
-            <span style="background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px;">{{ q.points }} PT</span>
-          </div>
-          <div style="font-weight: 700; color: #64748b; font-size: 0.9rem;">
-            Question {{ global_index.value }} of {{ questions|length }}
-          </div>
-        </div>
-        <div class="q-text">{{ q.question_text }}</div>
-        {% if q.choices and q.choices.options %}
-        <div class="form-group" style="margin-bottom:20px;">
-          <select class="form-select" name="answer_{{ q.question_id }}" id="match-sel-{{ q.question_id }}" 
-                  onchange="saveAnswer('answer_{{ q.question_id }}', this.value)"
-                  style="width:100%; padding:12px; font-size:1rem; border:2px solid #e2e8f0; border-radius:10px; cursor:pointer;">
-            <option value="" disabled selected>-- Select your answer --</option>
-            {% for opt in q.choices.options %}
-            <option value="{{ opt }}">{{ opt }}</option>
+          <div class="q-text">{{ q.question_text }}</div>
+          {% if q.choices %}
+          <div class="choices-grid">
+            {% for key, val in q.choices.items() %}
+            <label class="choice-item">
+              <input type="radio" name="answer_{{ q.question_id }}" value="{{ key }}"
+                onchange="saveAnswer('answer_{{ q.question_id }}', '{{ key }}')" />
+              <span class="choice-key">{{ key }}.</span>
+              <span>{{ val }}</span>
+            </label>
             {% endfor %}
-          </select>
-        </div>
-        {% endif %}
-        {# --- Here is the logic for Matching last question --- #}
-        {% set is_match_last = loop.last %}
-        <div class="q-footer" style="border-top: 2px solid #f1f5f9; padding-top: 16px; margin-top: 24px; display: flex; justify-content: flex-end;">
-          <button
-            type="{% if is_match_last %}submit{% else %}button{% endif %}"
-            class="next-btn submit-btn"
-            {% if not is_match_last %}onclick="nextMatch()"{% endif %}
-          >
-            {% if loop.last %}
+          </div>
+          {% endif %}
+          {# --- Here is the logic for the MCQ last question --- #}
+          {% set is_mcq_last = loop.last and (tf_questions|length == 0 and match_questions|length == 0) %}
+          <div class="q-footer"
+            style="border-top: 2px solid #f1f5f9; padding-top: 16px; margin-top: 24px; display: flex; justify-content: flex-end;">
+            <button type="{% if is_mcq_last %}submit{% else %}button{% endif %}" class="next-btn submit-btn" {% if not
+              is_mcq_last %}onclick="nextMC()" {% endif %}>
+              {% if loop.last %}
+              {% if tf_questions|length > 0 or match_questions|length > 0 %}
+              Next Section →
+              {% else %}
               ✅ Submit
-            {% else %}
+              {% endif %}
+              {% else %}
               Next →
-            {% endif %}
-          </button>
+              {% endif %}
+            </button>
+          </div>
         </div>
+        {% endfor %}
       </div>
-      {% endfor %}
-    </div>
-  </form>
+
+      <!-- True/False Section -->
+      <div id="section-tf" class="question-section">
+        {% for q in tf_questions %}
+        {% set global_index.value = global_index.value + 1 %}
+        <div class="q-card" id="tf-q{{ loop.index0 }}" style="display:none;">
+          <div class="q-card-header"
+            style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
+            <div style="display:flex; gap:10px; align-items:center;">
+              <span
+                style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">TRUE
+                OR FALSE</span>
+              <span
+                style="background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px;">{{
+                q.points }} PT</span>
+            </div>
+            <div style="font-weight: 700; color: #64748b; font-size: 0.9rem;">
+              Question {{ global_index.value }} of {{ questions|length }}
+            </div>
+          </div>
+          <div class="q-text">{{ q.question_text }}</div>
+          <div class="choices-grid">
+            <label class="choice-item">
+              <input type="radio" name="answer_{{ q.question_id }}" value="True"
+                onchange="saveAnswer('answer_{{ q.question_id }}', 'True')" />
+              <span class="choice-key">A.</span><span>True</span>
+            </label>
+            <label class="choice-item">
+              <input type="radio" name="answer_{{ q.question_id }}" value="False"
+                onchange="saveAnswer('answer_{{ q.question_id }}', 'False')" />
+              <span class="choice-key">B.</span><span>False</span>
+            </label>
+          </div>
+          {# --- Here is the logic for the TF last question --- #}
+          {% set is_tf_last = loop.last and match_questions|length == 0 %}
+          <div class="q-footer"
+            style="border-top: 2px solid #f1f5f9; padding-top: 16px; margin-top: 24px; display: flex; justify-content: flex-end;">
+            <button type="{% if is_tf_last %}submit{% else %}button{% endif %}" class="next-btn submit-btn" {% if not
+              is_tf_last %}onclick="nextTF()" {% endif %}>
+              {% if loop.last %}
+              {% if match_questions|length > 0 %}
+              Next Section →
+              {% else %}
+              ✅ Submit
+              {% endif %}
+              {% else %}
+              Next →
+              {% endif %}
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Matching Section -->
+      <div id="section-match" class="question-section">
+        {% for q in match_questions %}
+        {% set global_index.value = global_index.value + 1 %}
+        <div class="q-card" id="match-q{{ loop.index0 }}" style="display:none;">
+          <div class="q-card-header"
+            style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
+            <div style="display:flex; gap:10px; align-items:center;">
+              <span
+                style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">MATCHING</span>
+              <span
+                style="background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px;">{{
+                q.points }} PT</span>
+            </div>
+            <div style="font-weight: 700; color: #64748b; font-size: 0.9rem;">
+              Question {{ global_index.value }} of {{ questions|length }}
+            </div>
+          </div>
+          <div class="q-text">{{ q.question_text }}</div>
+          {% if q.choices and q.choices.options %}
+          <div class="form-group" style="margin-bottom:20px;">
+            <select class="form-select" name="answer_{{ q.question_id }}" id="match-sel-{{ q.question_id }}"
+              onchange="saveAnswer('answer_{{ q.question_id }}', this.value)"
+              style="width:100%; padding:12px; font-size:1rem; border:2px solid #e2e8f0; border-radius:10px; cursor:pointer;">
+              <option value="" disabled selected>-- Select your answer --</option>
+              {% for opt in q.choices.options %}
+              <option value="{{ opt }}">{{ opt }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+          {# --- Here is the logic for Matching last question --- #}
+          {% set is_match_last = loop.last %}
+          <div class="q-footer"
+            style="border-top: 2px solid #f1f5f9; padding-top: 16px; margin-top: 24px; display: flex; justify-content: flex-end;">
+            <button type="{% if is_match_last %}submit{% else %}button{% endif %}" class="next-btn submit-btn" {% if not
+              is_match_last %}onclick="nextMatch()" {% endif %}>
+              {% if loop.last %}
+              ✅ Submit
+              {% else %}
+              Next →
+              {% endif %}
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </form>
   </main>
 </div>
 
 
 <script>
-(function () {
+  (function () {
     const EXAM_KEY = 'exam_{{ result_id | int }}_';
-    function lsGet(k)      { return localStorage.getItem(EXAM_KEY + k); }
-    function lsSet(k, v)   { localStorage.setItem(EXAM_KEY + k, v); }
+    function lsGet(k) { return localStorage.getItem(EXAM_KEY + k); }
+    function lsSet(k, v) { localStorage.setItem(EXAM_KEY + k, v); }
 
     // ── Exam state / anti-cheat state ──
-const resultId = {{ result_id | int }};
+    const resultId = {{ result_id | int
+  }};
 
-let tabSwitchCount = {{ current_tab_switches | int }};
-let trackingActive = false;
-let lastSwitchTime = 0;
-let isPageUnloading = false;
-let isConfirmOpen = false;
-let ignoreAntiCheatUntil = 0; // Blocks ALL recording (used during alert/confirm dialogs)
-let ignorePollerUntil = 0;    // Blocks POLLER only (used during focus restoration after return)
-let isSubmittingExam = false;
-let leaveEventSent = false;
+  let tabSwitchCount = {{ current_tab_switches | int }};
+  let trackingActive = false;
+  let lastSwitchTime = 0;
+  let isPageUnloading = false;
+  let isConfirmOpen = false;
+  let ignoreAntiCheatUntil = 0; // Blocks ALL recording (used during alert/confirm dialogs)
+  let ignorePollerUntil = 0;    // Blocks POLLER only (used during focus restoration after return)
+  let isSubmittingExam = false;
+  let leaveEventSent = false;
 
-// ── Custom in-page dialogs (replaces browser alert/confirm which exit fullscreen on Android) ──
+  // ── Custom in-page dialogs (replaces browser alert/confirm which exit fullscreen on Android) ──
 
-function showCustomAlert(message, onOk) {
+  function showCustomAlert(message, onOk) {
     isConfirmOpen = true;
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:99999999;background:rgba(15,23,42,0.7);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);';
@@ -594,16 +692,16 @@ function showCustomAlert(message, onOk) {
         </div>
     `;
     document.body.appendChild(overlay);
-    document.getElementById('customAlertOkBtn').addEventListener('click', function() {
-        overlay.remove();
-        isConfirmOpen = false;
-        ignoreAntiCheatUntil = Date.now() + 500;
-        ignorePollerUntil = Date.now() + 500;
-        if (onOk) onOk();
+    document.getElementById('customAlertOkBtn').addEventListener('click', function () {
+      overlay.remove();
+      isConfirmOpen = false;
+      ignoreAntiCheatUntil = Date.now() + 500;
+      ignorePollerUntil = Date.now() + 500;
+      if (onOk) onOk();
     });
-}
+  }
 
-function showCustomConfirm(message, onConfirm, onCancel) {
+  function showCustomConfirm(message, onConfirm, onCancel) {
     isConfirmOpen = true;
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:99999999;background:rgba(15,23,42,0.7);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);';
@@ -618,616 +716,616 @@ function showCustomConfirm(message, onConfirm, onCancel) {
         </div>
     `;
     document.body.appendChild(overlay);
-    document.getElementById('customConfirmBtn').addEventListener('click', function() {
-        overlay.remove();
-        isConfirmOpen = false;
-        ignoreAntiCheatUntil = Date.now() + 500;
-        ignorePollerUntil = Date.now() + 500;
-        if (onConfirm) onConfirm();
+    document.getElementById('customConfirmBtn').addEventListener('click', function () {
+      overlay.remove();
+      isConfirmOpen = false;
+      ignoreAntiCheatUntil = Date.now() + 500;
+      ignorePollerUntil = Date.now() + 500;
+      if (onConfirm) onConfirm();
     });
-    document.getElementById('customCancelBtn').addEventListener('click', function() {
-        overlay.remove();
-        isConfirmOpen = false;
-        ignoreAntiCheatUntil = Date.now() + 500;
-        ignorePollerUntil = Date.now() + 500;
-        if (onCancel) onCancel();
+    document.getElementById('customCancelBtn').addEventListener('click', function () {
+      overlay.remove();
+      isConfirmOpen = false;
+      ignoreAntiCheatUntil = Date.now() + 500;
+      ignorePollerUntil = Date.now() + 500;
+      if (onCancel) onCancel();
     });
-}
+  }
 
-// safeAlert now uses custom modal (doesn't exit fullscreen)
-function safeAlert(message, onOk) {
+  // safeAlert now uses custom modal (doesn't exit fullscreen)
+  function safeAlert(message, onOk) {
     showCustomAlert(message, onOk);
-}
+  }
 
 
-let resizeTimer = null;
+  let resizeTimer = null;
 
-const initialViewportWidth = window.innerWidth;
+  const initialViewportWidth = window.innerWidth;
 
-    // ── Timer ──
-    let remaining = {{ remaining_secs | int }};
-    const timerEl = document.getElementById('timerBox');
-    const total   = {{ questions|length }};
+  // ── Timer ──
+  let remaining = {{ remaining_secs | int }};
+  const timerEl = document.getElementById('timerBox');
+  const total = {{ questions| length }};
 
-    function formatTime(s) {
-        const m = Math.floor(s / 60).toString().padStart(2, '0');
-        const sec = (s % 60).toString().padStart(2, '0');
-        return m + ':' + sec;
+  function formatTime(s) {
+    const m = Math.floor(s / 60).toString().padStart(2, '0');
+    const sec = (s % 60).toString().padStart(2, '0');
+    return m + ':' + sec;
+  }
+
+  function updateTimer() {
+    timerEl.textContent = 'TIME LEFT: ' + formatTime(remaining);
+    if (remaining <= 0) {
+      timerEl.style.color = '#fca5a5'; // Light red on blue background
+      timerEl.textContent = 'TIME LEFT: 00:00';
+      autoSubmit(); return;
     }
+    timerEl.style.color = remaining <= 120 ? '#fca5a5' : remaining <= 300 ? '#fde047' : '#ffffff';
+    remaining--;
+    setTimeout(updateTimer, 1000);
+  }
 
-    function updateTimer() {
-        timerEl.textContent = 'TIME LEFT: ' + formatTime(remaining);
-        if (remaining <= 0) {
-            timerEl.style.color = '#fca5a5'; // Light red on blue background
-            timerEl.textContent = 'TIME LEFT: 00:00';
-            autoSubmit(); return;
-        }
-        timerEl.style.color = remaining <= 120 ? '#fca5a5' : remaining <= 300 ? '#fde047' : '#ffffff';
-        remaining--;
-        setTimeout(updateTimer, 1000);
-    }
-
-    function autoSubmit() {
+  function autoSubmit() {
     console.log("Auto-submitting exam...");
 
     trackingActive = false;
     isPageUnloading = true;
     isSubmittingExam = true;
 
-        // 1. Force save the currently visible question's answer if it exists
-        const visibleCard = document.querySelector('.q-card[style*="display: block"], .q-card[style*="display:block"]');
-        if (visibleCard) {
-            const radio = visibleCard.querySelector('input[type="radio"]:checked');
-            const select = visibleCard.querySelector('select');
-            if (radio) {
-                saveAnswer(radio.name, radio.value);
-            } else if (select && select.value) {
-                saveAnswer(select.name, select.value);
-            }
-        }
-        
-        // 2. Sync ALL saved answers from localStorage to the form inputs
-        document.querySelectorAll('input[name^="answer_"], select[name^="answer_"]').forEach(field => {
-            const saved = lsGet('ans_' + field.name);
-            if (saved) {
-                if (field.type === 'radio') {
-                    const target = document.querySelector(`input[name="${field.name}"][value="${saved}"]`);
-                    if (target) target.checked = true;
-                } else if (field.tagName === 'SELECT') {
-                    field.value = saved;
-                }
-            }
-        });
-
-        const form = document.getElementById('examForm');
-        const submitTypeInput = document.getElementById('submitType');
-        const timerEl = document.getElementById('timerBox');
-
-        if (timerEl) {
-            timerEl.textContent = 'Submitting...';
-            timerEl.style.color = '#dc2626';
-        }
-
-        if (submitTypeInput) submitTypeInput.value = 'auto';
-        
-        // 3. Final submission
-        if (form) {
-            console.log("Submitting form now.");
-            form.submit();
-        }
-    }
-    // Timer is started by the 'Begin Exam' button click, not here.
-    // updateTimer() will be called from the modal button handler.
-
-    // ── Answered counter ──
-    let answeredCount = 0;
-
-    function updateProgress() {
-        // Progress bar removed per UI request, but we keep this function signature 
-        // if anything else calls it (answeredCount is tracked for final confirmation dialog).
+    // 1. Force save the currently visible question's answer if it exists
+    const visibleCard = document.querySelector('.q-card[style*="display: block"], .q-card[style*="display:block"]');
+    if (visibleCard) {
+      const radio = visibleCard.querySelector('input[type="radio"]:checked');
+      const select = visibleCard.querySelector('select');
+      if (radio) {
+        saveAnswer(radio.name, radio.value);
+      } else if (select && select.value) {
+        saveAnswer(select.name, select.value);
+      }
     }
 
-    function saveAnswer(name, answer) {
-        // Extract question ID from name (e.g. "answer_123" -> 123)
-        const questionId = name.replace('answer_', '');
-        
-        const inputEl = document.querySelector(`[name="${name}"]`);
-        let btn = null;
-        let originalHTML = "";
-        if (inputEl) {
-            const card = inputEl.closest('.q-card');
-            if (card) {
-                btn = card.querySelector('.next-btn');
-                if (btn) {
-                    originalHTML = btn.innerHTML;
-                    btn.innerHTML = '<span style="display:inline-block; animation: spin 1s linear infinite; margin-right:6px;">↻</span> Saving...';
-                    btn.disabled = true;
-                }
-            }
+    // 2. Sync ALL saved answers from localStorage to the form inputs
+    document.querySelectorAll('input[name^="answer_"], select[name^="answer_"]').forEach(field => {
+      const saved = lsGet('ans_' + field.name);
+      if (saved) {
+        if (field.type === 'radio') {
+          const target = document.querySelector(`input[name="${field.name}"][value="${saved}"]`);
+          if (target) target.checked = true;
+        } else if (field.tagName === 'SELECT') {
+          field.value = saved;
         }
+      }
+    });
 
-        // Save to localStorage (legacy fallback)
-        lsSet('ans_' + name, answer);
-        if (!lsGet('answered_' + name)) {
-            answeredCount++;
-            lsSet('answered_' + name, 'true');
-            updateProgress();
+    const form = document.getElementById('examForm');
+    const submitTypeInput = document.getElementById('submitType');
+    const timerEl = document.getElementById('timerBox');
+
+    if (timerEl) {
+      timerEl.textContent = 'Submitting...';
+      timerEl.style.color = '#dc2626';
+    }
+
+    if (submitTypeInput) submitTypeInput.value = 'auto';
+
+    // 3. Final submission
+    if (form) {
+      console.log("Submitting form now.");
+      form.submit();
+    }
+  }
+  // Timer is started by the 'Begin Exam' button click, not here.
+  // updateTimer() will be called from the modal button handler.
+
+  // ── Answered counter ──
+  let answeredCount = 0;
+
+  function updateProgress() {
+    // Progress bar removed per UI request, but we keep this function signature 
+    // if anything else calls it (answeredCount is tracked for final confirmation dialog).
+  }
+
+  function saveAnswer(name, answer) {
+    // Extract question ID from name (e.g. "answer_123" -> 123)
+    const questionId = name.replace('answer_', '');
+
+    const inputEl = document.querySelector(`[name="${name}"]`);
+    let btn = null;
+    let originalHTML = "";
+    if (inputEl) {
+      const card = inputEl.closest('.q-card');
+      if (card) {
+        btn = card.querySelector('.next-btn');
+        if (btn) {
+          originalHTML = btn.innerHTML;
+          btn.innerHTML = '<span style="display:inline-block; animation: spin 1s linear infinite; margin-right:6px;">↻</span> Saving...';
+          btn.disabled = true;
         }
+      }
+    }
 
-        // 🚀 NEW: Save to Server via AJAX with a minimum 500ms delay so the loading is visible
-        const minDelay = new Promise(resolve => setTimeout(resolve, 500));
+    // Save to localStorage (legacy fallback)
+    lsSet('ans_' + name, answer);
+    if (!lsGet('answered_' + name)) {
+      answeredCount++;
+      lsSet('answered_' + name, 'true');
+      updateProgress();
+    }
 
-        Promise.all([
-            fetch('/student/exams/save-answer', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    result_id: {{ result_id | int }},
-                    question_id: questionId,
-                    answer: answer
+    // 🚀 NEW: Save to Server via AJAX with a minimum 500ms delay so the loading is visible
+    const minDelay = new Promise(resolve => setTimeout(resolve, 500));
+
+    Promise.all([
+      fetch('/student/exams/save-answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          result_id: {{ result_id | int }},
+  question_id: questionId,
+    answer: answer
                 })
             }).then(res => res.json()),
-            minDelay
+    minDelay
         ])
         .then(([data]) => {
-            if (data.ok) console.log(`Answer saved for Q${questionId}`);
-            else console.error("Failed to save answer:", data.msg);
-        })
-        .catch(err => console.error("Network error saving answer:", err))
-        .finally(() => {
-            if (btn) {
-                btn.innerHTML = originalHTML;
-                btn.disabled = false;
-            }
-        });
+      if (data.ok) console.log(`Answer saved for Q${questionId}`);
+      else console.error("Failed to save answer:", data.msg);
+    })
+    .catch(err => console.error("Network error saving answer:", err))
+    .finally(() => {
+      if (btn) {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+      }
+    });
     }
-    window.saveAnswer = saveAnswer;
+  window.saveAnswer = saveAnswer;
 
-    function loadAnswers() {
-        const names = new Set();
-        document.querySelectorAll('.q-card input[type="radio"]').forEach(input => {
-            const saved = lsGet('ans_' + input.name);
-            if (saved && input.value === saved) input.checked = true;
-            if (lsGet('answered_' + input.name) === 'true') names.add(input.name);
-        });
-        document.querySelectorAll('.q-card select').forEach(select => {
-            const saved = lsGet('ans_' + select.name);
-            if (saved) select.value = saved;
-            if (lsGet('answered_' + select.name) === 'true') names.add(select.name);
-        });
-        answeredCount = names.size;
-        updateProgress();
+  function loadAnswers() {
+    const names = new Set();
+    document.querySelectorAll('.q-card input[type="radio"]').forEach(input => {
+      const saved = lsGet('ans_' + input.name);
+      if (saved && input.value === saved) input.checked = true;
+      if (lsGet('answered_' + input.name) === 'true') names.add(input.name);
+    });
+    document.querySelectorAll('.q-card select').forEach(select => {
+      const saved = lsGet('ans_' + select.name);
+      if (saved) select.value = saved;
+      if (lsGet('answered_' + select.name) === 'true') names.add(select.name);
+    });
+    answeredCount = names.size;
+    updateProgress();
+  }
+  loadAnswers();
+
+  // ── Section navigation ──
+  const mcTotal = document.querySelectorAll('[id^="mc-q"]').length;
+  const tfTotal = document.querySelectorAll('[id^="tf-q"]').length;
+  const matchTotal = document.querySelectorAll('[id^="match-q"]').length;
+
+  let mcIndex = parseInt(lsGet('mcIndex') || '0');
+  let tfIndex = parseInt(lsGet('tfIndex') || '0');
+  let matchIndex = parseInt(lsGet('matchIndex') || '0');
+
+  let currentSection = lsGet('currentSection') || (mcTotal > 0 ? 'mc' : (tfTotal > 0 ? 'tf' : 'match'));
+
+  function showSection(id) {
+    ['section-mc', 'section-tf', 'section-match'].forEach(s => {
+      const el = document.getElementById(s);
+      if (el) el.style.display = 'none';
+    });
+    if (id && document.getElementById(id)) document.getElementById(id).style.display = 'block';
+  }
+
+  function showMC(index) {
+    lsSet('mcIndex', index); lsSet('currentSection', 'mc');
+    showSection('section-mc');
+    for (let i = 0; i < mcTotal; i++) document.getElementById(`mc-q${i}`).style.display = 'none';
+    if (index < mcTotal) {
+      document.getElementById(`mc-q${index}`).style.display = 'block';
+    } else {
+      tfTotal > 0 ? showTF(0) : (matchTotal > 0 ? showMatch(0) : autoSubmit());
     }
-    loadAnswers();
+  }
 
-    // ── Section navigation ──
-    const mcTotal = document.querySelectorAll('[id^="mc-q"]').length;
-    const tfTotal = document.querySelectorAll('[id^="tf-q"]').length;
-    const matchTotal = document.querySelectorAll('[id^="match-q"]').length;
-
-    let mcIndex = parseInt(lsGet('mcIndex') || '0');
-    let tfIndex = parseInt(lsGet('tfIndex') || '0');
-    let matchIndex = parseInt(lsGet('matchIndex') || '0');
-    
-    let currentSection = lsGet('currentSection') || (mcTotal > 0 ? 'mc' : (tfTotal > 0 ? 'tf' : 'match'));
-
-    function showSection(id) {
-        ['section-mc','section-tf','section-match'].forEach(s => {
-            const el = document.getElementById(s);
-            if(el) el.style.display = 'none';
-        });
-        if (id && document.getElementById(id)) document.getElementById(id).style.display = 'block';
+  function showTF(index) {
+    lsSet('tfIndex', index); lsSet('currentSection', 'tf');
+    showSection('section-tf');
+    for (let i = 0; i < tfTotal; i++) document.getElementById(`tf-q${i}`).style.display = 'none';
+    if (index < tfTotal) {
+      document.getElementById(`tf-q${index}`).style.display = 'block';
+    } else {
+      matchTotal > 0 ? showMatch(0) : autoSubmit();
     }
+  }
 
-    function showMC(index) {
-        lsSet('mcIndex', index); lsSet('currentSection', 'mc');
-        showSection('section-mc');
-        for (let i = 0; i < mcTotal; i++) document.getElementById(`mc-q${i}`).style.display = 'none';
-        if (index < mcTotal) {
-            document.getElementById(`mc-q${index}`).style.display = 'block';
-        } else {
-            tfTotal > 0 ? showTF(0) : (matchTotal > 0 ? showMatch(0) : autoSubmit());
-        }
+  function showMatch(index) {
+    lsSet('matchIndex', index); lsSet('currentSection', 'match');
+    showSection('section-match');
+    for (let i = 0; i < matchTotal; i++) document.getElementById(`match-q${i}`).style.display = 'none';
+    if (index < matchTotal) {
+      document.getElementById(`match-q${index}`).style.display = 'block';
+    } else {
+      autoSubmit();
     }
-
-    function showTF(index) {
-        lsSet('tfIndex', index); lsSet('currentSection', 'tf');
-        showSection('section-tf');
-        for (let i = 0; i < tfTotal; i++) document.getElementById(`tf-q${i}`).style.display = 'none';
-        if (index < tfTotal) {
-            document.getElementById(`tf-q${index}`).style.display = 'block';
-        } else {
-            matchTotal > 0 ? showMatch(0) : autoSubmit();
-        }
-    }
-
-    function showMatch(index) {
-        lsSet('matchIndex', index); lsSet('currentSection', 'match');
-        showSection('section-match');
-        for (let i = 0; i < matchTotal; i++) document.getElementById(`match-q${i}`).style.display = 'none';
-        if (index < matchTotal) {
-            document.getElementById(`match-q${index}`).style.display = 'block';
-        } else {
-            autoSubmit();
-        }
-    }
-    window.nextMC = function () {
+  }
+  window.nextMC = function () {
     const card = document.getElementById(
-        `mc-q${mcIndex}`
+      `mc-q${mcIndex}`
     );
 
     if (!card.querySelector(
-        'input[type="radio"]:checked'
+      'input[type="radio"]:checked'
     )) {
-        safeAlert(
-            '⚠️ Please answer the question '
-            + 'before proceeding.'
-        );
-        return;
+      safeAlert(
+        '⚠️ Please answer the question '
+        + 'before proceeding.'
+      );
+      return;
     }
 
     const sel = card.querySelector(
-        'input[type="radio"]:checked'
+      'input[type="radio"]:checked'
     );
 
     saveAnswer(
-        sel.name,
-        sel.value
+      sel.name,
+      sel.value
     );
 
     mcIndex++;
     showMC(mcIndex);
-};
+  };
 
 
-window.nextTF = function () {
+  window.nextTF = function () {
     const card = document.getElementById(
-        `tf-q${tfIndex}`
+      `tf-q${tfIndex}`
     );
 
     if (!card.querySelector(
-        'input[type="radio"]:checked'
+      'input[type="radio"]:checked'
     )) {
-        safeAlert(
-            '⚠️ Please select an answer '
-            + 'before proceeding.'
-        );
-        return;
+      safeAlert(
+        '⚠️ Please select an answer '
+        + 'before proceeding.'
+      );
+      return;
     }
 
     const sel = card.querySelector(
-        'input[type="radio"]:checked'
+      'input[type="radio"]:checked'
     );
 
     saveAnswer(
-        sel.name,
-        sel.value
+      sel.name,
+      sel.value
     );
 
     tfIndex++;
     showTF(tfIndex);
-};
+  };
 
 
-window.nextMatch = function () {
+  window.nextMatch = function () {
     const card = document.getElementById(
-        `match-q${matchIndex}`
+      `match-q${matchIndex}`
     );
 
     const sel = card.querySelector(
-        'select'
+      'select'
     );
 
     if (!sel.value) {
-        safeAlert(
-            '⚠️ Please select an answer '
-            + 'from the dropdown before proceeding.'
-        );
-        return;
+      safeAlert(
+        '⚠️ Please select an answer '
+        + 'from the dropdown before proceeding.'
+      );
+      return;
     }
 
     saveAnswer(
-        sel.name,
-        sel.value
+      sel.name,
+      sel.value
     );
 
     matchIndex++;
     showMatch(matchIndex);
-};
+  };
 
-    // Restore position
-    // Restore position safely
-if (currentSection === 'match' && matchTotal > 0) {
+  // Restore position
+  // Restore position safely
+  if (currentSection === 'match' && matchTotal > 0) {
 
-if (matchIndex >= matchTotal) {
-    autoSubmit();
-    return;
-}
+    if (matchIndex >= matchTotal) {
+      autoSubmit();
+      return;
+    }
 
-showMatch(matchIndex);
+    showMatch(matchIndex);
 
-} else if (currentSection === 'tf' && tfTotal > 0) {
+  } else if (currentSection === 'tf' && tfTotal > 0) {
 
-if (tfIndex >= tfTotal) {
-    if (matchTotal > 0) {
+    if (tfIndex >= tfTotal) {
+      if (matchTotal > 0) {
         showMatch(0);
-    } else {
+      } else {
         autoSubmit();
         return;
+      }
+    } else {
+      showTF(tfIndex);
     }
-} else {
-    showTF(tfIndex);
-}
 
-} else if (mcTotal > 0) {
+  } else if (mcTotal > 0) {
 
-if (mcIndex >= mcTotal) {
-    if (tfTotal > 0) {
+    if (mcIndex >= mcTotal) {
+      if (tfTotal > 0) {
         showTF(0);
-    } else if (matchTotal > 0) {
+      } else if (matchTotal > 0) {
         showMatch(0);
-    } else {
+      } else {
         autoSubmit();
         return;
+      }
+    } else {
+      showMC(mcIndex);
     }
-} else {
-    showMC(mcIndex);
-}
 
-} else if (tfTotal > 0) {
+  } else if (tfTotal > 0) {
 
-showTF(0);
+    showTF(0);
 
-} else if (matchTotal > 0) {
+  } else if (matchTotal > 0) {
 
-showMatch(0);
-}
+    showMatch(0);
+  }
 
+  document.getElementById('tabSwitchInput').value = tabSwitchCount;
+
+  let lastScreenOrientation = (window.screen && window.screen.orientation) ? window.screen.orientation.type : (window.orientation || 0);
+  let isCurrentlySplitScreen = false;
+  let isCurrentlyUnfocused = false;
+
+  function isSplitScreenActive() {
+    const activeEl = document.activeElement;
+    const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+
+    const currentWidth = window.innerWidth;
+    const currentHeight = window.innerHeight;
+
+    const screenWidth = (window.screen && window.screen.availWidth) ? window.screen.availWidth : window.innerWidth;
+    const screenHeight = (window.screen && window.screen.availHeight) ? window.screen.availHeight : window.innerHeight;
+
+    const widthRatio = currentWidth / screenWidth;
+    const heightRatio = currentHeight / screenHeight;
+
+    // Desktop/landscape split screen or floating resized window
+    if (widthRatio < 0.78) return true;
+
+    // Mobile portrait split screen (top/bottom split) when NOT typing on virtual keyboard
+    if (!isTyping && heightRatio < 0.70) return true;
+
+    return false;
+  }
+
+
+  // Tracking starts when the student taps 'Begin Exam' in the pre-exam modal.
+  // Initial split-screen check will run from the beginExamBtn click handler.
+
+
+  function recordSwitch(reason = 'tab_switch') {
+    if (!trackingActive) return;
+    if (isPageUnloading) return;
+    if (isConfirmOpen) return;
+
+    if (Date.now() < ignoreAntiCheatUntil) return;
+
+    const currentlySplit = isSplitScreenActive();
+
+    // 1. Handling Split-Screen Window Resizing / Entry
+    if (reason === 'resize_check') {
+      if (currentlySplit && !isCurrentlySplitScreen) {
+        isCurrentlySplitScreen = true;
+        triggerViolation('possible_split_screen');
+      } else if (!currentlySplit) {
+        isCurrentlySplitScreen = false;
+      }
+      return;
+    }
+
+    // 2. Handling Focus Loss (blur, page_hidden, chathead tap, tap other app in split screen)
+    // ONLY increment count by +1 when transitioning from focused (false) -> unfocused (true)
+    if (!isCurrentlyUnfocused) {
+      isCurrentlyUnfocused = true;
+
+      if (currentlySplit) {
+        reason = 'possible_split_screen';
+      }
+
+      triggerViolation(reason);
+    }
+  }
+
+  function triggerViolation(reason) {
+    const now = Date.now();
+
+    if (now - lastSwitchTime < 1000) return;
+
+    lastSwitchTime = now;
+
+    tabSwitchCount++;
     document.getElementById('tabSwitchInput').value = tabSwitchCount;
 
-    let lastScreenOrientation = (window.screen && window.screen.orientation) ? window.screen.orientation.type : (window.orientation || 0);
-    let isCurrentlySplitScreen = false;
-    let isCurrentlyUnfocused = false;
+    fetch('/student/exams/tab-switch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        result_id: resultId,
+        reason: reason
+      })
+    }).catch(() => { });
 
-    function isSplitScreenActive() {
-        const activeEl = document.activeElement;
-        const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+    showTabSwitchToast(tabSwitchCount, reason);
+  }
 
-        const currentWidth = window.innerWidth;
-        const currentHeight = window.innerHeight;
+  function showTabSwitchToast(count, reason = '') {
+    const toastId = 'tabSwitchToast';
+    let toast = document.getElementById(toastId);
+    if (toast) toast.remove();
 
-        const screenWidth = (window.screen && window.screen.availWidth) ? window.screen.availWidth : window.innerWidth;
-        const screenHeight = (window.screen && window.screen.availHeight) ? window.screen.availHeight : window.innerHeight;
-
-        const widthRatio = currentWidth / screenWidth;
-        const heightRatio = currentHeight / screenHeight;
-
-        // Desktop/landscape split screen or floating resized window
-        if (widthRatio < 0.78) return true;
-
-        // Mobile portrait split screen (top/bottom split) when NOT typing on virtual keyboard
-        if (!isTyping && heightRatio < 0.70) return true;
-
-        return false;
+    let message = `⚠️ Switch tab detected! (Count: ${count})`;
+    if (reason === 'window_blur') {
+      message = `⚠️ Exam window lost focus (Floating app / tap outside)! (Count: ${count})`;
+    } else if (reason === 'possible_split_screen') {
+      message = `⚠️ Split screen or resized window detected! (Count: ${count})`;
+    } else if (reason === 'fullscreen_exit') {
+      message = `⚠️ Exited Fullscreen mode! (Count: ${count})`;
+    } else if (reason === 'page_hidden') {
+      message = `⚠️ Tab switched or app minimized! (Count: ${count})`;
     }
 
+    toast = document.createElement('div');
+    toast.id = toastId;
+    toast.style.position = 'fixed';
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.background = '#fef2f2';
+    toast.style.color = '#b91c1c';
+    toast.style.padding = '16px 24px';
+    toast.style.borderRadius = '12px';
+    toast.style.border = '1px solid #fecaca';
+    toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.15)';
+    toast.style.fontWeight = '700';
+    toast.style.zIndex = '999999';
+    toast.style.transition = 'opacity 0.3s, transform 0.3s';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-20px)';
+    toast.innerHTML = message;
 
-    // Tracking starts when the student taps 'Begin Exam' in the pre-exam modal.
-    // Initial split-screen check will run from the beginExamBtn click handler.
+    document.body.appendChild(toast);
 
+    setTimeout(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+    }, 10);
 
-    function recordSwitch(reason = 'tab_switch') {
-        if (!trackingActive) return;
-        if (isPageUnloading) return;
-        if (isConfirmOpen) return;
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(-20px)';
+      setTimeout(() => toast.remove(), 300);
+    }, 4000);
+  }
 
-        if (Date.now() < ignoreAntiCheatUntil) return;
-
-        const currentlySplit = isSplitScreenActive();
-
-        // 1. Handling Split-Screen Window Resizing / Entry
-        if (reason === 'resize_check') {
-            if (currentlySplit && !isCurrentlySplitScreen) {
-                isCurrentlySplitScreen = true;
-                triggerViolation('possible_split_screen');
-            } else if (!currentlySplit) {
-                isCurrentlySplitScreen = false;
-            }
-            return;
-        }
-
-        // 2. Handling Focus Loss (blur, page_hidden, chathead tap, tap other app in split screen)
-        // ONLY increment count by +1 when transitioning from focused (false) -> unfocused (true)
-        if (!isCurrentlyUnfocused) {
-            isCurrentlyUnfocused = true;
-
-            if (currentlySplit) {
-                reason = 'possible_split_screen';
-            }
-
-            triggerViolation(reason);
-        }
+  // Method 1: Tab / app switch
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") {
+      isCurrentlyUnfocused = false;
+      ignorePollerUntil = Date.now() + 1500;
+    } else if (document.visibilityState === "hidden") {
+      recordSwitch('page_hidden');
     }
+  });
 
-    function triggerViolation(reason) {
-        const now = Date.now();
+  // Method 2: Window loses focus (e.g. Chat Heads, floating apps, alt-tab, tapping other app in split screen)
+  window.addEventListener("blur", function () {
+    recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
+  });
 
-        if (now - lastSwitchTime < 1000) return;
+  // Poller: catch focus loss from Chat Heads / floating apps that don't fire blur events.
+  // Runs every 300ms. Uses ignorePollerUntil (not ignoreAntiCheatUntil) so that
+  // event-based triggers (e.g. visibilitychange=hidden) still work during grace period.
+  setInterval(function () {
+    if (!trackingActive || isPageUnloading || isConfirmOpen) return;
+    if (Date.now() < ignorePollerUntil) return;  // grace period after returning from bg
+    if (Date.now() < ignoreAntiCheatUntil) return; // dialog suppression
+    if (document.visibilityState !== 'visible') return;
 
-        lastSwitchTime = now;
-
-        tabSwitchCount++;
-        document.getElementById('tabSwitchInput').value = tabSwitchCount;
-
-        fetch('/student/exams/tab-switch', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                result_id: resultId,
-                reason: reason
-            })
-        }).catch(() => {});
-
-        showTabSwitchToast(tabSwitchCount, reason);
+    if (!document.hasFocus()) {
+      recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
+    } else if (isCurrentlyUnfocused) {
+      isCurrentlyUnfocused = false;
     }
+  }, 300);
 
-    function showTabSwitchToast(count, reason = '') {
-        const toastId = 'tabSwitchToast';
-        let toast = document.getElementById(toastId);
-        if (toast) toast.remove(); 
+  // Focus returned to exam window — reset state + add grace period (poller only)
+  window.addEventListener("focus", function () {
+    isPageUnloading = false;
+    leaveEventSent = false;
+    isCurrentlyUnfocused = false;
+    ignorePollerUntil = Date.now() + 800;
+  });
 
-        let message = `⚠️ Suspicious activity detected! (Count: ${count})`;
-        if (reason === 'window_blur') {
-            message = `⚠️ Exam window lost focus (Floating app / tap outside)! (Count: ${count})`;
-        } else if (reason === 'possible_split_screen') {
-            message = `⚠️ Split screen or resized window detected! (Count: ${count})`;
-        } else if (reason === 'fullscreen_exit') {
-            message = `⚠️ Exited Fullscreen mode! (Count: ${count})`;
-        } else if (reason === 'page_hidden') {
-            message = `⚠️ Tab switched or app minimized! (Count: ${count})`;
-        }
+  // Split-screen / floating resized window check
+  function checkSuspiciousViewport() {
+    if (!trackingActive) return;
 
-        toast = document.createElement('div');
-        toast.id = toastId;
-        toast.style.position = 'fixed';
-        toast.style.top = '20px';
-        toast.style.right = '20px';
-        toast.style.background = '#fef2f2';
-        toast.style.color = '#b91c1c';
-        toast.style.padding = '16px 24px';
-        toast.style.borderRadius = '12px';
-        toast.style.border = '1px solid #fecaca';
-        toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.15)';
-        toast.style.fontWeight = '700';
-        toast.style.zIndex = '999999';
-        toast.style.transition = 'opacity 0.3s, transform 0.3s';
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-20px)';
-        toast.innerHTML = message;
-        
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateY(0)';
-        }, 10);
+    clearTimeout(resizeTimer);
 
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-20px)';
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
+    resizeTimer = setTimeout(function () {
+      if (isSplitScreenActive()) {
+        recordSwitch('resize_check');
+      }
+    }, 600);
+  }
+
+  function handleResizeOrOrientation() {
+    const currentOrientation = (window.screen && window.screen.orientation) ? window.screen.orientation.type : (window.orientation || 0);
+    if (currentOrientation !== lastScreenOrientation) {
+      // Screen orientation changed (device rotated) — update base reference, don't penalize
+      lastScreenOrientation = currentOrientation;
+      return;
     }
+    checkSuspiciousViewport();
+  }
 
-    // Method 1: Tab / app switch
-    document.addEventListener("visibilitychange", function() {
-        if (document.visibilityState === "visible") {
-            isCurrentlyUnfocused = false;
-            ignorePollerUntil = Date.now() + 1500;
-        } else if (document.visibilityState === "hidden") {
-            recordSwitch('page_hidden');
-        }
+  window.addEventListener('resize', handleResizeOrOrientation);
+
+  if (window.screen && window.screen.orientation) {
+    window.screen.orientation.addEventListener('change', function () {
+      lastScreenOrientation = window.screen.orientation.type;
     });
+  }
 
-    // Method 2: Window loses focus (e.g. Chat Heads, floating apps, alt-tab, tapping other app in split screen)
-    window.addEventListener("blur", function() {
-        recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
-    });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener(
+      'resize',
+      handleResizeOrOrientation
+    );
+  }
 
-    // Poller: catch focus loss from Chat Heads / floating apps that don't fire blur events.
-    // Runs every 300ms. Uses ignorePollerUntil (not ignoreAntiCheatUntil) so that
-    // event-based triggers (e.g. visibilitychange=hidden) still work during grace period.
-    setInterval(function() {
-        if (!trackingActive || isPageUnloading || isConfirmOpen) return;
-        if (Date.now() < ignorePollerUntil) return;  // grace period after returning from bg
-        if (Date.now() < ignoreAntiCheatUntil) return; // dialog suppression
-        if (document.visibilityState !== 'visible') return;
+  // ── Fullscreen enforcement ──
+  // On Android Chrome: tapping a chat head or notification forces Chrome OUT of fullscreen.
+  // This fullscreenchange event reliably catches those taps.
+  // We also auto-retry fullscreen when the student returns to the exam.
 
-        if (!document.hasFocus()) {
-            recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
-        } else if (isCurrentlyUnfocused) {
-            isCurrentlyUnfocused = false;
-        }
-    }, 300);
+  function enterFullscreen() {
+    const el = document.documentElement;
+    if (el.requestFullscreen) return el.requestFullscreen().catch(() => { });
+    if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
+    return Promise.resolve();
+  }
 
-    // Focus returned to exam window — reset state + add grace period (poller only)
-    window.addEventListener("focus", function() {
-        isPageUnloading = false;
-        leaveEventSent = false;
-        isCurrentlyUnfocused = false;
-        ignorePollerUntil = Date.now() + 800;
-    });
+  function isInFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
 
-    // Split-screen / floating resized window check
-    function checkSuspiciousViewport() {
-        if (!trackingActive) return;
-
-        clearTimeout(resizeTimer);
-
-        resizeTimer = setTimeout(function() {
-            if (isSplitScreenActive()) {
-                recordSwitch('resize_check');
-            }
-        }, 600);
-    }
-
-    function handleResizeOrOrientation() {
-        const currentOrientation = (window.screen && window.screen.orientation) ? window.screen.orientation.type : (window.orientation || 0);
-        if (currentOrientation !== lastScreenOrientation) {
-            // Screen orientation changed (device rotated) — update base reference, don't penalize
-            lastScreenOrientation = currentOrientation;
-            return;
-        }
-        checkSuspiciousViewport();
-    }
-
-    window.addEventListener('resize', handleResizeOrOrientation);
-
-    if (window.screen && window.screen.orientation) {
-        window.screen.orientation.addEventListener('change', function() {
-            lastScreenOrientation = window.screen.orientation.type;
-        });
-    }
-
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener(
-            'resize',
-            handleResizeOrOrientation
-        );
-    }
-
-    // ── Fullscreen enforcement ──
-    // On Android Chrome: tapping a chat head or notification forces Chrome OUT of fullscreen.
-    // This fullscreenchange event reliably catches those taps.
-    // We also auto-retry fullscreen when the student returns to the exam.
-
-    function enterFullscreen() {
-        const el = document.documentElement;
-        if (el.requestFullscreen) return el.requestFullscreen().catch(() => {});
-        if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
-        return Promise.resolve();
-    }
-
-    function isInFullscreen() {
-        return !!(document.fullscreenElement || document.webkitFullscreenElement);
-    }
-
-    // ── Fullscreen exit overlay modal ──
-    // Shown whenever fullscreen is exited. Student MUST tap 'Return to Fullscreen' to continue.
-    // Not a thin banner — it's a full overlay so it's impossible to miss on mobile.
-    const fsModal = document.createElement('div');
-    fsModal.id = 'fsExitModal';
-    Object.assign(fsModal.style, {
-        position: 'fixed', inset: '0', zIndex: '9999998',
-        background: 'rgba(15,23,42,0.88)',
-        display: 'none',
-        alignItems: 'center', justifyContent: 'center',
-        padding: '20px',
-        backdropFilter: 'blur(4px)'
-    });
-    fsModal.innerHTML = `
+  // ── Fullscreen exit overlay modal ──
+  // Shown whenever fullscreen is exited. Student MUST tap 'Return to Fullscreen' to continue.
+  // Not a thin banner — it's a full overlay so it's impossible to miss on mobile.
+  const fsModal = document.createElement('div');
+  fsModal.id = 'fsExitModal';
+  Object.assign(fsModal.style, {
+    position: 'fixed', inset: '0', zIndex: '9999998',
+    background: 'rgba(15,23,42,0.88)',
+    display: 'none',
+    alignItems: 'center', justifyContent: 'center',
+    padding: '20px',
+    backdropFilter: 'blur(4px)'
+  });
+  fsModal.innerHTML = `
         <div style="
             background:#fff; border-radius:24px;
             padding:36px 28px; max-width:420px; width:100%;
@@ -1257,255 +1355,255 @@ showMatch(0);
             ">🔒 Return to Fullscreen</button>
         </div>
     `;
-    document.body.appendChild(fsModal);
+  document.body.appendChild(fsModal);
 
-    function showFsModal(show) {
-        fsModal.style.display = show ? 'flex' : 'none';
-        if (show) {
-            // Keep the mini timer updated while modal is open
-            document.getElementById('fsMiniTimer').textContent =
-                '\u23f1 ' + formatTime(remaining);
-        }
+  function showFsModal(show) {
+    fsModal.style.display = show ? 'flex' : 'none';
+    if (show) {
+      // Keep the mini timer updated while modal is open
+      document.getElementById('fsMiniTimer').textContent =
+        '\u23f1 ' + formatTime(remaining);
     }
-    // Alias for backward compatibility
-    function showFsWarning(show) { showFsModal(show); }
+  }
+  // Alias for backward compatibility
+  function showFsWarning(show) { showFsModal(show); }
 
-    document.getElementById('fsReturnBtn').addEventListener('click', function() {
-        enterFullscreen()
-            .then(() => {
-                showFsModal(false);
-                // Grace period after re-entering fullscreen
-                ignoreAntiCheatUntil = Date.now() + 1000;
-                ignorePollerUntil = Date.now() + 1500;
-            })
-            .catch(() => {
-                // Fullscreen failed (e.g. browser blocked it) — keep modal open
-            });
-    });
+  document.getElementById('fsReturnBtn').addEventListener('click', function () {
+    enterFullscreen()
+      .then(() => {
+        showFsModal(false);
+        // Grace period after re-entering fullscreen
+        ignoreAntiCheatUntil = Date.now() + 1000;
+        ignorePollerUntil = Date.now() + 1500;
+      })
+      .catch(() => {
+        // Fullscreen failed (e.g. browser blocked it) — keep modal open
+      });
+  });
 
-    // Update the mini timer in the modal every second while it's visible
-    setInterval(function() {
-        const miniTimer = document.getElementById('fsMiniTimer');
-        if (miniTimer && fsModal.style.display !== 'none') {
-            miniTimer.textContent = '\u23f1 ' + formatTime(remaining);
-        }
-    }, 1000);
+  // Update the mini timer in the modal every second while it's visible
+  setInterval(function () {
+    const miniTimer = document.getElementById('fsMiniTimer');
+    if (miniTimer && fsModal.style.display !== 'none') {
+      miniTimer.textContent = '\u23f1 ' + formatTime(remaining);
+    }
+  }, 1000);
 
-    document.addEventListener('fullscreenchange', function() {
-        if (!isInFullscreen()) {
-            if (trackingActive) {
-                recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'fullscreen_exit');
-            }
-            showFsModal(true);
-        } else {
-            showFsModal(false);
-        }
-    });
-    document.addEventListener('webkitfullscreenchange', function() {
-        if (!isInFullscreen()) {
-            if (trackingActive) {
-                recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'fullscreen_exit');
-            }
-            showFsModal(true);
-        } else {
-            showFsModal(false);
-        }
-    });
+  document.addEventListener('fullscreenchange', function () {
+    if (!isInFullscreen()) {
+      if (trackingActive) {
+        recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'fullscreen_exit');
+      }
+      showFsModal(true);
+    } else {
+      showFsModal(false);
+    }
+  });
+  document.addEventListener('webkitfullscreenchange', function () {
+    if (!isInFullscreen()) {
+      if (trackingActive) {
+        recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'fullscreen_exit');
+      }
+      showFsModal(true);
+    } else {
+      showFsModal(false);
+    }
+  });
 
 
-    // ══════════════════════════════════════════════════
-    // Submit Validation + Confirmation (custom modals)
-    // ══════════════════════════════════════════════════
-    document.getElementById('examForm').addEventListener('submit', function(e) {
-        // Skip validation for auto-submit
-        if (document.getElementById('submitType').value === 'auto') {
-            return true;
-        }
+  // ══════════════════════════════════════════════════
+  // Submit Validation + Confirmation (custom modals)
+  // ══════════════════════════════════════════════════
+  document.getElementById('examForm').addEventListener('submit', function (e) {
+    // Skip validation for auto-submit
+    if (document.getElementById('submitType').value === 'auto') {
+      return true;
+    }
 
-        // Always prevent default — we'll submit manually after custom confirm
-        e.preventDefault();
+    // Always prevent default — we'll submit manually after custom confirm
+    e.preventDefault();
 
-        // Check current visible question has been answered
-        const visibleCard = document.querySelector(
-            '.q-card[style*="display: block"], .q-card[style*="display:block"]'
-        );
+    // Check current visible question has been answered
+    const visibleCard = document.querySelector(
+      '.q-card[style*="display: block"], .q-card[style*="display:block"]'
+    );
 
-        if (visibleCard) {
-            const radio = visibleCard.querySelector('input[type="radio"]:checked');
-            const select = visibleCard.querySelector('select');
-            const hasSelectAnswer = select && select.value && select.value !== '';
+    if (visibleCard) {
+      const radio = visibleCard.querySelector('input[type="radio"]:checked');
+      const select = visibleCard.querySelector('select');
+      const hasSelectAnswer = select && select.value && select.value !== '';
 
-            if (!radio && !hasSelectAnswer) {
-                showCustomAlert('⚠️ Please answer the current question before submitting.');
-                return false;
-            }
-
-            // Save last answer
-            if (radio) saveAnswer(radio.name, radio.value);
-            else if (hasSelectAnswer) saveAnswer(select.name, select.value);
-        }
-
-        // Build confirmation message
-        const unanswered = total - answeredCount;
-        let msg = `Are you sure you want to submit?\n\n✅ Answered: ${answeredCount} of ${total}`;
-        if (unanswered > 0) {
-            msg += `\n⚠️ Unanswered: ${unanswered}\n\nUnanswered questions will be marked as incorrect.`;
-        }
-
-        const form = this;
-        showCustomConfirm(msg,
-            function() {
-                // Confirmed — submit
-                trackingActive = false;
-                isPageUnloading = true;
-                isSubmittingExam = true;
-                form.submit();
-            },
-            function() {
-                // Cancelled — keep tracking
-                trackingActive = true;
-            }
-        );
-
+      if (!radio && !hasSelectAnswer) {
+        showCustomAlert('⚠️ Please answer the current question before submitting.');
         return false;
-    });
+      }
 
-    // ══════════════════════════════════════════════════
-    // Security & Anti-cheat  
-    // ══════════════════════════════════════════════════
-    document.addEventListener('contextmenu', e => e.preventDefault());
-    
-    document.addEventListener('copy', e => { e.preventDefault(); showCustomAlert('Copying is disabled!'); });
-    document.addEventListener('paste', e => { e.preventDefault(); showCustomAlert('Pasting is disabled!'); });
-    document.addEventListener('cut', e => { e.preventDefault(); });
-    document.addEventListener('selectstart', e => e.preventDefault());
-
-    document.onkeydown = function(e) {
-        if (e.key === 'F12' ||
-            (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) ||
-            (e.ctrlKey && e.key.toUpperCase() === 'U') ||
-            (e.ctrlKey && (e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'v' || e.key.toLowerCase() === 'x' || e.key.toLowerCase() === 'a'))) return false;
-    };
-
-    // Prevent back button
-    window.addEventListener(
-    'popstate',
-    function() {
-
-        if (isSubmittingExam) {
-            return;
-        }
-
-        if (!trackingActive) {
-            return;
-        }
-
-        isPageUnloading = true;
-
-        recordPageLeave();
+      // Save last answer
+      if (radio) saveAnswer(radio.name, radio.value);
+      else if (hasSelectAnswer) saveAnswer(select.name, select.value);
     }
-);
-    
 
-    function recordPageLeave() {
+    // Build confirmation message
+    const unanswered = total - answeredCount;
+    let msg = `Are you sure you want to submit?\n\n✅ Answered: ${answeredCount} of ${total}`;
+    if (unanswered > 0) {
+      msg += `\n⚠️ Unanswered: ${unanswered}\n\nUnanswered questions will be marked as incorrect.`;
+    }
 
-if (leaveEventSent) {
-    return;
-}
+    const form = this;
+    showCustomConfirm(msg,
+      function () {
+        // Confirmed — submit
+        trackingActive = false;
+        isPageUnloading = true;
+        isSubmittingExam = true;
+        form.submit();
+      },
+      function () {
+        // Cancelled — keep tracking
+        trackingActive = true;
+      }
+    );
 
-leaveEventSent = true;
+    return false;
+  });
 
-navigator.sendBeacon(
-    '/student/exams/tab-switch',
-    new Blob(
+  // ══════════════════════════════════════════════════
+  // Security & Anti-cheat  
+  // ══════════════════════════════════════════════════
+  document.addEventListener('contextmenu', e => e.preventDefault());
+
+  document.addEventListener('copy', e => { e.preventDefault(); showCustomAlert('Copying is disabled!'); });
+  document.addEventListener('paste', e => { e.preventDefault(); showCustomAlert('Pasting is disabled!'); });
+  document.addEventListener('cut', e => { e.preventDefault(); });
+  document.addEventListener('selectstart', e => e.preventDefault());
+
+  document.onkeydown = function (e) {
+    if (e.key === 'F12' ||
+      (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
+      (e.ctrlKey && e.key.toUpperCase() === 'U') ||
+      (e.ctrlKey && (e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'v' || e.key.toLowerCase() === 'x' || e.key.toLowerCase() === 'a'))) return false;
+  };
+
+  // Prevent back button
+  window.addEventListener(
+    'popstate',
+    function () {
+
+      if (isSubmittingExam) {
+        return;
+      }
+
+      if (!trackingActive) {
+        return;
+      }
+
+      isPageUnloading = true;
+
+      recordPageLeave();
+    }
+  );
+
+
+  function recordPageLeave() {
+
+    if (leaveEventSent) {
+      return;
+    }
+
+    leaveEventSent = true;
+
+    navigator.sendBeacon(
+      '/student/exams/tab-switch',
+      new Blob(
         [
-            JSON.stringify({
-                result_id: resultId,
-                reason: 'left_exam_page'
-            })
+          JSON.stringify({
+            result_id: resultId,
+            reason: 'left_exam_page'
+          })
         ],
         {
-            type: 'application/json'
+          type: 'application/json'
         }
-    )
-);
-}
+      )
+    );
+  }
 
 
-// Back / refresh / close / navigate away
-window.addEventListener(
-'beforeunload',
-function(e) {
+  // Back / refresh / close / navigate away
+  window.addEventListener(
+    'beforeunload',
+    function (e) {
 
-    if (isSubmittingExam) {
+      if (isSubmittingExam) {
         isPageUnloading = true;
         return;
-    }
+      }
 
-    if (trackingActive) {
+      if (trackingActive) {
         isPageUnloading = true;
 
         recordPageLeave();
 
         e.preventDefault();
         e.returnValue = '';
+      }
     }
-}
-);
+  );
 
 
-// Extra fallback for mobile/browser navigation
-window.addEventListener(
-'pagehide',
-function() {
+  // Extra fallback for mobile/browser navigation
+  window.addEventListener(
+    'pagehide',
+    function () {
 
-    if (isSubmittingExam) {
+      if (isSubmittingExam) {
         return;
-    }
+      }
 
-    if (!trackingActive) {
+      if (!trackingActive) {
         return;
-    }
+      }
 
-    recordPageLeave();
-}
-);
-window.addEventListener(
+      recordPageLeave();
+    }
+  );
+  window.addEventListener(
     'pageshow',
-    function() {
+    function () {
 
-        if (!isSubmittingExam) {
-            isPageUnloading = false;
-            leaveEventSent = false;
-        }
+      if (!isSubmittingExam) {
+        isPageUnloading = false;
+        leaveEventSent = false;
+      }
     }
-);
+  );
 
-    // ── Pre-exam modal: forces user gesture before fullscreen (required by mobile browsers) ──
-    document.getElementById('beginExamBtn').addEventListener('click', function() {
-        // 1. Enter fullscreen (must be inside a user gesture handler on mobile)
-        enterFullscreen()
-            .then(() => showFsWarning(false))
-            .catch(() => showFsWarning(true));
+  // ── Pre-exam modal: forces user gesture before fullscreen (required by mobile browsers) ──
+  document.getElementById('beginExamBtn').addEventListener('click', function () {
+    // 1. Enter fullscreen (must be inside a user gesture handler on mobile)
+    enterFullscreen()
+      .then(() => showFsWarning(false))
+      .catch(() => showFsWarning(true));
 
-        // 2. Hide the modal
-        document.getElementById('preExamModal').style.display = 'none';
+    // 2. Hide the modal
+    document.getElementById('preExamModal').style.display = 'none';
 
-        // 3. Start the timer and anti-cheat tracking
-        trackingActive = true;
-        updateTimer();
+    // 3. Start the timer and anti-cheat tracking
+    trackingActive = true;
+    updateTimer();
 
-        // 4. Initial split-screen check (in case student opened exam already in split-screen)
-        if (isSplitScreenActive()) {
-            isCurrentlySplitScreen = true;
-            recordSwitch('resize_check');
-        }
+    // 4. Initial split-screen check (in case student opened exam already in split-screen)
+    if (isSplitScreenActive()) {
+      isCurrentlySplitScreen = true;
+      recordSwitch('resize_check');
+    }
 
-        // 5. Grace period so focus events from modal close don't trigger violations
-        ignoreAntiCheatUntil = Date.now() + 1200;
-        ignorePollerUntil = Date.now() + 1500;
-    });
+    // 5. Grace period so focus events from modal close don't trigger violations
+    ignoreAntiCheatUntil = Date.now() + 1200;
+    ignorePollerUntil = Date.now() + 1500;
+  });
 
-})();
+}) ();
 </script>
 {% endblock %}

@@ -1045,26 +1045,30 @@ def rate_limit_exceeded(e):
 @app.context_processor
 def inject_active_school_year():
     branch_id = session.get("branch_id")
-
-    if not branch_id:
-        return {"active_school_year": None}
+    role = session.get("role")
 
     db = get_db_connection()
     cursor = db.cursor()
 
-    cursor.execute("""
-        SELECT label 
-        FROM school_years 
-        WHERE is_active = TRUE AND branch_id = %s
-        LIMIT 1
-    """, (branch_id,))
+    if not branch_id and role == 'super_admin':
+        cursor.execute("SELECT label FROM school_years WHERE is_active = TRUE ORDER BY year_id DESC LIMIT 1")
+    elif branch_id:
+        cursor.execute("""
+            SELECT label 
+            FROM school_years 
+            WHERE is_active = TRUE AND branch_id = %s
+            LIMIT 1
+        """, (branch_id,))
+    else:
+        cursor.close()
+        db.close()
+        return {"active_school_year": None}
 
     row = cursor.fetchone()
-
     cursor.close()
     db.close()
 
-    return {"active_school_year": row[0] if row else None}
+    return {"active_school_year": row[0] if row else "2026-2027"}
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

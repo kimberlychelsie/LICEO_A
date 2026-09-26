@@ -104,6 +104,13 @@ def get_db_connection():
                     cur.execute("ALTER TABLE users ADD COLUMN user_roles TEXT")
                 conn.commit()
 
+                # Migration for swafo_records table
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'swafo_records'")
+                swafo_cols = [r[0] for r in cur.fetchall()]
+                if swafo_cols and 'submitted_at' not in swafo_cols:
+                    cur.execute("ALTER TABLE swafo_records ADD COLUMN submitted_at TIMESTAMP WITHOUT TIME ZONE")
+                    conn.commit()
+
                 # Backfill split name columns from full_name if first_name is empty
                 cur.execute("SELECT user_id, full_name FROM users WHERE first_name IS NULL AND full_name IS NOT NULL AND TRIM(full_name) <> ''")
                 unfilled = cur.fetchall()

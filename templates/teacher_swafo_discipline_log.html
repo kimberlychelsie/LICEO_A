@@ -27,9 +27,11 @@
   }
 
   .wrap {
-    max-width: 1400px;
+    max-width: 1300px;
     margin: 0 auto;
-    padding: 36px 24px 64px;
+    padding: 40px 24px;
+    box-sizing: border-box;
+    width: 100%;
   }
 
   /* ── Hero Banner ── */
@@ -388,14 +390,34 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   @media(max-width: 992px) {
-    .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
-    .swafo-hero { flex-direction: column; text-align: center; padding: 24px 20px; }
-    .btn-submit-log { width: 100%; justify-content: center; }
+
+    .form-grid-3,
+    .form-grid-2 {
+      grid-template-columns: 1fr;
+    }
+
+    .swafo-hero {
+      flex-direction: column;
+      text-align: center;
+      padding: 24px 20px;
+    }
+
+    .btn-submit-log {
+      width: 100%;
+      justify-content: center;
+    }
   }
 </style>
 
@@ -405,28 +427,26 @@
   <div class="swafo-hero">
     <div>
       <h1>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         Discipline Log & Incident Tracking
       </h1>
       <p>Discipline Committee (DC) &bull; Behavior & Action Records</p>
     </div>
     <div class="hero-badge">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      DC Discipline Log
+      DC Portal
     </div>
   </div>
 
   <div class="layout-stack">
-    
+
     <!-- TOP CARD: ADD LOG FORM -->
     <div class="card-box">
       <div class="card-title">
         <span>Log Discipline Incident / Violation</span>
       </div>
-      
+
       <form method="POST" action="/teacher/swafo/discipline-log" id="incidentForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        
+
         <!-- STEP 1: STUDENT SELECTION ROW (3 COLUMNS) -->
         <div class="form-grid-3">
           <!-- GRADE FILTER -->
@@ -444,8 +464,12 @@
           <div class="form-group">
             <label>2. Search Student Name</label>
             <div class="search-box-wrap">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-              <input type="text" id="studentSearchInput" class="form-control" placeholder="Type student name..." oninput="filterStudentDropdown()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              <input type="text" id="studentSearchInput" class="form-control" placeholder="Type student name..."
+                oninput="filterStudentDropdown()">
             </div>
           </div>
 
@@ -460,9 +484,11 @@
             <select name="enrollment_id" id="studentSelect" class="form-control" style="font-weight: 600;" required>
               <option value="">— Select Student —</option>
               {% for st in students %}
-                <option value="{{ st.enrollment_id }}" data-name="{{ st.student_name|lower }}" data-grade="{{ st.grade_level or '' }}">
-                  {{ st.student_name }} ({{ st.grade_level or 'Student' }}{% if st.section_name %} &bull; {{ st.section_name }}{% endif %})
-                </option>
+              <option value="{{ st.enrollment_id }}" data-name="{{ st.student_name|lower }}"
+                data-grade="{{ st.grade_level or '' }}">
+                {{ st.student_name }} ({{ st.grade_level or 'Student' }}{% if st.section_name %} &bull; {{
+                st.section_name }}{% endif %})
+              </option>
               {% endfor %}
             </select>
           </div>
@@ -479,7 +505,8 @@
           <!-- OFFENSE TYPE -->
           <div class="form-group">
             <label>Incident / Offense Type *</label>
-            <input type="text" name="incident_type" class="form-control" placeholder="e.g. Tardiness, Uniform violation, Cutting classes..." required>
+            <input type="text" name="incident_type" class="form-control"
+              placeholder="e.g. Tardiness, Uniform violation, Cutting classes..." required>
           </div>
 
           <!-- SEVERITY -->
@@ -497,31 +524,44 @@
           <!-- DESCRIPTION -->
           <div class="form-group">
             <label>Incident Description & Details *</label>
-            <textarea name="description" class="form-control" rows="3" placeholder="Write full details of the incident..." required></textarea>
+            <textarea name="description" class="form-control" rows="3"
+              placeholder="Write full details of the incident..." required></textarea>
           </div>
 
           <!-- ACTION TAKEN -->
           <div class="form-group">
             <label>Action Taken / Immediate Response</label>
-            <textarea name="action_taken" class="form-control" rows="3" placeholder="Counseling, Parent notification, Warning, Suspension, etc..."></textarea>
+            <textarea name="action_taken" class="form-control" rows="3"
+              placeholder="Counseling, Parent notification, Warning, Suspension, etc..."></textarea>
           </div>
         </div>
 
         <!-- STEP 4: SWAFO REFERRAL OPTIONS -->
-        <div style="background: #eff6ff; border: 1.5px solid #dbeafe; border-radius: 14px; padding: 18px 22px; margin-bottom: 20px;">
-          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 800; color: #1e3a8a; font-size: 0.92rem;">
-            <input type="checkbox" name="referred_to_swafo" id="referralCheckbox" style="width: 18px; height: 18px; accent-color: #1e3a8a;" onchange="document.getElementById('referralReasonWrap').style.display = this.checked ? 'block' : 'none';">
+        <div
+          style="background: #eff6ff; border: 1.5px solid #dbeafe; border-radius: 14px; padding: 18px 22px; margin-bottom: 20px;">
+          <label
+            style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 800; color: #1e3a8a; font-size: 0.92rem;">
+            <input type="checkbox" name="referred_to_swafo" id="referralCheckbox"
+              style="width: 18px; height: 18px; accent-color: #1e3a8a;"
+              onchange="document.getElementById('referralReasonWrap').style.display = this.checked ? 'block' : 'none';">
             <span>Refer to SWAFO (Guidance Counselor) for Guidance Conference</span>
           </label>
           <div id="referralReasonWrap" style="display: none; margin-top: 14px;">
-            <label style="font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #1e3a8a;">Reason / Recommendation for SWAFO Conference</label>
-            <input type="text" name="referral_reason" class="form-control" style="background: #fff; margin-top: 4px;" placeholder="e.g. Needs student-parent conference for behavioral guidance after sanction...">
+            <label
+              style="font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #1e3a8a;">Reason
+              / Recommendation for SWAFO Conference</label>
+            <input type="text" name="referral_reason" class="form-control" style="background: #fff; margin-top: 4px;"
+              placeholder="e.g. Needs student-parent conference for behavioral guidance after sanction...">
           </div>
         </div>
 
         <div class="form-actions">
           <button type="submit" class="btn-submit-log">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </svg>
             Record Discipline Log Entry
           </button>
         </div>
@@ -530,17 +570,23 @@
 
     <!-- BOTTOM CARD: LOGS LIST TABLE -->
     <div class="card-box" style="padding: 0; overflow: hidden;">
-      <div style="padding: 24px 32px; border-bottom: 1.5px solid var(--bd); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
-        <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--tx); margin: 0; letter-spacing: -0.01em;">Recorded Discipline Incident Logs</h2>
-        
+      <div
+        style="padding: 24px 32px; border-bottom: 1.5px solid var(--bd); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+        <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--tx); margin: 0; letter-spacing: -0.01em;">Recorded
+          Discipline Incident Logs</h2>
+
         <div style="display: flex; align-items: center; gap: 12px;">
           <div class="search-box-wrap" style="width: 320px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            <input type="text" id="tableSearchInput" class="form-control" style="height: 42px; font-size: 0.88rem;" placeholder="Filter logs by student or offense..." oninput="filterLogsTable()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input type="text" id="tableSearchInput" class="form-control" style="height: 42px; font-size: 0.88rem;"
+              placeholder="Filter logs by student or offense..." oninput="filterLogsTable()">
           </div>
         </div>
       </div>
-      
+
       <div style="overflow-x: auto;">
         <table class="log-table" id="logsTable">
           <thead>
@@ -555,163 +601,219 @@
           </thead>
           <tbody>
             {% if logs %}
-              {% for l in logs %}
-              {% set st_lower = (l.status or 'Pending')|lower %}
-              {% set conf_done = ((l.conference_status or '')|lower == 'completed' or l.conference_parent_ack is not none) %}
-              {% set needs_conf = (l.referred_to_swafo and not conf_done) %}
-              
-              <!-- MAIN COMPACT ROW -->
-              <tr class="log-row" data-log-id="{{ l.log_id }}" data-search="{{ (l.student_name ~ ' ' ~ l.incident_type ~ ' ' ~ l.description)|lower }}">
-                <!-- Date -->
-                <td style="white-space: nowrap; font-weight: 700; color: #475569;">
-                  <div style="display: flex; align-items: center; gap: 6px; color: #334155;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    <span>{{ l.incident_date }}</span>
-                  </div>
-                </td>
-                
-                <!-- Student -->
-                <td>
-                  <strong style="color: #0f172a; font-size: 0.94rem; display: block; margin-bottom: 2px;">{{ l.student_name }}</strong>
-                  <span class="student-meta-badge">
-                    {{ l.grade_level or 'Student' }} {% if l.section_name %}&bull; {{ l.section_name }}{% endif %}
-                  </span>
-                </td>
-                
-                <!-- Offense & Type -->
-                <td>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span class="severity-badge severity-{{ l.severity or 'minor' }}">{{ (l.severity or 'minor')|upper }}</span>
-                    <strong style="color: #0f172a; font-size: 0.92rem; font-weight: 700;">{{ l.incident_type }}</strong>
-                  </div>
-                </td>
+            {% for l in logs %}
+            {% set st_lower = (l.status or 'Pending')|lower %}
+            {% set conf_done = ((l.conference_status or '')|lower == 'completed' or l.conference_parent_ack is not none)
+            %}
+            {% set needs_conf = (l.referred_to_swafo and not conf_done) %}
 
-                <!-- Status -->
-                <td style="text-align: center;">
-                  {% if st_lower in ['settled', 'resolved', 'dismissed'] %}
-                    <span class="status-badge status-settled">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                      SETTLED
-                    </span>
-                  {% elif needs_conf %}
-                    <span class="status-badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">
-                      <span class="pending-dot" style="background: #2563eb; box-shadow: 0 0 6px #2563eb;"></span> AWAITING CONF
-                    </span>
-                  {% else %}
-                    <span class="status-badge status-pending">
-                      <span class="pending-dot"></span> PENDING
-                    </span>
-                  {% endif %}
-                </td>
+            <!-- MAIN COMPACT ROW -->
+            <tr class="log-row" data-log-id="{{ l.log_id }}"
+              data-search="{{ (l.student_name ~ ' ' ~ l.incident_type ~ ' ' ~ l.description)|lower }}">
+              <!-- Date -->
+              <td style="white-space: nowrap; font-weight: 700; color: #475569;">
+                <div style="display: flex; align-items: center; gap: 6px; color: #334155;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  <span>{{ l.incident_date }}</span>
+                </div>
+              </td>
 
-                <!-- Action Button -->
-                <td style="text-align: center;">
-                  {% if st_lower not in ['settled', 'resolved', 'dismissed'] %}
-                    {% if needs_conf %}
-                      <span style="font-size: 0.76rem; font-weight: 700; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 5px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;" title="Kailangan muna matapos ang SWAFO Guidance Conference bago ma-mark as Settled">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> Needs SWAFO Conf
-                      </span>
-                    {% else %}
-                      <form method="POST" action="/teacher/swafo/discipline-log/{{ l.log_id }}/update-status" style="margin: 0;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="status" value="Settled">
-                        <button type="submit" class="btn-settle-action">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                          Mark Settled
-                        </button>
-                      </form>
-                    {% endif %}
-                  {% else %}
-                    <span style="color: #16a34a; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                      Cleared
-                    </span>
-                  {% endif %}
-                </td>
+              <!-- Student -->
+              <td>
+                <strong style="color: #0f172a; font-size: 0.94rem; display: block; margin-bottom: 2px;">{{
+                  l.student_name }}</strong>
+                <span class="student-meta-badge">
+                  {{ l.grade_level or 'Student' }} {% if l.section_name %}&bull; {{ l.section_name }}{% endif %}
+                </span>
+              </td>
 
-                <!-- Collapsible Details Toggle -->
-                <td style="text-align: center;">
-                  <button type="button" class="btn-toggle-details" id="btn-toggle-{{ l.log_id }}" onclick="toggleDetails({{ l.log_id }})">
-                    <span class="toggle-label">Details</span>
-                    <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              <!-- Offense & Type -->
+              <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="severity-badge severity-{{ l.severity or 'minor' }}">{{ (l.severity or 'minor')|upper
+                    }}</span>
+                  <strong style="color: #0f172a; font-size: 0.92rem; font-weight: 700;">{{ l.incident_type }}</strong>
+                </div>
+              </td>
+
+              <!-- Status -->
+              <td style="text-align: center;">
+                {% if st_lower in ['settled', 'resolved', 'dismissed'] %}
+                <span class="status-badge status-settled">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  SETTLED
+                </span>
+                {% elif needs_conf %}
+                <span class="status-badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">
+                  <span class="pending-dot" style="background: #2563eb; box-shadow: 0 0 6px #2563eb;"></span> AWAITING
+                  CONF
+                </span>
+                {% else %}
+                <span class="status-badge status-pending">
+                  <span class="pending-dot"></span> PENDING
+                </span>
+                {% endif %}
+              </td>
+
+              <!-- Action Button -->
+              <td style="text-align: center;">
+                {% if st_lower not in ['settled', 'resolved', 'dismissed'] %}
+                {% if needs_conf %}
+                <span
+                  style="font-size: 0.76rem; font-weight: 700; color: #b45309; background: #fef3c7; border: 1px solid #fde68a; padding: 5px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;"
+                  title="Kailangan muna matapos ang SWAFO Guidance Conference bago ma-mark as Settled">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg> Needs SWAFO Conf
+                </span>
+                {% else %}
+                <form method="POST" action="/teacher/swafo/discipline-log/{{ l.log_id }}/update-status"
+                  style="margin: 0;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="status" value="Settled">
+                  <button type="submit" class="btn-settle-action">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Mark Settled
                   </button>
-                </td>
-              </tr>
+                </form>
+                {% endif %}
+                {% else %}
+                <span
+                  style="color: #16a34a; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Cleared
+                </span>
+                {% endif %}
+              </td>
 
-              <!-- EXPANDABLE COLLAPSIBLE DETAILS ROW -->
-              <tr id="details-row-{{ l.log_id }}" class="details-collapse-row" style="display: none;">
-                <td colspan="6" style="padding: 0;">
-                  <div class="details-collapse-box">
-                    <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 16px; align-items: start;">
-                      
-                      <!-- Box 1: Incident Description -->
-                      <div style="background: #ffffff; padding: 14px 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
-                        <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                          Full Incident Description
-                        </div>
-                        <div style="font-size: 0.88rem; color: #1e293b; line-height: 1.5;">
-                          {{ l.description }}
-                        </div>
+              <!-- Collapsible Details Toggle -->
+              <td style="text-align: center;">
+                <button type="button" class="btn-toggle-details" id="btn-toggle-{{ l.log_id }}"
+                  onclick="toggleDetails({{ l.log_id }})">
+                  <span class="toggle-label">Details</span>
+                  <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.5">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+              </td>
+            </tr>
+
+            <!-- EXPANDABLE COLLAPSIBLE DETAILS ROW -->
+            <tr id="details-row-{{ l.log_id }}" class="details-collapse-row" style="display: none;">
+              <td colspan="6" style="padding: 0;">
+                <div class="details-collapse-box">
+                  <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 16px; align-items: start;">
+
+                    <!-- Box 1: Incident Description -->
+                    <div
+                      style="background: #ffffff; padding: 14px 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                      <div
+                        style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.5">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="16" y1="13" x2="8" y2="13" />
+                          <line x1="16" y1="17" x2="8" y2="17" />
+                        </svg>
+                        Full Incident Description
                       </div>
+                      <div style="font-size: 0.88rem; color: #1e293b; line-height: 1.5;">
+                        {{ l.description }}
+                      </div>
+                    </div>
 
-                      <!-- Box 2: Action Taken & Referral -->
-                      <div style="background: #ffffff; padding: 14px 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
-                        <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                          Action Taken / Response
-                        </div>
-                        <div style="font-size: 0.88rem; color: #1e293b; line-height: 1.5; margin-bottom: 8px;">
-                          {% if l.action_taken and l.action_taken.strip() %}
-                            {{ l.action_taken }}
-                          {% else %}
-                            <span style="color: #94a3b8; font-style: italic;">No immediate action written</span>
-                          {% endif %}
-                        </div>
-
-                        {% if l.referred_to_swafo %}
-                        <div style="background: #eff6ff; border: 1px solid #dbeafe; padding: 8px 12px; border-radius: 8px; margin-top: 8px;">
-                          <div style="font-size: 0.76rem; font-weight: 800; color: #1d4ed8; display: flex; align-items: center; gap: 6px;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                            Referred to SWAFO Conference
-                          </div>
-                          {% if l.referral_reason %}
-                          <div style="font-size: 0.78rem; color: #1e40af; font-style: italic; margin-top: 3px;">
-                            Reason: {{ l.referral_reason }}
-                          </div>
-                          {% endif %}
-                        </div>
+                    <!-- Box 2: Action Taken & Referral -->
+                    <div
+                      style="background: #ffffff; padding: 14px 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                      <div
+                        style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.5">
+                          <polyline points="9 11 12 14 22 4" />
+                          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                        </svg>
+                        Action Taken / Response
+                      </div>
+                      <div style="font-size: 0.88rem; color: #1e293b; line-height: 1.5; margin-bottom: 8px;">
+                        {% if l.action_taken and l.action_taken.strip() %}
+                        {{ l.action_taken }}
+                        {% else %}
+                        <span style="color: #94a3b8; font-style: italic;">No immediate action written</span>
                         {% endif %}
                       </div>
 
-                      <!-- Box 3: Logged By -->
-                      <div style="background: #ffffff; padding: 14px 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
-                        <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                          Recorded By
+                      {% if l.referred_to_swafo %}
+                      <div
+                        style="background: #eff6ff; border: 1px solid #dbeafe; padding: 8px 12px; border-radius: 8px; margin-top: 8px;">
+                        <div
+                          style="font-size: 0.76rem; font-weight: 800; color: #1d4ed8; display: flex; align-items: center; gap: 6px;">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                          </svg>
+                          Referred to SWAFO Conference
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
-                          <div style="width: 30px; height: 30px; border-radius: 50%; background: #1e3a8a; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.78rem; flex-shrink: 0;">
-                            {{ (l.logged_by_name or 'S')[0]|upper }}
-                          </div>
-                          <div>
-                            <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a;">{{ l.logged_by_name or 'SWAFO Officer' }}</div>
-                            <div style="font-size: 0.75rem; color: #64748b;">Discipline Committee</div>
-                          </div>
+                        {% if l.referral_reason %}
+                        <div style="font-size: 0.78rem; color: #1e40af; font-style: italic; margin-top: 3px;">
+                          Reason: {{ l.referral_reason }}
+                        </div>
+                        {% endif %}
+                      </div>
+                      {% endif %}
+                    </div>
+
+                    <!-- Box 3: Logged By -->
+                    <div
+                      style="background: #ffffff; padding: 14px 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                      <div
+                        style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2.5">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                          <circle cx="12" cy="7" r="4" />
+                        </svg>
+                        Recorded By
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+                        <div
+                          style="width: 30px; height: 30px; border-radius: 50%; background: #1e3a8a; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.78rem; flex-shrink: 0;">
+                          {{ (l.logged_by_name or 'S')[0]|upper }}
+                        </div>
+                        <div>
+                          <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a;">{{ l.logged_by_name or
+                            'SWAFO Officer' }}</div>
+                          <div style="font-size: 0.75rem; color: #64748b;">Discipline Committee</div>
                         </div>
                       </div>
-
                     </div>
+
                   </div>
-                </td>
-              </tr>
-              {% endfor %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
             {% else %}
-              <tr>
-                <td colspan="6" style="text-align: center; padding: 48px; color: var(--mu); font-weight: 600;">
-                  No discipline logs recorded at this time.
-                </td>
-              </tr>
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 48px; color: var(--mu); font-weight: 600;">
+                No discipline logs recorded at this time.
+              </td>
+            </tr>
             {% endif %}
           </tbody>
         </table>
@@ -723,71 +825,71 @@
 </div>
 
 <script>
-function toggleDetails(logId) {
-  const detailsRow = document.getElementById('details-row-' + logId);
-  const btn = document.getElementById('btn-toggle-' + logId);
-  if (!detailsRow) return;
-
-  if (detailsRow.style.display === 'none' || detailsRow.style.display === '') {
-    detailsRow.style.display = 'table-row';
-    if (btn) {
-      btn.classList.add('active');
-      btn.querySelector('.toggle-label').textContent = 'Hide';
-    }
-  } else {
-    detailsRow.style.display = 'none';
-    if (btn) {
-      btn.classList.remove('active');
-      btn.querySelector('.toggle-label').textContent = 'Details';
-    }
-  }
-}
-
-function filterStudentDropdown() {
-  const gradeVal = document.getElementById('gradeFilter').value;
-  const searchVal = document.getElementById('studentSearchInput').value.toLowerCase().trim();
-  const select = document.getElementById('studentSelect');
-  const options = select.getElementsByTagName('option');
-  
-  let visibleCount = 0;
-  
-  for (let i = 0; i < options.length; i++) {
-    const opt = options[i];
-    if (opt.value === '') continue;
-    
-    const optName = opt.getAttribute('data-name') || '';
-    const optGrade = opt.getAttribute('data-grade') || '';
-    
-    const matchesGrade = (gradeVal === 'all' || optGrade === gradeVal);
-    const matchesSearch = (searchVal === '' || optName.includes(searchVal));
-    
-    if (matchesGrade && matchesSearch) {
-      opt.style.display = '';
-      visibleCount++;
-    } else {
-      opt.style.display = 'none';
-    }
-  }
-  
-  document.getElementById('studentCountHint').textContent = visibleCount + ' students found';
-}
-
-function filterLogsTable() {
-  const q = document.getElementById('tableSearchInput').value.toLowerCase().trim();
-  const rows = document.querySelectorAll('#logsTable tbody .log-row');
-  
-  rows.forEach(row => {
-    const logId = row.getAttribute('data-log-id');
+  function toggleDetails(logId) {
     const detailsRow = document.getElementById('details-row-' + logId);
-    const text = row.getAttribute('data-search') || '';
-    
-    if (q === '' || text.includes(q)) {
-      row.style.display = '';
+    const btn = document.getElementById('btn-toggle-' + logId);
+    if (!detailsRow) return;
+
+    if (detailsRow.style.display === 'none' || detailsRow.style.display === '') {
+      detailsRow.style.display = 'table-row';
+      if (btn) {
+        btn.classList.add('active');
+        btn.querySelector('.toggle-label').textContent = 'Hide';
+      }
     } else {
-      row.style.display = 'none';
-      if (detailsRow) detailsRow.style.display = 'none';
+      detailsRow.style.display = 'none';
+      if (btn) {
+        btn.classList.remove('active');
+        btn.querySelector('.toggle-label').textContent = 'Details';
+      }
     }
-  });
-}
+  }
+
+  function filterStudentDropdown() {
+    const gradeVal = document.getElementById('gradeFilter').value;
+    const searchVal = document.getElementById('studentSearchInput').value.toLowerCase().trim();
+    const select = document.getElementById('studentSelect');
+    const options = select.getElementsByTagName('option');
+
+    let visibleCount = 0;
+
+    for (let i = 0; i < options.length; i++) {
+      const opt = options[i];
+      if (opt.value === '') continue;
+
+      const optName = opt.getAttribute('data-name') || '';
+      const optGrade = opt.getAttribute('data-grade') || '';
+
+      const matchesGrade = (gradeVal === 'all' || optGrade === gradeVal);
+      const matchesSearch = (searchVal === '' || optName.includes(searchVal));
+
+      if (matchesGrade && matchesSearch) {
+        opt.style.display = '';
+        visibleCount++;
+      } else {
+        opt.style.display = 'none';
+      }
+    }
+
+    document.getElementById('studentCountHint').textContent = visibleCount + ' students found';
+  }
+
+  function filterLogsTable() {
+    const q = document.getElementById('tableSearchInput').value.toLowerCase().trim();
+    const rows = document.querySelectorAll('#logsTable tbody .log-row');
+
+    rows.forEach(row => {
+      const logId = row.getAttribute('data-log-id');
+      const detailsRow = document.getElementById('details-row-' + logId);
+      const text = row.getAttribute('data-search') || '';
+
+      if (q === '' || text.includes(q)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+        if (detailsRow) detailsRow.style.display = 'none';
+      }
+    });
+  }
 </script>
 {% endblock %}

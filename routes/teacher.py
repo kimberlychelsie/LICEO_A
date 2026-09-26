@@ -7571,16 +7571,40 @@ def teacher_swafo_students():
     branch_id = session.get("branch_id")
     search = request.args.get("search", "").strip()
     status_filter = request.args.get("status", "all")
+    page = request.args.get("page", 1, type=int)
+    if page < 1:
+        page = 1
+    per_page = 15
 
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        cur.execute("""
+            SELECT
+                COUNT(e.enrollment_id) AS total,
+                COUNT(CASE WHEN sr.status = 'submitted' THEN 1 END) AS submitted,
+                COUNT(CASE WHEN sr.status = 'draft' THEN 1 END) AS draft,
+                COUNT(CASE WHEN sr.status IS NULL OR sr.status = 'not_started' THEN 1 END) AS not_started
+            FROM enrollments e
+            LEFT JOIN swafo_records sr ON sr.enrollment_id = e.enrollment_id
+            WHERE e.branch_id = %s
+        """, (branch_id,))
+        stats_row = cur.fetchone()
+        stats = {
+            "total": stats_row["total"] if stats_row else 0,
+            "submitted": stats_row["submitted"] if stats_row else 0,
+            "draft": stats_row["draft"] if stats_row else 0,
+            "not_started": stats_row["not_started"] if stats_row else 0,
+        }
+
         query = """
             SELECT
                 e.enrollment_id, e.lrn, e.grade_level, e.status, e.created_at,
                 CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
                 sec.section_name,
-                sr.record_id AS swafo_record_id, sr.updated_at AS last_updated_at,
+                sr.record_id AS swafo_record_id,
+                COALESCE(sr.status, 'not_started') AS record_status,
+                sr.updated_at AS updated_at,
                 (SELECT COUNT(*) FROM swafo_discipline_log dl WHERE dl.enrollment_id = e.enrollment_id) AS discipline_count,
                 (SELECT COUNT(*) FROM swafo_parent_conferences pc WHERE pc.enrollment_id = e.enrollment_id) AS conference_count
             FROM enrollments e
@@ -7590,10 +7614,12 @@ def teacher_swafo_students():
         """
         params = [branch_id]
 
-        if status_filter == "enrolled":
-            query += " AND e.status = 'enrolled'"
-        elif status_filter == "pending":
-            query += " AND e.status = 'pending'"
+        if status_filter == "submitted":
+            query += " AND sr.status = 'submitted'"
+        elif status_filter == "draft":
+            query += " AND sr.status = 'draft'"
+        elif status_filter == "not_started":
+            query += " AND (sr.status IS NULL OR sr.status = 'not_started')"
 
         if search:
             query += " AND (e.student_first_name ILIKE %s OR e.student_last_name ILIKE %s OR e.lrn ILIKE %s)"
@@ -7602,13 +7628,28 @@ def teacher_swafo_students():
         query += " ORDER BY e.grade_level, e.student_last_name, e.student_first_name"
 
         cur.execute(query, params)
-        students = cur.fetchall()
+        all_matching = cur.fetchall()
+
+        total_count = len(all_matching)
+        total_pages = max(1, (total_count + per_page - 1) // per_page)
+        if page > total_pages:
+            page = total_pages
+
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        students = all_matching[start_idx:end_idx]
 
         return render_template(
             "teacher_swafo_students.html",
             students=students,
             search=search,
             status_filter=status_filter,
+            stats=stats,
+            page=page,
+            total_pages=total_pages,
+            total_count=total_count,
+            has_prev=page > 1,
+            has_next=page < total_pages,
         )
     except Exception as e:
         flash(f"Error fetching student records: {str(e)}", "error")
@@ -7616,6 +7657,7 @@ def teacher_swafo_students():
     finally:
         cur.close()
         db.close()
+
 
 
 @teacher_bp.route("/teacher/swafo/student/<int:enrollment_id>", methods=["GET", "POST"])

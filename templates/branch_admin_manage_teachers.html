@@ -254,12 +254,14 @@
     position: absolute;
     right: 0;
     top: calc(100% + 6px);
-    min-width: 220px;
+    min-width: 230px;
+    max-height: 380px;
+    overflow-y: auto;
     background: #fff;
     border: 1px solid var(--bd);
-    border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(15, 23, 42, .18);
-    z-index: 1000;
+    border-radius: 14px;
+    box-shadow: 0 14px 36px rgba(15, 23, 42, .22);
+    z-index: 9999;
     padding: 6px;
   }
 
@@ -443,13 +445,13 @@
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, .05);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .table-scroll-inner {
     flex: 1;
     min-height: 0;
-    padding-bottom: 80px;
+    padding-bottom: 140px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -1989,11 +1991,14 @@
     const open = wrap.classList.contains('is-open');
     closeAllManage();
     if (!open) {
-      // Check if space below is less than menu height (~400px)
       const rect = wrap.getBoundingClientRect();
+      const tableWrap = wrap.closest('.table-wrap') || wrap.closest('.table-scroll-inner');
+      const tableTop = tableWrap ? tableWrap.getBoundingClientRect().top : 0;
+      
       const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      if (spaceBelow < 400 && spaceAbove > 200) {
+      const spaceAboveInCard = rect.top - tableTop;
+
+      if (spaceBelow < 340 && spaceAboveInCard > 280) {
         wrap.classList.add('is-upwards');
       } else {
         wrap.classList.remove('is-upwards');
