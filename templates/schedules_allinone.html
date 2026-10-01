@@ -1047,7 +1047,8 @@
             subject_id: {{ c.subject_id | tojson }},
             subject_name: {{ c.subject_name | tojson }},
             teacher_id: {{ c.teacher_id | tojson }},
-            teacher_name: {{ c.teacher_name | tojson }}
+            teacher_name: {{ c.teacher_name | tojson }},
+            term_name: {{ c.term_name | tojson }}
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     ];
@@ -1065,7 +1066,8 @@
             day_of_week: {{ s.day_of_week | tojson }},
             start_time: {{ s.start_time.strftime('%H:%M') | tojson }},
             end_time: {{ s.end_time.strftime('%H:%M') | tojson }},
-            room: {{ s.room | tojson }}
+            room: {{ s.room | tojson }},
+            term_name: {{ s.term_name | tojson }}
         }{% if not loop.last %},{% endif %}
         {% endfor %}
     ];
@@ -1428,8 +1430,9 @@
             subjSelect.disabled = true;
         } else {
             matchedSubjs.forEach(c => {
-                const val = `${c.section_id}|${c.subject_id}|${c.teacher_id}`;
-                subjSelect.innerHTML += `<option value="${val}">${c.subject_name} (${c.teacher_name})</option>`;
+                const val = `${c.section_id}|${c.subject_id}|${c.teacher_id}|${c.term_name || ''}`;
+                const termTag = c.term_name ? ` — [${c.term_name}]` : '';
+                subjSelect.innerHTML += `<option value="${val}">${c.subject_name} (${c.teacher_name})${termTag}</option>`;
             });
             subjSelect.disabled = false;
         }

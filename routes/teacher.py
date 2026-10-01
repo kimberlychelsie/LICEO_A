@@ -433,6 +433,16 @@ def teacher_dashboard():
             year_id = 0
 
         # ── Sections + subjects assigned to this teacher (for this branch) ──
+        ph_tz = pytz.timezone("Asia/Manila")
+        today = datetime.now(ph_tz).date()
+        cur.execute("""
+            SELECT period_name FROM grading_period_ranges
+            WHERE branch_id = %s AND year_id = %s AND %s BETWEEN start_date AND end_date
+            ORDER BY start_date LIMIT 1
+        """, (branch_id, year_id, today))
+        active_term_row = cur.fetchone()
+        active_term = active_term_row["period_name"] if active_term_row else None
+
         cur.execute(
             """
             SELECT
@@ -455,6 +465,7 @@ def teacher_dashboard():
                                    AND sch.year_id = s.year_id
             WHERE st.teacher_id = %s
               AND s.branch_id = %s AND s.year_id = %s
+              AND (st.term_name IS NULL OR %s IS NULL OR st.term_name = %s)
             ORDER BY g.display_order, s.section_name, sub.name,
                      CASE 
                         WHEN sch.day_of_week = 'Monday' THEN 1
@@ -467,7 +478,7 @@ def teacher_dashboard():
                         ELSE 8
                      END, sch.start_time
             """,
-            (user_id, branch_id, year_id),
+            (user_id, branch_id, year_id, active_term, active_term),
         )
         teacher_assignments = cur.fetchall() or []
 
@@ -7522,30 +7533,78 @@ def teacher_schedules():
     active_years = [row["year_id"] for row in active_year_rows]
     active_year_label = active_year_rows[0]["label"] if active_year_rows else "N/A"
 
+    # Detect current active calendar term
+    from datetime import date
+    today = date.today()
+    active_term = None
+    if active_years:
+        cursor.execute("""
+            SELECT period_name FROM grading_period_ranges
+            WHERE branch_id = %s AND year_id = ANY(%s)
+              AND start_date <= %s AND end_date >= %s
+            ORDER BY start_date LIMIT 1
+        """, (branch_id, active_years, today, today))
+        row_term = cursor.fetchone()
+        if row_term:
+            active_term = row_term["period_name"]
+
+    # Term filter parameter from URL (default to active_term if provided, or 'all')
+    raw_term = request.args.get("term")
+    if raw_term is None:
+        selected_term = active_term if active_term else "all"
+    else:
+        selected_term = raw_term.strip()
+
     schedules = []
     if active_years:
-        # -- Get teacher's schedules for active years only
-        cursor.execute("""
+        query = """
             SELECT s.*, subj.name AS subject_name, sec.section_name AS section_name, 
-                   y.label AS year_label, g.name AS grade_name
+                   y.label AS year_label, g.name AS grade_name,
+                   COALESCE(s.term_name, st.term_name) AS effective_term
             FROM schedules s
             JOIN subjects subj ON s.subject_id = subj.subject_id
             JOIN sections sec ON s.section_id = sec.section_id
             JOIN grade_levels g ON sec.grade_level_id = g.id
             JOIN school_years y ON s.year_id = y.year_id
+            LEFT JOIN section_teachers st 
+                   ON s.section_id = st.section_id 
+                  AND s.subject_id = st.subject_id 
+                  AND s.teacher_id = st.teacher_id
+                  AND (st.is_archived IS FALSE OR st.is_archived IS NULL)
             WHERE s.branch_id = %s AND s.teacher_id = %s
               AND s.year_id = ANY(%s)
               AND s.is_archived = FALSE
-            ORDER BY y.label DESC, sec.section_name, subj.name, s.day_of_week, s.start_time
-        """, (branch_id, teacher_id, active_years))
-        schedules = cursor.fetchall()
+        """
+        params = [branch_id, teacher_id, active_years]
 
+        if selected_term and selected_term.lower() != "all":
+            query += """
+              AND (
+                COALESCE(s.term_name, st.term_name) IS NULL
+                OR COALESCE(s.term_name, st.term_name) = ''
+                OR COALESCE(s.term_name, st.term_name) = 'Full Year'
+                OR COALESCE(s.term_name, st.term_name) LIKE %s
+              )
+            """
+            params.append(f"%{selected_term}%")
+
+        query += " ORDER BY y.label DESC, sec.section_name, subj.name, s.day_of_week, s.start_time"
+
+        cursor.execute(query, tuple(params))
+        schedules = cursor.fetchall()
 
     cursor.close(); db.close()
 
     break_config = get_break_times_config(branch_id)
 
-    return render_template("teacher_schedules.html", schedules=schedules, active_year_label=active_year_label, break_times_config=break_config)
+    return render_template(
+        "teacher_schedules.html",
+        schedules=schedules,
+        active_year_label=active_year_label,
+        break_times_config=break_config,
+        selected_term=selected_term,
+        active_term=active_term
+    )
 
 # =======================
 

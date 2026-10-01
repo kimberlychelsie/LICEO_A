@@ -25,11 +25,15 @@
     }
 
     @media (max-width: 1024px) {
-        .sd-container { padding: 32px 20px; }
+        .sd-container {
+            padding: 32px 20px;
+        }
     }
 
     @media (max-width: 768px) {
-        .sd-container { padding: 24px 16px; }
+        .sd-container {
+            padding: 24px 16px;
+        }
     }
 
     /* ── Hero Header ── */
@@ -103,7 +107,9 @@
         color: #fff;
     }
 
-    .term-select:focus { outline: none; }
+    .term-select:focus {
+        outline: none;
+    }
 
     /* ── Grades Table Card ── */
     .grades-card {
@@ -115,7 +121,9 @@
         animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .table-responsive { overflow-x: auto; }
+    .table-responsive {
+        overflow-x: auto;
+    }
 
     .grade-table {
         width: 100%;
@@ -148,8 +156,13 @@
         vertical-align: middle;
     }
 
-    .grade-table tr:last-child td { border-bottom: none; }
-    .grade-table tr:hover { background: #fbfcfe; }
+    .grade-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .grade-table tr:hover {
+        background: #fbfcfe;
+    }
 
     .subject-name {
         font-weight: 800;
@@ -170,9 +183,17 @@
         width: 15%;
     }
 
-    .grade-pass { color: #16a34a; }
-    .grade-fail { color: #dc2626; }
-    .grade-empty { color: transparent; }
+    .grade-pass {
+        color: #16a34a;
+    }
+
+    .grade-fail {
+        color: #dc2626;
+    }
+
+    .grade-empty {
+        color: transparent;
+    }
 
     /* ── Legend ── */
     .legend-card {
@@ -190,25 +211,62 @@
         box-shadow: var(--sd-shadow);
     }
 
-    .legend-item { display: flex; align-items: center; gap: 10px; }
-    .l-dot { width: 12px; height: 12px; border-radius: 4px; }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .l-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 4px;
+    }
 
     /* ── Animations ── */
     @keyframes fadeInDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     @media (max-width: 900px) {
-        .grades-hero { flex-direction: column; align-items: stretch; padding: 32px; gap: 24px; }
-        .term-selector-wrap { min-width: 0; }
-        .grades-hero-content h1 { font-size: 2.2rem; }
-        .grade-table { table-layout: auto; }
+        .grades-hero {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 32px;
+            gap: 24px;
+        }
+
+        .term-selector-wrap {
+            min-width: 0;
+        }
+
+        .grades-hero-content h1 {
+            font-size: 2.2rem;
+        }
+
+        .grade-table {
+            table-layout: auto;
+        }
     }
 </style>
 {% endblock %}
@@ -221,24 +279,31 @@
             <h1>My <span>Grades</span></h1>
             <p>Academic Records for SY {{ school_year_label or student.school_year or '2023-2024' }}</p>
         </div>
-        
+
         <div class="term-selector-wrap">
-            <select class="term-select" onchange="var parts = this.value.split('|'); updateFilters(parts[0], parts[1]);">
+            <select class="term-select"
+                onchange="var parts = this.value.split('|'); updateFilters(parts[0], parts[1]);">
                 {% for e in all_enrollments %}
-                    {% if available_terms and e.enrollment_id == selected_enrollment_id %}
-                        <option value="{{ e.enrollment_id }}|all" {% if e.enrollment_id == selected_enrollment_id and selected_term == 'all' %}selected{% endif %}>
-                            {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}{% if e.section_name %} • {{ e.section_name }}{% endif %} (All Terms)
-                        </option>
-                        {% for t in available_terms %}
-                        <option value="{{ e.enrollment_id }}|{{ t }}" {% if e.enrollment_id == selected_enrollment_id and selected_term == t %}selected{% endif %}>
-                            {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}{% if e.section_name %} • {{ e.section_name }}{% endif %} ({{ t }} Term)
-                        </option>
-                        {% endfor %}
-                    {% else %}
-                        <option value="{{ e.enrollment_id }}|" {% if e.enrollment_id == selected_enrollment_id %}selected{% endif %}>
-                            {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}{% if e.section_name %} • {{ e.section_name }}{% endif %}
-                        </option>
-                    {% endif %}
+                {% if available_terms and e.enrollment_id == selected_enrollment_id %}
+                <option value="{{ e.enrollment_id }}|all" {% if e.enrollment_id==selected_enrollment_id and
+                    selected_term=='all' %}selected{% endif %}>
+                    {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}{% if
+                    e.section_name %} • {{ e.section_name }}{% endif %} (All Terms)
+                </option>
+                {% for t in available_terms %}
+                <option value="{{ e.enrollment_id }}|{{ t }}" {% if e.enrollment_id==selected_enrollment_id and
+                    selected_term==t %}selected{% endif %}>
+                    {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}{% if
+                    e.section_name %} • {{ e.section_name }}{% endif %} ({{ t }} Term)
+                </option>
+                {% endfor %}
+                {% else %}
+                <option value="{{ e.enrollment_id }}|" {% if e.enrollment_id==selected_enrollment_id %}selected{% endif
+                    %}>
+                    {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}{% if
+                    e.section_name %} • {{ e.section_name }}{% endif %}
+                </option>
+                {% endif %}
                 {% endfor %}
             </select>
         </div>
@@ -255,57 +320,46 @@
     </script>
 
     {% if grade_data %}
+    {% if selected_term and selected_term != 'all' %}
     <div class="grades-card">
         <div class="table-responsive">
             <table class="grade-table">
                 <thead>
                     <tr>
-                        <th class="col-subject">Subject Details</th>
-                        <th style="text-align: center;">1st Term</th>
-                        <th style="text-align: center;">2nd Term</th>
-                        <th style="text-align: center;">3rd Term</th>
-                        <th style="text-align: center;" class="final-cell">Finals</th>
+                        <th class="col-subject">Subjects</th>
+                        <th style="text-align: center;">{{ selected_term }} Term Grade</th>
+                        <th style="text-align: center;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for subj in grade_data %}
+                    {% set g_val = subj.grades.get(selected_term) %}
                     <tr>
                         <td>
                             <span class="subject-name">{{ subj.subject_name }}</span>
                             {% if subj.elective_term %}
-                            <span style="display:inline-block; background:#ede9fe; color:#7c3aed; font-size:0.65rem; font-weight:700; padding:2px 8px; border-radius:6px; margin-left:6px; vertical-align:middle;">📚 {{ subj.elective_term }} Term Elective</span>
+                            <span
+                                style="display:inline-block; background:#ede9fe; color:#7c3aed; font-size:0.65rem; font-weight:700; padding:2px 8px; border-radius:6px; margin-left:6px; vertical-align:middle;">{{
+                                subj.elective_term }} Term Elective</span>
                             {% endif %}
                         </td>
-                        
-                        {% if subj.elective_term and subj.elective_term != '1st' %}
-                        <td class="grade-cell" style="color: #cbd5e1; background: #f8fafc;">—</td>
-                        {% else %}
-                        <td class="grade-cell {% if subj.grades.get('1st') %}{% if subj.grades['1st'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
-                            {{ subj.grades.get('1st') if subj.grades.get('1st') else '' }}
+                        <td style="text-align: center; font-weight: 850; font-size: 1.15rem;"
+                            class="grade-cell {% if g_val %}{% if g_val >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                            {{ g_val if g_val else '—' }}
                         </td>
-                        {% endif %}
-
-                        {% if subj.elective_term and subj.elective_term != '2nd' %}
-                        <td class="grade-cell" style="color: #cbd5e1; background: #f8fafc;">—</td>
-                        {% else %}
-                        <td class="grade-cell {% if subj.grades.get('2nd') %}{% if subj.grades['2nd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
-                            {{ subj.grades.get('2nd') if subj.grades.get('2nd') else '' }}
-                        </td>
-                        {% endif %}
-
-                        {% if subj.elective_term and subj.elective_term != '3rd' %}
-                        <td class="grade-cell" style="color: #cbd5e1; background: #f8fafc;">—</td>
-                        {% else %}
-                        <td class="grade-cell {% if subj.grades.get('3rd') %}{% if subj.grades['3rd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
-                            {{ subj.grades.get('3rd') if subj.grades.get('3rd') else '' }}
-                        </td>
-                        {% endif %}
-                        
-                        <td class="grade-cell final-cell {% if subj.final_grade %}{% if subj.final_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
-                            {% if subj.elective_term %}
-                                <span style="color: #cbd5e1;">—</span>
+                        <td style="text-align: center;">
+                            {% if g_val %}
+                            {% if g_val >= 75 %}
+                            <span
+                                style="background: #dcfce7; color: #15803d; font-size: 0.75rem; font-weight: 800; padding: 4px 12px; border-radius: 20px; display: inline-block;">Passed</span>
                             {% else %}
-                                {{ subj.final_grade if subj.final_grade else '' }}
+                            <span
+                                style="background: #fee2e2; color: #b91c1c; font-size: 0.75rem; font-weight: 800; padding: 4px 12px; border-radius: 20px; display: inline-block;">Failed</span>
+                            {% endif %}
+                            {% else %}
+                            <span
+                                style="background: #f1f5f9; color: #64748b; font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; display: inline-block;">Not
+                                Posted</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -315,17 +369,113 @@
         </div>
     </div>
     {% else %}
-    <div style="text-align: center; padding: 100px 24px; background: white; border-radius: 32px; border: 1px solid var(--sd-border); box-shadow: var(--sd-shadow);">
-        <div style="font-size: 4rem; margin-bottom: 24px; opacity: 0.2;">📊</div>
-        <h3 style="font-weight: 900; color: var(--sd-primary); font-size: 1.5rem; margin-bottom: 12px;">No Grades Posted</h3>
-        <p style="color: var(--sd-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">Official grades for the selected term have not been published by your instructors yet. Please check back later.</p>
+    <!-- ALL TERMS OVERVIEW VIEW (Separate Card per Term) -->
+    {% set ns_terms = namespace(t1=[], t2=[], t3=[], fy=[]) %}
+    {% for subj in grade_data %}
+    {% set t_name = subj.elective_term ~ ' Term' if subj.elective_term else (subj.term_name or 'Full Year') %}
+    {% if '1st' in t_name %}
+    {% set _ = ns_terms.t1.append(subj) %}
+    {% elif '2nd' in t_name %}
+    {% set _ = ns_terms.t2.append(subj) %}
+    {% elif '3rd' in t_name %}
+    {% set _ = ns_terms.t3.append(subj) %}
+    {% else %}
+    {% set _ = ns_terms.fy.append(subj) %}
+    {% endif %}
+    {% endfor %}
+
+    {% set term_blocks = [
+    ('1st Term', ns_terms.t1, '1st'),
+    ('2nd Term', ns_terms.t2, '2nd'),
+    ('3rd Term', ns_terms.t3, '3rd'),
+    ('Full Year', ns_terms.fy, 'all')
+    ] %}
+
+    {% for label, subjs, p_code in term_blocks %}
+    {% if subjs %}
+    <div class="grades-card" style="margin-bottom: 28px;">
+        <div
+            style="background: #f8fafc; padding: 14px 24px; border-bottom: 2px solid var(--sd-border); display: flex; align-items: center; justify-content: space-between;">
+            <div
+                style="color: var(--sd-primary); font-size: 0.95rem; font-weight: 850; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px;">
+                {{ label }}
+            </div>
+            <span
+                style="background: #e0e7ff; color: #3730a3; font-size: 0.75rem; font-weight: 800; padding: 3px 12px; border-radius: 20px;">{{
+                subjs|length }} Subject{% if subjs|length > 1 %}s{% endif %}</span>
+        </div>
+        <div class="table-responsive">
+            <table class="grade-table">
+                <thead>
+                    <tr>
+                        <th class="col-subject">Subjects</th>
+                        <th style="text-align: center;">Final Grade</th>
+                        <th style="text-align: center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subj in subjs %}
+                    {% set posted_val = subj.grades.get(p_code) or subj.final_grade or subj.grades.get('1st') or
+                    subj.grades.get('2nd') or subj.grades.get('3rd') %}
+                    <tr>
+                        <td>
+                            <span class="subject-name">{{ subj.subject_name }}</span>
+                            {% if subj.elective_term %}
+                            <span
+                                style="display:inline-block; background:#ede9fe; color:#7c3aed; font-size:0.65rem; font-weight:700; padding:2px 8px; border-radius:6px; margin-left:6px; vertical-align:middle;">{{
+                                subj.elective_term }} Term Elective</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center; font-weight: 850; font-size: 1.15rem;"
+                            class="grade-cell {% if posted_val %}{% if posted_val >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                            {{ posted_val if posted_val else '—' }}
+                        </td>
+                        <td style="text-align: center;">
+                            {% if posted_val %}
+                            {% if posted_val >= 75 %}
+                            <span
+                                style="background: #dcfce7; color: #15803d; font-size: 0.75rem; font-weight: 800; padding: 4px 12px; border-radius: 20px; display: inline-block;">Passed</span>
+                            {% else %}
+                            <span
+                                style="background: #fee2e2; color: #b91c1c; font-size: 0.75rem; font-weight: 800; padding: 4px 12px; border-radius: 20px; display: inline-block;">Failed</span>
+                            {% endif %}
+                            {% else %}
+                            <span
+                                style="background: #f1f5f9; color: #64748b; font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; display: inline-block;">Not
+                                Posted</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+    {% else %}
+    <div
+        style="text-align: center; padding: 100px 24px; background: white; border-radius: 32px; border: 1px solid var(--sd-border); box-shadow: var(--sd-shadow);">
+        <h3 style="font-weight: 900; color: var(--sd-primary); font-size: 1.5rem; margin-bottom: 12px;">No Grades Posted
+        </h3>
+        <p
+            style="color: var(--sd-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">
+            Official grades for the selected term have not been published by your instructors yet. Please check back
+            later.</p>
     </div>
     {% endif %}
 
     <div class="legend-card">
-        <div class="legend-item"><div class="l-dot" style="background:#16a34a;"></div> Passed (75-100)</div>
-        <div class="legend-item"><div class="l-dot" style="background:#dc2626;"></div> Failed (Below 75)</div>
-        <div class="legend-item"><div class="l-dot" style="background:var(--sd-border);"></div> Not yet posted</div>
+        <div class="legend-item">
+            <div class="l-dot" style="background:#16a34a;"></div> Passed (75-100)
+        </div>
+        <div class="legend-item">
+            <div class="l-dot" style="background:#dc2626;"></div> Failed (Below 75)
+        </div>
+        <div class="legend-item">
+            <div class="l-dot" style="background:var(--sd-border);"></div> Not yet posted
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -2893,6 +2893,8 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                 ORDER BY start_date
             """, (branch_id_for_query, enr["year_id"], today))
             available_terms = [r["period_name"] for r in cur.fetchall()]
+            if not available_terms:
+                available_terms = ["1st"]
 
             # Determine active term (based on today's date)
             cur.execute("""
@@ -2910,13 +2912,23 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                 selected_term = auto_active_term or (available_terms[-1] if available_terms else None)
 
             active_term = selected_term
+            term_pattern = f"%{active_term}%" if active_term and active_term != 'all' else None
 
             # Get subjects for this specific enrollment's section
             cur.execute("""
-                SELECT sub.subject_id, sub.name AS subject_name
+                SELECT sub.subject_id, sub.name AS subject_name, st.term_name
                 FROM section_teachers st
                 JOIN subjects sub ON st.subject_id = sub.subject_id
                 WHERE st.section_id = %s
+                  AND COALESCE(st.is_archived, FALSE) = FALSE
+                  AND (
+                    %s = 'all'
+                    OR %s IS NULL
+                    OR st.term_name IS NULL
+                    OR st.term_name = ''
+                    OR st.term_name = 'Full Year'
+                    OR st.term_name LIKE %s
+                  )
                   AND (
                     COALESCE(sub.subject_type, 'CORE') = 'CORE'
                     OR (
@@ -2928,12 +2940,12 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                           AND m.year_id = %s
                           AND m.status = 'ACTIVE'
                           AND o.section_teacher_id = st.id
-                          AND (%s = 'all' OR %s IS NULL OR m.term_name = %s)
+                          AND (%s = 'all' OR %s IS NULL OR m.term_name = %s OR m.term_name LIKE %s)
                       )
                     )
                   )
                 ORDER BY sub.name
-            """, (section_id, enrollment_id, enr["year_id"], active_term, active_term, active_term))
+            """, (section_id, active_term, active_term, term_pattern, enrollment_id, enr["year_id"], active_term, active_term, active_term, term_pattern))
             subjects = cur.fetchall() or []
 
             # Get elective term mapping for display
@@ -2980,7 +2992,8 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                 "units":        3, # Default
                 "grades":       grades,
                 "final_grade":  final_avg,
-                "elective_term": elective_term
+                "elective_term": elective_term,
+                "term_name":    s.get("term_name")
             })
 
         # 5. Get the School Year Label for the SELECTED enrollment
@@ -3057,6 +3070,18 @@ def student_my_schedule():
 
         schedules = []
         if is_active_enrollment and section_id:
+            from datetime import date
+            today = date.today()
+            cur.execute("""
+                SELECT period_name FROM grading_period_ranges
+                WHERE branch_id = %s AND year_id = %s
+                  AND start_date <= %s AND end_date >= %s
+                ORDER BY start_date LIMIT 1
+            """, (effective_branch_id, active_year_id, today, today))
+            active_term_row = cur.fetchone()
+            active_term = active_term_row['period_name'] if active_term_row else None
+            term_pattern = f"%{active_term}%" if active_term else None
+
             cur.execute("""
                 SELECT sc.*,
                        sub.name AS subject_name,
@@ -3071,6 +3096,13 @@ def student_my_schedule():
                 WHERE sc.section_id = %s
                   AND sc.year_id = %s
                   AND sc.is_archived = FALSE
+                  AND (
+                    %s IS NULL
+                    OR sc.term_name IS NULL
+                    OR sc.term_name = ''
+                    OR sc.term_name = 'Full Year'
+                    OR sc.term_name LIKE %s
+                  )
                   AND (
                     COALESCE(sub.subject_type, 'CORE') = 'CORE'
                     OR (
@@ -3099,7 +3131,7 @@ def student_my_schedule():
                         ELSE 8
                     END,
                     sc.start_time
-            """, (section_id, student_year_id, enrollment_id, student_year_id))
+            """, (section_id, student_year_id, active_term, term_pattern, enrollment_id, student_year_id))
             schedules = cur.fetchall() or []
 
         break_config = get_break_times_config(effective_branch_id)

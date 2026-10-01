@@ -1600,7 +1600,8 @@ def list_and_add_schedules():
     # Only show combos for SECTIONS in ACTIVE years for THIS branch:
     cursor.execute("""
         SELECT st.section_id, sec.section_name, st.subject_id, subj.name AS subject_name,
-               st.teacher_id, u.full_name AS teacher_name, sec.year_id, g.name AS grade_name
+               st.teacher_id, u.full_name AS teacher_name, sec.year_id, g.name AS grade_name,
+               st.term_name
         FROM section_teachers st
         JOIN sections sec ON st.section_id = sec.section_id
         JOIN grade_levels g ON sec.grade_level_id = g.id
@@ -1609,6 +1610,7 @@ def list_and_add_schedules():
         JOIN users u ON st.teacher_id = u.user_id
         WHERE sec.branch_id = %s
           AND y.is_active = TRUE
+          AND (st.is_archived IS FALSE OR st.is_archived IS NULL)
         ORDER BY g.id ASC, sec.section_name ASC, subj.name ASC
     """, (branch_id,))
     combinations = cursor.fetchall()
@@ -1637,7 +1639,23 @@ def list_and_add_schedules():
 
     if request.method == "POST":
         combo = request.form["combo"]
-        section_id, subject_id, teacher_id = combo.split('|')
+        combo_parts = combo.split('|')
+        section_id = combo_parts[0]
+        subject_id = combo_parts[1]
+        teacher_id = combo_parts[2]
+        raw_t = combo_parts[3] if len(combo_parts) > 3 else None
+        term_name = request.form.get("term_name") or (raw_t if raw_t and raw_t != 'None' else None)
+
+        if not term_name:
+            cursor.execute("""
+                SELECT term_name FROM section_teachers
+                WHERE section_id = %s AND subject_id = %s AND teacher_id = %s
+                  AND (is_archived IS FALSE OR is_archived IS NULL)
+                LIMIT 1
+            """, (section_id, subject_id, teacher_id))
+            st_row = cursor.fetchone()
+            if st_row and st_row["term_name"]:
+                term_name = st_row["term_name"]
         
         days_input = request.form.getlist("days")
         if not days_input:
@@ -1686,7 +1704,6 @@ def list_and_add_schedules():
             return s1 is not None and e1 is not None and s2 is not None and e2 is not None and s1 < e2 and e1 > s2
 
         def _get_cfg(d, key1, key2):
-            # check per-grade config or fallback to DEFAULT
             v = d.get(key1) or d.get("DEFAULT", {}).get(key1) if isinstance(d.get("DEFAULT"), dict) else d.get(key1)
             return v
 
@@ -1741,6 +1758,10 @@ def list_and_add_schedules():
                     WHERE s.year_id = %s AND s.branch_id = %s
                       AND s.day_of_week = %s
                       AND s.is_archived = FALSE
+                      AND (
+                            (%s IS NULL AND s.term_name IS NULL)
+                         OR (%s IS NOT NULL AND (s.term_name IS NULL OR s.term_name = %s))
+                      )
                       AND (s.start_time < %s AND s.end_time > %s)
                       AND (
                             s.teacher_id = %s
@@ -1748,7 +1769,7 @@ def list_and_add_schedules():
                          OR s.room = %s
                       )
                     LIMIT 1
-                """, (year_id, branch_id, day_of_week, end_time, start_time, teacher_id, section_id, room))
+                """, (year_id, branch_id, day_of_week, term_name, term_name, term_name, end_time, start_time, teacher_id, section_id, room))
                 conflict = cursor.fetchone()
 
             if conflict:
@@ -1767,11 +1788,11 @@ def list_and_add_schedules():
             else:
                 cursor.execute("""
                     INSERT INTO schedules
-                    (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, year_id, branch_id)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, year_id, branch_id, term_name)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """, (
                     subject_id, section_id, teacher_id,
-                    day_of_week, start_time, end_time, room, year_id, branch_id
+                    day_of_week, start_time, end_time, room, year_id, branch_id, term_name
                 ))
                 added_count += 1
 
@@ -1897,8 +1918,11 @@ def edit_schedule(schedule_id):
     active_year = school_years[0] if school_years else None
 
     if request.method == "POST":
-        combo = request.form["combo"]
-        section_id, subject_id, teacher_id = combo.split('|')
+        combo_parts = combo.split('|')
+        section_id = combo_parts[0]
+        subject_id = combo_parts[1]
+        teacher_id = combo_parts[2]
+        term_name = request.form.get("term_name") or (combo_parts[3] if len(combo_parts) > 3 else schedule.get("term_name"))
         day_of_week = request.form["day_of_week"]
         start_time = request.form["start_time"]
         end_time = request.form["end_time"]
@@ -1941,6 +1965,10 @@ def edit_schedule(schedule_id):
             WHERE s.year_id = %s AND s.branch_id = %s
               AND s.day_of_week = %s
               AND s.is_archived = FALSE
+              AND (
+                    (%s IS NULL AND s.term_name IS NULL)
+                 OR (%s IS NOT NULL AND (s.term_name IS NULL OR s.term_name = %s))
+              )
               AND (s.start_time < %s AND s.end_time > %s)
               AND (
                     s.teacher_id = %s
@@ -1949,7 +1977,7 @@ def edit_schedule(schedule_id):
               )
               AND s.schedule_id != %s
             LIMIT 1
-        """, (year_id, branch_id, day_of_week, end_time, start_time, teacher_id, section_id, room, schedule_id))
+        """, (year_id, branch_id, day_of_week, term_name, term_name, term_name, end_time, start_time, teacher_id, section_id, room, schedule_id))
 
         conflict = cursor.fetchone()
         if conflict:
@@ -1974,9 +2002,9 @@ def edit_schedule(schedule_id):
         cursor.execute("""
             UPDATE schedules
             SET subject_id=%s, section_id=%s, teacher_id=%s, day_of_week=%s,
-                start_time=%s, end_time=%s, room=%s, year_id=%s
+                start_time=%s, end_time=%s, room=%s, year_id=%s, term_name=%s
             WHERE schedule_id=%s AND branch_id=%s
-        """, (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, active_year["year_id"] if active_year else year_id, schedule_id, branch_id))
+        """, (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, active_year["year_id"] if active_year else year_id, term_name, schedule_id, branch_id))
         db.commit()
         cursor.close(); db.close()
         flash("Schedule updated!", "success")
@@ -2012,6 +2040,7 @@ def move_schedule_admin(schedule_id):
         cursor.close(); db.close()
         return jsonify({"success": False, "error": "Schedule not found."}), 404
 
+    sch_term = sch.get("term_name")
     cursor.execute("""
         SELECT s.*, subj.name AS conflict_subject_name, sec.section_name AS conflict_section_name, u.full_name AS conflict_teacher_name
         FROM schedules s
@@ -2021,11 +2050,15 @@ def move_schedule_admin(schedule_id):
         WHERE s.year_id = %s AND s.branch_id = %s
           AND s.day_of_week = %s
           AND s.is_archived = FALSE
+          AND (
+                (%s IS NULL AND s.term_name IS NULL)
+             OR (%s IS NOT NULL AND (s.term_name IS NULL OR s.term_name = %s))
+          )
           AND (s.start_time < %s AND s.end_time > %s)
           AND (s.teacher_id = %s OR s.section_id = %s OR s.room = %s)
           AND s.schedule_id != %s
         LIMIT 1
-    """, (sch["year_id"], branch_id, day_of_week, end_time, start_time, sch["teacher_id"], sch["section_id"], sch["room"], schedule_id))
+    """, (sch["year_id"], branch_id, day_of_week, sch_term, sch_term, sch_term, end_time, start_time, sch["teacher_id"], sch["section_id"], sch["room"], schedule_id))
 
     conflict = cursor.fetchone()
     if conflict:
@@ -2412,6 +2445,7 @@ def branch_admin_subjects():
         subject_types = request.form.getlist("subject_types")
         tracks = request.form.getlist("tracks")
         pathways = request.form.getlist("pathways")
+        terms = request.form.getlist("terms")
 
         if not names or not section_ids:
             flash("At least one subject and one section are required.", "error")
@@ -2428,6 +2462,7 @@ def branch_admin_subjects():
                 pathway = pathways[i] if i < len(pathways) else None
                 prereq_id_raw = prerequisite_ids[i] if i < len(prerequisite_ids) else None
                 prereq_id = int(prereq_id_raw) if (prereq_id_raw and str(prereq_id_raw).isdigit()) else None
+                term_name = terms[i].strip() if i < len(terms) and terms[i].strip() else None
 
                 if subject_type != "ELECTIVE":
                     track = None
@@ -2457,10 +2492,10 @@ def branch_admin_subjects():
                     if not cursor.fetchone(): continue
 
                     cursor.execute("""
-                        INSERT INTO section_teachers (section_id, teacher_id, subject_id, year_id)
-                        SELECT %s, NULL, %s, year_id FROM sections WHERE section_id = %s
+                        INSERT INTO section_teachers (section_id, teacher_id, subject_id, year_id, term_name)
+                        SELECT %s, NULL, %s, year_id, %s FROM sections WHERE section_id = %s
                         ON CONFLICT DO NOTHING
-                    """, (sid, subject_id, sid))
+                    """, (sid, subject_id, term_name, sid))
 
             db.commit()
             flash("Curriculum deployed!", "success")
@@ -2471,14 +2506,13 @@ def branch_admin_subjects():
         return redirect(url_for("branch_admin.branch_admin_subjects"))
 
     section_id_filter = request.args.get("section_id")
-    # Default to first section if no filter is selected
     if not section_id_filter and section_options:
         section_id_filter = str(section_options[0]['section_id'])
 
     query = """
-        SELECT st.subject_id, sub.name, sub.deped_category, sub.subject_type, sub.track, sub.pathway, 
+        SELECT st.id AS assignment_id, st.subject_id, sub.name, sub.deped_category, sub.subject_type, sub.track, sub.pathway, 
                sub.prerequisite_subject_id, prereq.name AS prerequisite_name,
-               s.section_id, s.section_name, g.name AS grade_level_name, st.is_archived
+               s.section_id, s.section_name, g.name AS grade_level_name, st.is_archived, st.term_name
         FROM section_teachers st
         INNER JOIN subjects sub ON st.subject_id = sub.subject_id
         LEFT JOIN subjects prereq ON sub.prerequisite_subject_id = prereq.subject_id
@@ -2523,6 +2557,17 @@ def branch_admin_subjects():
             pathways_by_track[t] = []
         pathways_by_track[t].append(row["pathway_name"])
 
+    today = datetime.now().date()
+    cursor.execute("""
+        SELECT period_name FROM grading_period_ranges
+        WHERE branch_id = %s AND year_id = (SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1)
+          AND start_date <= %s AND end_date >= %s
+        ORDER BY start_date LIMIT 1
+    """, (branch_id, branch_id, today, today))
+    active_period_row = cursor.fetchone()
+    active_period_name = active_period_row["period_name"] if active_period_row else "1st"
+    active_term_label = f"{active_period_name} Term" if active_period_name in ["1st", "2nd", "3rd"] else "1st Term"
+
     cursor.close(); db.close()
 
     return render_template(
@@ -2531,7 +2576,8 @@ def branch_admin_subjects():
         section_options=section_options,
         selected_section_id=section_id_filter,
         pathways_by_track=pathways_by_track,
-        all_branch_subjects=all_branch_subjects
+        all_branch_subjects=all_branch_subjects,
+        active_term_label=active_term_label
     )
 
 @branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/<int:section_id>/toggle-archive", methods=["POST"])
@@ -2646,6 +2692,8 @@ def branch_admin_subject_edit(subject_id):
     pathway = request.form.get("pathway")
     prereq_id_raw = request.form.get("prerequisite_subject_id")
     prereq_id = int(prereq_id_raw) if (prereq_id_raw and str(prereq_id_raw).isdigit()) else None
+    term_name = request.form.get("term_name")
+    if term_name: term_name = term_name.strip()
 
     if subject_type != "ELECTIVE":
         track = None
@@ -2672,27 +2720,24 @@ def branch_admin_subject_edit(subject_id):
 
         if existing:
             actual_subject_id = existing["subject_id"]
-            # Update target subject metadata
             cursor.execute("""
                 UPDATE subjects 
                 SET name = %s, deped_category = %s, subject_type = %s, track = %s, pathway = %s, prerequisite_subject_id = %s 
                 WHERE subject_id = %s
             """, (new_name, deped_category, subject_type, track, pathway, prereq_id, actual_subject_id))
 
-            # Repoint section_teachers row to actual_subject_id
             cursor.execute("""
                 UPDATE section_teachers
-                SET subject_id = %s, section_id = %s
+                SET subject_id = %s, section_id = %s, term_name = COALESCE(%s, term_name)
                 WHERE subject_id = %s AND section_id = %s
-            """, (actual_subject_id, target_section_id, subject_id, target_section_id))
+            """, (actual_subject_id, target_section_id, term_name, subject_id, target_section_id))
             if cursor.rowcount == 0:
                 cursor.execute("""
-                    INSERT INTO section_teachers (section_id, subject_id, year_id)
-                    SELECT %s, %s, year_id FROM sections WHERE section_id = %s
+                    INSERT INTO section_teachers (section_id, subject_id, year_id, term_name)
+                    SELECT %s, %s, year_id, %s FROM sections WHERE section_id = %s
                     ON CONFLICT DO NOTHING
-                """, (target_section_id, actual_subject_id, target_section_id))
+                """, (target_section_id, actual_subject_id, term_name, target_section_id))
         else:
-            # Check if other sections share the current subject_id
             cursor.execute("""
                 SELECT COUNT(*) AS cnt FROM section_teachers 
                 WHERE subject_id = %s AND section_id <> %s
@@ -2700,7 +2745,6 @@ def branch_admin_subject_edit(subject_id):
             other_usages = (cursor.fetchone() or {}).get("cnt", 0)
 
             if other_usages > 0:
-                # Create a new subject for new_name so other sections keep their original subject
                 cursor.execute("""
                     INSERT INTO subjects (name, deped_category, subject_type, track, pathway, prerequisite_subject_id)
                     VALUES (%s, %s, %s, %s, %s, %s)
@@ -2711,11 +2755,10 @@ def branch_admin_subject_edit(subject_id):
 
                 cursor.execute("""
                     UPDATE section_teachers
-                    SET subject_id = %s, section_id = %s
+                    SET subject_id = %s, section_id = %s, term_name = COALESCE(%s, term_name)
                     WHERE subject_id = %s AND section_id = %s
-                """, (new_subject_id, target_section_id, subject_id, target_section_id))
+                """, (new_subject_id, target_section_id, term_name, subject_id, target_section_id))
             else:
-                # Update subject_id directly in subjects
                 cursor.execute("""
                     UPDATE subjects 
                     SET name = %s, deped_category = %s, subject_type = %s, track = %s, pathway = %s, prerequisite_subject_id = %s 
@@ -2724,9 +2767,9 @@ def branch_admin_subject_edit(subject_id):
 
                 cursor.execute("""
                     UPDATE section_teachers
-                    SET section_id = %s
+                    SET section_id = %s, term_name = COALESCE(%s, term_name)
                     WHERE subject_id = %s AND section_id = %s
-                """, (target_section_id, subject_id, target_section_id))
+                """, (target_section_id, term_name, subject_id, target_section_id))
 
         db.commit()
         flash("Subject updated.", "success")

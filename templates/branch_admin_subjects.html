@@ -615,7 +615,7 @@
                             <div id="subjectEntries"
                                 style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
                                 <div class="subject-entry-row"
-                                    style="display: grid; grid-template-columns: 1fr 90px 90px 90px 110px 120px 36px; gap: 6px; align-items: center;">
+                                    style="display: grid; grid-template-columns: 1fr 90px 85px 85px 95px 105px 95px 36px; gap: 6px; align-items: center;">
                                     <input type="text" name="names" class="form-control" placeholder="Subject Name"
                                         required oninput="autoDetectCategory(this)">
                                     <select name="categories" class="form-control" required
@@ -644,6 +644,12 @@
                                         {% for s in all_branch_subjects %}
                                         <option value="{{ s.subject_id }}">{{ s.name }}</option>
                                         {% endfor %}
+                                    </select>
+                                    <select name="terms" class="form-control" style="font-size: 0.72rem; padding: 10px 6px;">
+                                        <option value="Full Year" selected>Full Year</option>
+                                        <option value="1st Term">1st Term</option>
+                                        <option value="2nd Term">2nd Term</option>
+                                        <option value="3rd Term">3rd Term</option>
                                     </select>
                                     <button type="button" class="btn-remove-row" onclick="removeRow(this)"
                                         title="Remove Subject"
@@ -685,7 +691,7 @@
                                 {% set ns.current_grade = sec.grade_level_name %}
                                 {% endif %}
                                 <label class="section-checkbox-label">
-                                    <input type="checkbox" name="section_ids" value="{{ sec.section_id }}">
+                                    <input type="checkbox" name="section_ids" value="{{ sec.section_id }}" data-grade="{{ sec.grade_level_name }}" onchange="autoDetectTermForSections()">
                                     {{ sec.section_name }}
                                 </label>
                                 {% if loop.last %}
@@ -821,7 +827,7 @@
                             {% if is_branch_active_status %}
                             <div style="display: flex; gap: 8px; justify-content: flex-end;">
                                 <button class="save-row-btn"
-                                    onclick='openEditModal({{ a.subject_id }}, {{ a.name | tojson }}, "{{ a.section_id }}", "{{ a.deped_category }}", "{{ a.subject_type }}", "{{ a.track or '' }}", "{{ a.pathway or '' }}", "{{ a.prerequisite_subject_id or '' }}")'>
+                                    onclick='openEditModal({{ a.subject_id }}, {{ a.name | tojson }}, "{{ a.section_id }}", "{{ a.deped_category }}", "{{ a.subject_type }}", "{{ a.track or '' }}", "{{ a.pathway or '' }}", "{{ a.prerequisite_subject_id or '' }}", "{{ a.term_name or '' }}")'>
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
 
@@ -959,6 +965,17 @@
                     {% for s in all_branch_subjects %}
                     <option value="{{ s.subject_id }}">{{ s.name }}</option>
                     {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-node">
+                <label>Term (SHS)</label>
+                <select name="term_name" id="edit_term_name" class="form-control">
+                    <option value="">— No specific term —</option>
+                    <option value="1st Term">1st Term</option>
+                    <option value="2nd Term">2nd Term</option>
+                    <option value="3rd Term">3rd Term</option>
+                    <option value="Full Year">Full Year</option>
                 </select>
             </div>
 
@@ -1227,7 +1244,7 @@
         }
     }
 
-    function openEditModal(subjectId, name, sectionId, category, subjectType, track, pathway, prereqId) {
+    function openEditModal(subjectId, name, sectionId, category, subjectType, track, pathway, prereqId, termName) {
         document.getElementById('editForm').action = '/branch-admin/subjects/' + subjectId + '/edit';
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_section_id').value = sectionId;
@@ -1246,6 +1263,9 @@
 
         toggleEditTrackInput();
 
+        const termSelect = document.getElementById('edit_term_name');
+        if (termSelect) termSelect.value = termName || '';
+
         // Capture initial state
         initialSubjectData = {
             name: String(name).trim(),
@@ -1254,7 +1274,8 @@
             type: String(subjectType || 'CORE'),
             track: String(track || ''),
             pathway: String(pathway || ''),
-            prereq: String(prereqId || '')
+            prereq: String(prereqId || ''),
+            term: String(termName || '')
         };
 
         const submitBtn = document.getElementById('editSubmitBtn');
@@ -1343,10 +1364,10 @@
     }
 
     // Monitor changes
-    ['edit_name', 'edit_section_id', 'edit_deped_category', 'edit_subject_type', 'edit_track', 'edit_pathway', 'edit_prerequisite_subject_id'].forEach(id => {
+    ['edit_name', 'edit_section_id', 'edit_deped_category', 'edit_subject_type', 'edit_track', 'edit_pathway', 'edit_prerequisite_subject_id', 'edit_term_name'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.addEventListener('input', function () {
+        const checkDirty = function () {
             const currentName = document.getElementById('edit_name').value.trim();
             const currentSection = document.getElementById('edit_section_id').value;
             const currentCat = document.getElementById('edit_deped_category').value;
@@ -1354,6 +1375,7 @@
             const currentTrack = document.getElementById('edit_track').value;
             const currentPathway = document.getElementById('edit_pathway').value;
             const currentPrereq = (document.getElementById('edit_prerequisite_subject_id') || {}).value || '';
+            const currentTerm = (document.getElementById('edit_term_name') || {}).value || '';
 
             const hasChanged = (
                 currentName !== initialSubjectData.name ||
@@ -1362,32 +1384,14 @@
                 currentType !== initialSubjectData.type ||
                 currentTrack !== initialSubjectData.track ||
                 currentPathway !== initialSubjectData.pathway ||
-                currentPrereq !== initialSubjectData.prereq
+                currentPrereq !== initialSubjectData.prereq ||
+                currentTerm !== initialSubjectData.term
             );
 
             document.getElementById('editSubmitBtn').disabled = !hasChanged;
-        });
-        el.addEventListener('change', function () {
-            const currentName = document.getElementById('edit_name').value.trim();
-            const currentSection = document.getElementById('edit_section_id').value;
-            const currentCat = document.getElementById('edit_deped_category').value;
-            const currentType = document.getElementById('edit_subject_type').value;
-            const currentTrack = document.getElementById('edit_track').value;
-            const currentPathway = document.getElementById('edit_pathway').value;
-            const currentPrereq = (document.getElementById('edit_prerequisite_subject_id') || {}).value || '';
-
-            const hasChanged = (
-                currentName !== initialSubjectData.name ||
-                currentSection !== initialSubjectData.section ||
-                currentCat !== initialSubjectData.category ||
-                currentType !== initialSubjectData.type ||
-                currentTrack !== initialSubjectData.track ||
-                currentPathway !== initialSubjectData.pathway ||
-                currentPrereq !== initialSubjectData.prereq
-            );
-
-            document.getElementById('editSubmitBtn').disabled = !hasChanged;
-        });
+        };
+        el.addEventListener('input', checkDirty);
+        el.addEventListener('change', checkDirty);
     });
 
     // Bulk Subject Builder Logic
@@ -1395,7 +1399,7 @@
         const container = document.getElementById('subjectEntries');
         const newRow = document.createElement('div');
         newRow.className = 'subject-entry-row';
-        newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 90px 90px 90px 110px 120px 36px; gap: 6px; align-items: center;';
+        newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 90px 85px 85px 95px 105px 95px 36px; gap: 6px; align-items: center;';
         newRow.innerHTML = `
             <input type="text" name="names" class="form-control" placeholder="Subject Name" required oninput="autoDetectCategory(this)">
             <select name="categories" class="form-control" required style="font-size: 0.72rem; padding: 10px 6px;">
@@ -1423,11 +1427,18 @@
                 <option value="{{ s.subject_id }}">{{ s.name }}</option>
                 {% endfor %}
             </select>
+            <select name="terms" class="form-control" style="font-size: 0.72rem; padding: 10px 6px;">
+                <option value="Full Year" selected>Full Year</option>
+                <option value="1st Term">1st Term</option>
+                <option value="2nd Term">2nd Term</option>
+                <option value="3rd Term">3rd Term</option>
+            </select>
             <button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remove Subject" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0;">
                 <i class="fas fa-times" style="font-size: 0.9rem;"></i>
             </button>
         `;
         container.appendChild(newRow);
+        autoDetectTermForSections();
     }
 
     function removeRow(btn) {
@@ -1437,6 +1448,23 @@
         } else {
             btn.closest('.subject-entry-row').querySelector('input').value = '';
         }
+    }
+
+    function autoDetectTermForSections() {
+        const activeTermLabel = "{{ active_term_label or '1st Term' }}";
+        const sectionCheckboxes = document.querySelectorAll('input[name="section_ids"]:checked');
+        let isSHS = false;
+        sectionCheckboxes.forEach(cb => {
+            const grade = (cb.getAttribute('data-grade') || '').toLowerCase();
+            if (grade.includes('11') || grade.includes('12') || grade.includes('shs') || grade.includes('senior')) {
+                isSHS = true;
+            }
+        });
+        
+        const targetTerm = isSHS ? activeTermLabel : 'Full Year';
+        document.querySelectorAll('select[name="terms"]').forEach(sel => {
+            sel.value = targetTerm;
+        });
     }
 
     function autoDetectCategory(input) {
@@ -1462,6 +1490,7 @@
         document.querySelectorAll('input[name="section_ids"]').forEach(cb => {
             cb.checked = checked;
         });
+        autoDetectTermForSections();
     }
 
 

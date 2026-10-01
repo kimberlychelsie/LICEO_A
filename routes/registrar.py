@@ -2869,7 +2869,23 @@ def list_and_add_schedules():
 
     if request.method == "POST":
         combo = request.form["combo"]
-        section_id, subject_id, teacher_id = combo.split('|')
+        combo_parts = combo.split('|')
+        section_id = combo_parts[0]
+        subject_id = combo_parts[1]
+        teacher_id = combo_parts[2]
+        raw_t = combo_parts[3] if len(combo_parts) > 3 else None
+        term_name = request.form.get("term_name") or (raw_t if raw_t and raw_t != 'None' else None)
+
+        if not term_name:
+            cursor.execute("""
+                SELECT term_name FROM section_teachers
+                WHERE section_id = %s AND subject_id = %s AND teacher_id = %s
+                  AND (is_archived IS FALSE OR is_archived IS NULL)
+                LIMIT 1
+            """, (section_id, subject_id, teacher_id))
+            st_row = cursor.fetchone()
+            if st_row and st_row["term_name"]:
+                term_name = st_row["term_name"]
         day_of_week = request.form["day_of_week"]
         start_time = request.form["start_time"]
         end_time = request.form["end_time"]
@@ -2957,11 +2973,11 @@ def list_and_add_schedules():
             else:
                 cursor.execute("""
                     INSERT INTO schedules
-                    (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, year_id, branch_id)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, year_id, branch_id, term_name)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """, (
                     subject_id, section_id, teacher_id,
-                    day_of_week, start_time, end_time, room, year_id, branch_id
+                    day_of_week, start_time, end_time, room, year_id, branch_id, term_name
                 ))
                 added_count += 1
 
@@ -3643,6 +3659,7 @@ def registrar_subjects():
         subject_types = request.form.getlist("subject_types")
         tracks = request.form.getlist("tracks")
         section_ids = request.form.getlist("section_ids")
+        terms = request.form.getlist("terms")
 
         if not names or not section_ids:
             flash("At least one subject and one section are required.", "error")
@@ -3655,6 +3672,7 @@ def registrar_subjects():
                 deped_category = categories[i] if i < len(categories) else "language"
                 subject_type = subject_types[i].upper() if i < len(subject_types) else "CORE"
                 track = tracks[i].strip() if i < len(tracks) and subject_type == "ELECTIVE" else None
+                term_name = terms[i].strip() if i < len(terms) and terms[i].strip() else None
 
                 cursor.execute("""
                     INSERT INTO subjects (name, deped_category, subject_type, track)
@@ -3677,10 +3695,10 @@ def registrar_subjects():
                     if not cursor.fetchone(): continue
 
                     cursor.execute("""
-                        INSERT INTO section_teachers (section_id, teacher_id, subject_id, year_id)
-                        SELECT %s, NULL, %s, year_id FROM sections WHERE section_id = %s
+                        INSERT INTO section_teachers (section_id, teacher_id, subject_id, year_id, term_name)
+                        SELECT %s, NULL, %s, year_id, %s FROM sections WHERE section_id = %s
                         ON CONFLICT DO NOTHING
-                    """, (sid, subject_id, sid))
+                    """, (sid, subject_id, term_name, sid))
 
             db.commit()
             flash("Curriculum deployed!", "success")
@@ -3691,12 +3709,11 @@ def registrar_subjects():
         return redirect(url_for("registrar.registrar_subjects"))
 
     section_id_filter = request.args.get("section_id")
-    # Default to first section if no filter is selected
     if not section_id_filter and section_options:
         section_id_filter = str(section_options[0]['section_id'])
 
     query = """
-        SELECT st.subject_id, sub.name, sub.deped_category, sub.subject_type, sub.track, s.section_id, s.section_name, g.name AS grade_level_name, st.is_archived
+        SELECT st.id AS assignment_id, st.subject_id, sub.name, sub.deped_category, sub.subject_type, sub.track, s.section_id, s.section_name, g.name AS grade_level_name, st.is_archived, st.term_name
         FROM section_teachers st
         INNER JOIN subjects sub ON st.subject_id = sub.subject_id
         INNER JOIN sections s ON st.section_id = s.section_id
@@ -3713,13 +3730,25 @@ def registrar_subjects():
     cursor.execute(query, tuple(params))
     assignments = cursor.fetchall() or []
 
+    today = datetime.now().date()
+    cursor.execute("""
+        SELECT period_name FROM grading_period_ranges
+        WHERE branch_id = %s AND year_id = (SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1)
+          AND start_date <= %s AND end_date >= %s
+        ORDER BY start_date LIMIT 1
+    """, (branch_id, branch_id, today, today))
+    active_period_row = cursor.fetchone()
+    active_period_name = active_period_row["period_name"] if active_period_row else "1st"
+    active_term_label = f"{active_period_name} Term" if active_period_name in ["1st", "2nd", "3rd"] else "1st Term"
+
     cursor.close(); db.close()
 
     return render_template(
         "registrar_subjects.html",
         assignments=assignments,
         section_options=section_options,
-        selected_section_id=section_id_filter
+        selected_section_id=section_id_filter,
+        active_term_label=active_term_label
     )
 
 @registrar_bp.route("/registrar/subjects/<int:subject_id>/<int:section_id>/toggle-archive", methods=["POST"])
@@ -3831,6 +3860,7 @@ def registrar_subject_edit(subject_id):
     deped_category = request.form.get("deped_category", "language")
     subject_type = (request.form.get("subject_type") or "CORE").upper()
     track = (request.form.get("track") or "").strip() if subject_type == "ELECTIVE" else None
+    term_name = (request.form.get("term_name") or "").strip() or None
 
     if not new_name or not target_section_id_raw:
         flash("Required fields missing.", "error")
@@ -3859,15 +3889,15 @@ def registrar_subject_edit(subject_id):
 
             cursor.execute("""
                 UPDATE section_teachers
-                SET subject_id = %s, section_id = %s
+                SET subject_id = %s, section_id = %s, term_name = COALESCE(%s, term_name)
                 WHERE subject_id = %s AND section_id = %s
-            """, (actual_subject_id, target_section_id, subject_id, target_section_id))
+            """, (actual_subject_id, target_section_id, term_name, subject_id, target_section_id))
             if cursor.rowcount == 0:
                 cursor.execute("""
-                    INSERT INTO section_teachers (section_id, subject_id, year_id)
-                    SELECT %s, %s, year_id FROM sections WHERE section_id = %s
+                    INSERT INTO section_teachers (section_id, subject_id, year_id, term_name)
+                    SELECT %s, %s, year_id, %s FROM sections WHERE section_id = %s
                     ON CONFLICT DO NOTHING
-                """, (target_section_id, actual_subject_id, target_section_id))
+                """, (target_section_id, actual_subject_id, term_name, target_section_id))
         else:
             cursor.execute("""
                 SELECT COUNT(*) AS cnt FROM section_teachers 
@@ -3886,9 +3916,9 @@ def registrar_subject_edit(subject_id):
 
                 cursor.execute("""
                     UPDATE section_teachers
-                    SET subject_id = %s, section_id = %s
+                    SET subject_id = %s, section_id = %s, term_name = COALESCE(%s, term_name)
                     WHERE subject_id = %s AND section_id = %s
-                """, (new_subject_id, target_section_id, subject_id, target_section_id))
+                """, (new_subject_id, target_section_id, term_name, subject_id, target_section_id))
             else:
                 cursor.execute("""
                     UPDATE subjects 
@@ -3898,9 +3928,9 @@ def registrar_subject_edit(subject_id):
 
                 cursor.execute("""
                     UPDATE section_teachers
-                    SET section_id = %s
+                    SET section_id = %s, term_name = COALESCE(%s, term_name)
                     WHERE subject_id = %s AND section_id = %s
-                """, (target_section_id, subject_id, target_section_id))
+                """, (target_section_id, term_name, subject_id, target_section_id))
 
         db.commit()
         flash("Subject updated.", "success")

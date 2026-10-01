@@ -431,11 +431,21 @@ def inject_student_subjects():
                     active_term_row = cursor.fetchone()
                     active_term = active_term_row['period_name'] if active_term_row else None
 
+                    term_pattern = f"%{active_term}%" if active_term else None
+
                     cursor.execute("""
-                        SELECT sub.subject_id, sub.name as subject_name
+                        SELECT DISTINCT sub.subject_id, sub.name as subject_name
                         FROM section_teachers st
                         JOIN subjects sub ON st.subject_id = sub.subject_id
                         WHERE st.section_id = %s AND st.year_id = %s
+                          AND COALESCE(st.is_archived, FALSE) = FALSE
+                          AND (
+                            %s IS NULL
+                            OR st.term_name IS NULL
+                            OR st.term_name = ''
+                            OR st.term_name = 'Full Year'
+                            OR st.term_name LIKE %s
+                          )
                           AND (
                             COALESCE(sub.subject_type, 'CORE') = 'CORE'
                             OR (
@@ -447,12 +457,12 @@ def inject_student_subjects():
                                   AND m.year_id = %s
                                   AND m.status = 'ACTIVE'
                                   AND o.section_teacher_id = st.id
-                                  AND (%s IS NULL OR m.term_name = %s)
+                                  AND (%s IS NULL OR m.term_name = %s OR m.term_name LIKE %s)
                               )
                             )
                           )
                         ORDER BY sub.name
-                    """, (enr['section_id'], active_year_id, enrollment_id, active_year_id, active_term, active_term))
+                    """, (enr['section_id'], active_year_id, active_term, term_pattern, enrollment_id, active_year_id, active_term, active_term, term_pattern))
                     subjects = cursor.fetchall()
                     return dict(student_global_subjects=subjects)
         except:

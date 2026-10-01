@@ -602,20 +602,36 @@ def get_db_connection():
                 logger.warning(f"Could not migrate parent_notifications table: {e}")
                 conn.rollback()
 
-            # schedules migration (is_archived)
+            # schedules migration (is_archived & term_name)
             try:
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'schedules'")
                 sch_cols = [r[0] for r in cur.fetchall()]
                 if sch_cols:
                     if 'is_archived' not in sch_cols:
                         cur.execute("ALTER TABLE schedules ADD COLUMN is_archived BOOLEAN DEFAULT FALSE")
+                    if 'term_name' not in sch_cols:
+                        cur.execute("ALTER TABLE schedules ADD COLUMN term_name VARCHAR(50)")
                     conn.commit()
                 else: 
-                    # If table logic is missing elsewhere, skip for now but log
                     logger.warning("Schedules table not found during migration check.")
             except Exception as e:
                 logger.warning(f"Could not migrate schedules table: {e}")
                 conn.rollback()
+
+            # section_teachers migration (term_name & is_archived)
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'section_teachers'")
+                st_cols = [r[0] for r in cur.fetchall()]
+                if st_cols:
+                    if 'term_name' not in st_cols:
+                        cur.execute("ALTER TABLE section_teachers ADD COLUMN term_name VARCHAR(50)")
+                    if 'is_archived' not in st_cols:
+                        cur.execute("ALTER TABLE section_teachers ADD COLUMN is_archived BOOLEAN DEFAULT FALSE")
+                    conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate section_teachers table: {e}")
+                conn.rollback()
+
 
             # Add ON DELETE CASCADE for enrollments related tables
             try:

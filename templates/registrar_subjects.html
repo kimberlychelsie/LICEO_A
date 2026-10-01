@@ -294,7 +294,7 @@
         text-align: center;
     }
 
-    /* ── Responsive Refinements ── */
+    /* â”€â”€ Responsive Refinements â”€â”€ */
     @media (max-width: 1024px) {
         .ba-container { padding: 32px 20px; }
         .premium-welcome h1 { font-size: 1.8rem; }
@@ -312,7 +312,7 @@
         .form-control { padding: 10px 14px; font-size: 0.8rem; border-radius: 12px; }
         .btn-prem { padding: 10px 16px; font-size: 0.8rem; border-radius: 12px; }
 
-        /* ── Table-to-Card Transformation ── */
+        /* â”€â”€ Table-to-Card Transformation â”€â”€ */
         .vault-table thead { display: none; }
         .vault-table tbody { display: flex; flex-direction: column; gap: 12px; }
         .vault-table tr { 
@@ -404,7 +404,7 @@
         {% if is_branch_active_status %}
         <div class="col-form">
             <div class="modern-card">
-                <h2>➕ Bulk Curriculum Builder</h2>
+                <h2>âž• Bulk Curriculum Builder</h2>
                 <form method="post" action="{{ url_for('registrar.registrar_subjects') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-node" style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid var(--ma-border); margin-bottom: 24px;">
@@ -433,7 +433,7 @@
                     <div class="form-node">
                         <label>Subjects to Add</label>
                         <div id="subjectEntries" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
-                            <div class="subject-entry-row" style="display: grid; grid-template-columns: 1fr 110px 100px 110px auto; gap: 8px; align-items: center;">
+                            <div class="subject-entry-row" style="display: grid; grid-template-columns: 1fr 100px 90px 100px 110px auto; gap: 8px; align-items: center;">
                                 <input type="text" name="names" class="form-control" placeholder="Subject Name" required oninput="autoDetectCategory(this)">
                                 <select name="categories" class="form-control" required style="font-size: 0.75rem; padding: 12px 8px;">
                                     <option value="language">Language</option>
@@ -450,6 +450,12 @@
                                     <option value="TVL">TVL</option>
                                     <option value="Sports">Sports</option>
                                     <option value="Arts & Design">Arts & Design</option>
+                                </select>
+                                <select name="terms" class="form-control" style="font-size: 0.75rem; padding: 12px 8px;">
+                                    <option value="Full Year" selected>Full Year</option>
+                                    <option value="1st Term">1st Term</option>
+                                    <option value="2nd Term">2nd Term</option>
+                                    <option value="3rd Term">3rd Term</option>
                                 </select>
                                 <button type="button" class="btn-tiny" style="background: transparent; border: none; color: #ef4444;" onclick="removeRow(this)">
                                     <i class="fas fa-times-circle" style="font-size: 1.2rem;"></i>
@@ -480,7 +486,7 @@
                                     {% set ns.current_grade = sec.grade_level_name %}
                                 {% endif %}
                                 <label class="section-checkbox-label">
-                                    <input type="checkbox" name="section_ids" value="{{ sec.section_id }}">
+                                    <input type="checkbox" name="section_ids" value="{{ sec.section_id }}" data-grade="{{ sec.grade_level_name }}" onchange="autoDetectTermForSections()">
                                     {{ sec.section_name }}
                                 </label>
                                 {% if loop.last %}</div></div>{% endif %}
@@ -491,7 +497,7 @@
                     <div style="font-size: 11.5px; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.4; padding-top: 12px; font-style: italic;">
                         <strong>Quick Hint:</strong> Type "Math" or "Science" to auto-select the category.
                     </div>
-                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">🚀 Deploy Curriculum</button>
+                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">ðŸš€ Deploy Curriculum</button>
                 </form>
             </div>
         </div>
@@ -569,6 +575,10 @@
                                     style="background: #e0f2fe; color: #0369a1; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">{{ a.track }}</span>
                                 {% endif %}
                                 {% endif %}
+                                {% if a.term_name %}
+                                <span class="badge-pill"
+                                    style="background: #fef9c3; color: #854d0e; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">{{ a.term_name }}</span>
+                                {% endif %}
                             </td>
                             <td data-label="Assigned To">
                                 <div style="color: var(--ma-muted); font-size: 0.85rem;">
@@ -586,7 +596,7 @@
                                 {% if is_branch_active_status %}
                                 <div style="display: flex; gap: 6px; justify-content: flex-end;">
                                     <button class="btn-prem btn-secondary" style="padding: 6px 14px; font-size: 0.7rem;"
-                                        onclick='openEditModal({{ a.subject_id }}, {{ a.name | tojson }}, "{{ a.section_id }}", "{{ a.deped_category }}", "{{ a.subject_type }}", "{{ a.track or '' }}")'>
+                                        onclick='openEditModal({{ a.subject_id }}, {{ a.name | tojson }}, "{{ a.section_id }}", "{{ a.deped_category }}", "{{ a.subject_type }}", "{{ a.track or '' }}", "{{ a.term_name or '' }}")'>
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
                                     
@@ -631,7 +641,7 @@
 <!-- Delete Confirmation Modal -->
 <div id="deleteConfirmOverlay" class="glass-overlay">
     <div class="glass-modal confirm-modal">
-        <div style="font-size: 3.5rem; margin-bottom: 20px;">🗑️</div>
+        <div style="font-size: 3.5rem; margin-bottom: 20px;">ðŸ—‘ï¸</div>
         <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 12px; color: #dc2626;">Remove Subject?</h2>
         <p id="deleteConfirmMsg"
             style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.5;"></p>
@@ -648,7 +658,7 @@
 <!-- Bulk Delete Confirmation Modal -->
 <div id="bulkDeleteConfirmOverlay" class="glass-overlay">
     <div class="glass-modal confirm-modal">
-        <div style="font-size: 3.5rem; margin-bottom: 20px;">🗑️</div>
+        <div style="font-size: 3.5rem; margin-bottom: 20px;">ðŸ—‘ï¸</div>
         <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 12px; color: #dc2626;">Remove Selected Subjects?</h2>
         <p id="bulkDeleteConfirmMsg" style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.5;"></p>
         <form id="bulkDeleteForm" method="POST" action="/registrar/subjects/bulk-delete">
@@ -666,7 +676,7 @@
 <!-- Edit Modal -->
 <div id="editModal" class="glass-overlay">
     <div class="glass-modal">
-        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary);">✎ Edit Subject
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary);">âœŽ Edit Subject
         </h2>
         <form id="editForm" method="post" action="">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -680,7 +690,7 @@
                 <select name="section_id" id="edit_section_id" class="form-control" required>
                     <option value="">Select Grade & Section</option>
                     {% for sec in section_options %}
-                    <option value="{{ sec.section_id }}">{{ sec.grade_level_name }} – {{ sec.section_name }}</option>
+                    <option value="{{ sec.section_id }}">{{ sec.grade_level_name }} â€“ {{ sec.section_name }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -710,6 +720,17 @@
                     <option value="TVL">TVL</option>
                     <option value="Sports">Sports</option>
                     <option value="Arts & Design">Arts & Design</option>
+                </select>
+            </div>
+
+            <div class="form-node">
+                <label>Term (SHS)</label>
+                <select name="term_name" id="edit_term_name" class="form-control">
+                    <option value="">— No specific term —</option>
+                    <option value="1st Term">1st Term</option>
+                    <option value="2nd Term">2nd Term</option>
+                    <option value="3rd Term">3rd Term</option>
+                    <option value="Full Year">Full Year</option>
                 </select>
             </div>
 
@@ -787,7 +808,7 @@
         }
     }
 
-    function openEditModal(subjectId, name, sectionId, category, subjectType, track) {
+    function openEditModal(subjectId, name, sectionId, category, subjectType, track, termName) {
         document.getElementById('editForm').action = '/registrar/subjects/' + subjectId + '/edit';
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_section_id').value = sectionId;
@@ -798,6 +819,7 @@
         toggleEditTrackInput(typeSelect);
 
         document.getElementById('edit_track').value = track || '';
+        document.getElementById('edit_term_name').value = termName || '';
 
         // Capture initial state
         initialSubjectData = {
@@ -805,7 +827,8 @@
             section: String(sectionId),
             category: String(category || 'language'),
             type: String(subjectType || 'CORE'),
-            track: String(track || '')
+            track: String(track || ''),
+            term: String(termName || '')
         };
 
         const submitBtn = document.getElementById('editSubmitBtn');
@@ -894,43 +917,30 @@
     }
 
     // Monitor changes
-    ['edit_name', 'edit_section_id', 'edit_deped_category', 'edit_subject_type', 'edit_track'].forEach(id => {
+    ['edit_name', 'edit_section_id', 'edit_deped_category', 'edit_subject_type', 'edit_track', 'edit_term_name'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            el.addEventListener('input', function () {
+            const checkDirty = function () {
                 const currentName = document.getElementById('edit_name').value.trim();
                 const currentSection = document.getElementById('edit_section_id').value;
                 const currentCat = document.getElementById('edit_deped_category').value;
                 const currentType = document.getElementById('edit_subject_type').value;
                 const currentTrack = document.getElementById('edit_track').value;
+                const currentTerm = document.getElementById('edit_term_name').value;
 
                 const hasChanged = (
                     currentName !== initialSubjectData.name ||
                     currentSection !== initialSubjectData.section ||
                     currentCat !== initialSubjectData.category ||
                     currentType !== initialSubjectData.type ||
-                    currentTrack !== initialSubjectData.track
+                    currentTrack !== initialSubjectData.track ||
+                    currentTerm !== initialSubjectData.term
                 );
 
                 document.getElementById('editSubmitBtn').disabled = !hasChanged;
-            });
-            el.addEventListener('change', function () {
-                const currentName = document.getElementById('edit_name').value.trim();
-                const currentSection = document.getElementById('edit_section_id').value;
-                const currentCat = document.getElementById('edit_deped_category').value;
-                const currentType = document.getElementById('edit_subject_type').value;
-                const currentTrack = document.getElementById('edit_track').value;
-
-                const hasChanged = (
-                    currentName !== initialSubjectData.name ||
-                    currentSection !== initialSubjectData.section ||
-                    currentCat !== initialSubjectData.category ||
-                    currentType !== initialSubjectData.type ||
-                    currentTrack !== initialSubjectData.track
-                );
-
-                document.getElementById('editSubmitBtn').disabled = !hasChanged;
-            });
+            };
+            el.addEventListener('input', checkDirty);
+            el.addEventListener('change', checkDirty);
         }
     });
 
@@ -939,7 +949,7 @@
         const container = document.getElementById('subjectEntries');
         const newRow = document.createElement('div');
         newRow.className = 'subject-entry-row';
-        newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 110px 100px 110px auto; gap: 8px; align-items: center;';
+        newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 100px 90px 100px 110px auto; gap: 8px; align-items: center;';
         newRow.innerHTML = `
             <input type="text" name="names" class="form-control" placeholder="Subject Name" required oninput="autoDetectCategory(this)">
             <select name="categories" class="form-control" required style="font-size: 0.75rem; padding: 12px 8px;">
@@ -958,11 +968,18 @@
                 <option value="Sports">Sports</option>
                 <option value="Arts & Design">Arts & Design</option>
             </select>
+            <select name="terms" class="form-control" style="font-size: 0.75rem; padding: 12px 8px;">
+                <option value="Full Year" selected>Full Year</option>
+                <option value="1st Term">1st Term</option>
+                <option value="2nd Term">2nd Term</option>
+                <option value="3rd Term">3rd Term</option>
+            </select>
             <button type="button" class="btn-tiny" style="background: transparent; border: none; color: #ef4444;" onclick="removeRow(this)">
                 <i class="fas fa-times-circle" style="font-size: 1.2rem;"></i>
             </button>
         `;
         container.appendChild(newRow);
+        autoDetectTermForSections();
     }
 
     function removeRow(btn) {
@@ -972,6 +989,23 @@
         } else {
             btn.closest('.subject-entry-row').querySelector('input').value = '';
         }
+    }
+
+    function autoDetectTermForSections() {
+        const activeTermLabel = "{{ active_term_label or '1st Term' }}";
+        const sectionCheckboxes = document.querySelectorAll('input[name="section_ids"]:checked');
+        let isSHS = false;
+        sectionCheckboxes.forEach(cb => {
+            const grade = (cb.getAttribute('data-grade') || '').toLowerCase();
+            if (grade.includes('11') || grade.includes('12') || grade.includes('shs') || grade.includes('senior')) {
+                isSHS = true;
+            }
+        });
+        
+        const targetTerm = isSHS ? activeTermLabel : 'Full Year';
+        document.querySelectorAll('select[name="terms"]').forEach(sel => {
+            sel.value = targetTerm;
+        });
     }
 
     function autoDetectCategory(input) {
@@ -997,6 +1031,7 @@
         document.querySelectorAll('input[name="section_ids"]').forEach(cb => {
             cb.checked = checked;
         });
+        autoDetectTermForSections();
     }
 
     // Attach validation to both forms
