@@ -926,9 +926,10 @@
                     </div>
                 </div>
 
-                <!-- RECESS BREAK -->
+                <!-- RECESS BREAK (DEFAULT) -->
                 <div style="background:#fefce8; border:1px solid #fef08a; padding:12px 14px; border-radius:12px;">
-                    <label class="form-label" style="color:#a16207; font-size:0.8rem; font-weight:800; margin-bottom:4px;">Recess Break</label>
+                    <label class="form-label" style="color:#a16207; font-size:0.8rem; font-weight:800; margin-bottom:4px;">Default Recess (All Days Fallback)</label>
+                    <div style="font-size:0.7rem; color:#64748b; margin-bottom:6px;">Used for any day that doesn't have a custom recess time set below.</div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px;">
                         <div>
                             <label style="font-size:0.7rem; font-weight:700; color:#475569;">Start Time</label>
@@ -938,6 +939,38 @@
                             <label style="font-size:0.7rem; font-weight:700; color:#475569;">End Time</label>
                             <input type="time" id="cfgRecessEnd" class="premium-input" style="padding:6px 10px; font-size:0.85rem;" required>
                         </div>
+                    </div>
+                </div>
+
+                <!-- PER-DAY RECESS OVERRIDES -->
+                <div style="background:#f0f4ff; border:1px solid #c7d7fd; padding:12px 14px; border-radius:12px;">
+                    <label class="form-label" style="color:#3730a3; font-size:0.8rem; font-weight:800; margin-bottom:2px;">Per-Day Recess Override</label>
+                    <div style="font-size:0.7rem; color:#64748b; margin-bottom:8px;">Set a custom recess time for specific days. Leave blank to use the default above.</div>
+
+                    <!-- Toggle button to expand/collapse -->
+                    <button type="button" id="toggleDayRecessBtn"
+                        onclick="toggleDayRecessPanel()"
+                        style="background:#e0e7ff; border:1px solid #a5b4fc; color:#3730a3; font-size:0.75rem; font-weight:700;
+                               padding:4px 12px; border-radius:8px; cursor:pointer; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                        <span id="dayRecessArrow">▶</span> Customize per-day recess times
+                    </button>
+
+                    <div id="dayRecessPanel" style="display:none; gap:8px;">
+                        {% for dayInfo in [('Monday','#fdf4ff','#e9d5ff','#7e22ce'),('Tuesday','#f0fdf4','#bbf7d0','#166534'),('Wednesday','#fff7ed','#fed7aa','#c2410c'),('Thursday','#eff6ff','#bfdbfe','#1e40af'),('Friday','#fef2f2','#fecaca','#991b1b')] %}
+                        <div style="background:{{ dayInfo[1] }}; border:1px solid {{ dayInfo[2] }}; border-radius:10px; padding:8px 12px;">
+                            <div style="font-size:0.75rem; font-weight:800; color:{{ dayInfo[3] }}; margin-bottom:5px;">{{ dayInfo[0] }}</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div>
+                                    <label style="font-size:0.68rem; font-weight:700; color:#475569;">Start</label>
+                                    <input type="time" id="cfgDay{{ dayInfo[0] }}RecessStart" class="premium-input" style="padding:5px 8px; font-size:0.82rem;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.68rem; font-weight:700; color:#475569;">End</label>
+                                    <input type="time" id="cfgDay{{ dayInfo[0] }}RecessEnd" class="premium-input" style="padding:5px 8px; font-size:0.82rem;">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
 
@@ -1152,8 +1185,32 @@
             prayerEnd: normTime(raw.prayerEnd || "07:15"),
             recessStart: normTime(raw.recessStart || "10:15"),
             recessEnd: normTime(raw.recessEnd || "10:30"),
+            fridayRecessStart: normTime(raw.fridayRecessStart || "09:15"),
+            fridayRecessEnd: normTime(raw.fridayRecessEnd || "09:30"),
             lunchStart: normTime(raw.lunchStart || "12:30"),
-            lunchEnd: normTime(raw.lunchEnd || "13:00")
+            lunchEnd: normTime(raw.lunchEnd || "13:00"),
+            dayBreaks: raw.dayBreaks || {}
+        };
+    }
+
+    function getDayRecess(dayName, gradeName = null) {
+        const cfg = getBreakConfig(gradeName);
+        const dayBreaks = cfg.dayBreaks || {};
+        if (dayBreaks[dayName] && dayBreaks[dayName].recessStart && dayBreaks[dayName].recessEnd) {
+            return {
+                start: normTime(dayBreaks[dayName].recessStart),
+                end: normTime(dayBreaks[dayName].recessEnd)
+            };
+        }
+        if (dayName === 'Friday') {
+            return {
+                start: normTime(cfg.fridayRecessStart || "09:15"),
+                end: normTime(cfg.fridayRecessEnd || "09:30")
+            };
+        }
+        return {
+            start: normTime(cfg.recessStart || "10:15"),
+            end: normTime(cfg.recessEnd || "10:30")
         };
     }
 
@@ -1184,6 +1241,16 @@
         container.innerHTML = html;
     }
 
+    const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+
+    function toggleDayRecessPanel() {
+        const panel = document.getElementById('dayRecessPanel');
+        const arrow = document.getElementById('dayRecessArrow');
+        const isHidden = panel.style.display === 'none' || panel.style.display === '';
+        panel.style.display = isHidden ? 'grid' : 'none';
+        arrow.textContent = isHidden ? '▼' : '▶';
+    }
+
     function onBreakGradeChange() {
         const gradeKey = document.getElementById('cfgGradeSelect').value;
         const cfg = getBreakConfig(gradeKey === "DEFAULT" ? null : gradeKey);
@@ -1193,6 +1260,25 @@
         document.getElementById('cfgRecessEnd').value = cfg.recessEnd;
         document.getElementById('cfgLunchStart').value = cfg.lunchStart;
         document.getElementById('cfgLunchEnd').value = cfg.lunchEnd;
+
+        // Populate per-day recess overrides
+        const dayBreaks = cfg.dayBreaks || {};
+        DAY_NAMES.forEach(day => {
+            const db = dayBreaks[day] || {};
+            const startEl = document.getElementById(`cfgDay${day}RecessStart`);
+            const endEl   = document.getElementById(`cfgDay${day}RecessEnd`);
+            if (startEl) startEl.value = db.recessStart || '';
+            if (endEl)   endEl.value   = db.recessEnd   || '';
+        });
+
+        // Auto-expand panel if any day has a custom override
+        const hasOverrides = DAY_NAMES.some(day => dayBreaks[day] && dayBreaks[day].recessStart);
+        const panel = document.getElementById('dayRecessPanel');
+        const arrow = document.getElementById('dayRecessArrow');
+        if (hasOverrides && panel) {
+            panel.style.display = 'grid';
+            arrow.textContent = '▼';
+        }
     }
 
     function openBreakModal() {
@@ -1276,13 +1362,24 @@
             if (!proceed) return;
         }
 
+        // Build per-day recess overrides
+        const dayBreaks = {};
+        DAY_NAMES.forEach(day => {
+            const ds = normTime(document.getElementById(`cfgDay${day}RecessStart`)?.value || '');
+            const de = normTime(document.getElementById(`cfgDay${day}RecessEnd`)?.value   || '');
+            if (ds && de) {
+                dayBreaks[day] = { recessStart: ds, recessEnd: de };
+            }
+        });
+
         const newCfg = {
             prayerStart: pStart || "06:45",
             prayerEnd: pEnd || "07:15",
             recessStart: rStart || "10:15",
             recessEnd: rEnd || "10:30",
             lunchStart: lStart || "12:30",
-            lunchEnd: lEnd || "13:00"
+            lunchEnd: lEnd || "13:00",
+            dayBreaks: dayBreaks
         };
 
 
@@ -1531,15 +1628,23 @@
         const [secId, subjId, teachId] = comboVal.split('|');
         let conflictsFound = [];
 
-        // ── Check against break times (prayer/recess/lunch) ──
+        // ── Check against break times (prayer/recess/lunch) per day ──
         const cfg = getBreakConfig();
-        function overlapsBreak(s, e, bStart, bEnd) { return s < bEnd && e > bStart; }
-        if (cfg.prayerStart && cfg.prayerEnd && overlapsBreak(startTime, endTime, cfg.prayerStart, cfg.prayerEnd))
-            conflictsFound.push(`⛪ Overlaps with Morning Prayer/Rosary (${cfg.prayerStart}–${cfg.prayerEnd})`);
-        if (cfg.recessStart && cfg.recessEnd && overlapsBreak(startTime, endTime, cfg.recessStart, cfg.recessEnd))
-            conflictsFound.push(`☕ Overlaps with Recess Break (${cfg.recessStart}–${cfg.recessEnd})`);
-        if (cfg.lunchStart && cfg.lunchEnd && overlapsBreak(startTime, endTime, cfg.lunchStart, cfg.lunchEnd))
-            conflictsFound.push(`🍽️ Overlaps with Lunch Break (${cfg.lunchStart}–${cfg.lunchEnd})`);
+        function overlapsBreak(s, e, bStart, bEnd) { return bStart && bEnd && s < bEnd && e > bStart; }
+
+        selectedDays.forEach(day => {
+            const pStart = cfg.prayerStart, pEnd = cfg.prayerEnd;
+            const lStart = cfg.lunchStart, lEnd = cfg.lunchEnd;
+            const rec = getDayRecess(day);
+            const rStart = rec.start, rEnd = rec.end;
+
+            if (overlapsBreak(startTime, endTime, pStart, pEnd))
+                conflictsFound.push(`⛪ Overlaps with Morning Prayer/Rosary on ${day} (${pStart}–${pEnd})`);
+            if (overlapsBreak(startTime, endTime, rStart, rEnd))
+                conflictsFound.push(`☕ Overlaps with Recess Break on ${day} (${rStart}–${rEnd})`);
+            if (overlapsBreak(startTime, endTime, lStart, lEnd))
+                conflictsFound.push(`🍽️ Overlaps with Lunch Break on ${day} (${lStart}–${lEnd})`);
+        });
 
         // ── Check against existing schedules ──
         selectedDays.forEach(day => {
@@ -1758,6 +1863,7 @@
         // 1. Add break boundaries
         if (cfg.prayerStart && cfg.prayerEnd) { pointsSet.add(normTime(cfg.prayerStart)); pointsSet.add(normTime(cfg.prayerEnd)); }
         if (cfg.recessStart && cfg.recessEnd) { pointsSet.add(normTime(cfg.recessStart)); pointsSet.add(normTime(cfg.recessEnd)); }
+        if (cfg.fridayRecessStart && cfg.fridayRecessEnd) { pointsSet.add(normTime(cfg.fridayRecessStart)); pointsSet.add(normTime(cfg.fridayRecessEnd)); }
         if (cfg.lunchStart && cfg.lunchEnd) { pointsSet.add(normTime(cfg.lunchStart)); pointsSet.add(normTime(cfg.lunchEnd)); }
 
         // 2. Add standard period cutoffs
@@ -1825,22 +1931,31 @@
 
         timeSlots.forEach((slot, slotIdx) => {
             html += `<tr><td class="matrix-time-col">${slot.label}</td>`;
-            if (slot.isPrayer) {
-                html += `<td colspan="${days.length}" style="background:#eff6ff; text-align:center; color:#1e40af; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bfdbfe;">MORNING PRAYER / HOLY ROSARY / HOMEROOM</td></tr>`;
-                return;
-            }
-            if (slot.isRecess) {
-                html += `<td colspan="${days.length}" style="background:#fefce8; text-align:center; color:#a16207; font-weight:800; font-size:0.8rem; border-bottom:1px solid #fef08a;">RECESS BREAK</td></tr>`;
-                return;
-            }
-            if (slot.isLunch) {
-                html += `<td colspan="${days.length}" style="background:#f0fdf4; text-align:center; color:#166534; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bbf7d0;">LUNCH BREAK</td></tr>`;
-                return;
-            }
 
             days.forEach(d => {
                 if (skipMap[d][slotIdx]) {
                     // Spanned by an earlier cell's rowspan -> skip rendering <td>
+                    return;
+                }
+
+                const rec = getDayRecess(d, grade);
+                const dRecessStart = rec.start;
+                const dRecessEnd = rec.end;
+
+                const isPrayer = (cfg.prayerStart && cfg.prayerEnd && slot.start >= normTime(cfg.prayerStart) && slot.end <= normTime(cfg.prayerEnd));
+                const isRecess = (dRecessStart && dRecessEnd && slot.start >= normTime(dRecessStart) && slot.end <= normTime(dRecessEnd));
+                const isLunch = (cfg.lunchStart && cfg.lunchEnd && slot.start >= normTime(cfg.lunchStart) && slot.end <= normTime(cfg.lunchEnd));
+
+                if (isPrayer) {
+                    html += `<td style="background:#eff6ff; text-align:center; color:#1e40af; font-weight:800; font-size:0.75rem; border-bottom:1px solid #bfdbfe;">MORNING PRAYER</td>`;
+                    return;
+                }
+                if (isRecess) {
+                    html += `<td style="background:#fefce8; text-align:center; color:#a16207; font-weight:800; font-size:0.75rem; border-bottom:1px solid #fef08a;">RECESS BREAK</td>`;
+                    return;
+                }
+                if (isLunch) {
+                    html += `<td style="background:#f0fdf4; text-align:center; color:#166534; font-weight:800; font-size:0.75rem; border-bottom:1px solid #bbf7d0;">LUNCH BREAK</td>`;
                     return;
                 }
 
