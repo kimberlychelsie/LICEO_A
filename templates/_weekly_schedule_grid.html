@@ -220,8 +220,10 @@
             prayerEnd: normTime(raw.prayerEnd || "07:15"),
             recessStart: normTime(raw.recessStart || "10:15"),
             recessEnd: normTime(raw.recessEnd || "10:30"),
+            noRecess: !!raw.noRecess,
             lunchStart: normTime(raw.lunchStart || "12:30"),
             lunchEnd: normTime(raw.lunchEnd || "13:00"),
+            noLunch: !!raw.noLunch,
             dayBreaks: raw.dayBreaks || {}
         };
     }
@@ -229,15 +231,48 @@
     function getDayRecess(dayName) {
         const cfg = getBreakConfig();
         const dayBreaks = cfg.dayBreaks || {};
-        if (dayBreaks[dayName] && dayBreaks[dayName].recessStart && dayBreaks[dayName].recessEnd) {
+        const db = dayBreaks[dayName] || {};
+        if (db.noRecess === true) {
+            return { start: null, end: null, disabled: true };
+        }
+        if (db.recessStart && db.recessEnd) {
             return {
-                start: normTime(dayBreaks[dayName].recessStart),
-                end: normTime(dayBreaks[dayName].recessEnd)
+                start: normTime(db.recessStart),
+                end: normTime(db.recessEnd),
+                disabled: false
             };
+        }
+        if (cfg.noRecess) {
+            return { start: null, end: null, disabled: true };
         }
         return {
             start: normTime(cfg.recessStart || "10:15"),
-            end: normTime(cfg.recessEnd || "10:30")
+            end: normTime(cfg.recessEnd || "10:30"),
+            disabled: false
+        };
+    }
+
+    function getDayLunch(dayName) {
+        const cfg = getBreakConfig();
+        const dayBreaks = cfg.dayBreaks || {};
+        const db = dayBreaks[dayName] || {};
+        if (db.noLunch === true) {
+            return { start: null, end: null, disabled: true };
+        }
+        if (db.lunchStart && db.lunchEnd) {
+            return {
+                start: normTime(db.lunchStart),
+                end: normTime(db.lunchEnd),
+                disabled: false
+            };
+        }
+        if (cfg.noLunch) {
+            return { start: null, end: null, disabled: true };
+        }
+        return {
+            start: normTime(cfg.lunchStart || "12:30"),
+            end: normTime(cfg.lunchEnd || "13:00"),
+            disabled: false
         };
     }
 
@@ -262,28 +297,33 @@
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         
         const pointsSet = new Set();
+        const breakIntervals = [];
 
-        // 1. Add break boundaries
-        if (cfg.prayerStart && cfg.prayerEnd) { pointsSet.add(normTime(cfg.prayerStart)); pointsSet.add(normTime(cfg.prayerEnd)); }
-        if (cfg.recessStart && cfg.recessEnd) { pointsSet.add(normTime(cfg.recessStart)); pointsSet.add(normTime(cfg.recessEnd)); }
-        if (cfg.lunchStart && cfg.lunchEnd) { pointsSet.add(normTime(cfg.lunchStart)); pointsSet.add(normTime(cfg.lunchEnd)); }
-        Object.values(cfg.dayBreaks || {}).forEach(db => {
-            if (db.recessStart) pointsSet.add(normTime(db.recessStart));
-            if (db.recessEnd)   pointsSet.add(normTime(db.recessEnd));
+        // 1. Add prayer boundaries & interval
+        if (cfg.prayerStart && cfg.prayerEnd) {
+            pointsSet.add(normTime(cfg.prayerStart));
+            pointsSet.add(normTime(cfg.prayerEnd));
+            breakIntervals.push([cfg.prayerStart, cfg.prayerEnd]);
+        }
+
+        // Add active per-day breaks (recess & lunch) to boundary points and break intervals
+        days.forEach(d => {
+            const rec = getDayRecess(d);
+            if (!rec.disabled && rec.start && rec.end) {
+                pointsSet.add(rec.start);
+                pointsSet.add(rec.end);
+                breakIntervals.push([rec.start, rec.end]);
+            }
+            const lun = getDayLunch(d);
+            if (!lun.disabled && lun.start && lun.end) {
+                pointsSet.add(lun.start);
+                pointsSet.add(lun.end);
+                breakIntervals.push([lun.start, lun.end]);
+            }
         });
 
         // 2. Add standard period cutoffs — skip any point that falls strictly inside a break period
-        //    (prevents a single break block from being split into multiple rows)
         const defaultCutoffs = ['07:15', '08:05', '08:55', '09:05', '09:55', '10:45', '11:30', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
-
-        const breakIntervals = [];
-        if (cfg.prayerStart && cfg.prayerEnd) breakIntervals.push([cfg.prayerStart, cfg.prayerEnd]);
-        if (cfg.recessStart && cfg.recessEnd) breakIntervals.push([cfg.recessStart, cfg.recessEnd]);
-        if (cfg.lunchStart  && cfg.lunchEnd)  breakIntervals.push([cfg.lunchStart,  cfg.lunchEnd]);
-        Object.values(cfg.dayBreaks || {}).forEach(db => {
-            if (db.recessStart && db.recessEnd) breakIntervals.push([normTime(db.recessStart), normTime(db.recessEnd)]);
-        });
-
         defaultCutoffs.forEach(pt => {
             const npt = normTime(pt);
             const insideBreak = breakIntervals.some(([bs, be]) => npt > bs && npt < be);
@@ -307,31 +347,23 @@
             if (start >= end) continue;
 
             const isPrayer = (cfg.prayerStart && cfg.prayerEnd && start >= normTime(cfg.prayerStart) && end <= normTime(cfg.prayerEnd));
-            const isRecess = (cfg.recessStart && cfg.recessEnd && start >= normTime(cfg.recessStart) && end <= normTime(cfg.recessEnd));
-            const isLunch = (cfg.lunchStart && cfg.lunchEnd && start >= normTime(cfg.lunchStart) && end <= normTime(cfg.lunchEnd));
-
-            const hasActivity = isPrayer || isRecess || isLunch || RAW_SCHEDULES.some(s => normTime(s.start_time) < end && normTime(s.end_time) > start);
+            const hasActivity = isPrayer || RAW_SCHEDULES.some(s => normTime(s.start_time) < end && normTime(s.end_time) > start) || breakIntervals.some(([bs, be]) => start >= bs && end <= be);
             
             if (hasActivity || (start >= '07:15' && end <= '17:00')) {
                 rawTimeSlots.push({
                     start,
                     end,
                     label: formatRange12Hour(start, end),
-                    isPrayer,
-                    isRecess,
-                    isLunch
+                    isPrayer
                 });
             }
         }
 
-        // Collapse adjacent identical break slots
+        // Collapse adjacent prayer slots
         const timeSlots = [];
         rawTimeSlots.forEach(slot => {
             const prev = timeSlots[timeSlots.length - 1];
-            if (prev && (
-                (slot.isPrayer && prev.isPrayer) ||
-                (slot.isLunch && prev.isLunch)
-            )) {
+            if (prev && slot.isPrayer && prev.isPrayer) {
                 prev.end = slot.end;
                 prev.label = formatRange12Hour(prev.start, prev.end);
             } else {
@@ -350,27 +382,17 @@
         timeSlots.forEach((slot, slotIdx) => {
             html += `<tr><td class="shared-matrix-time-col">${slot.label}</td>`;
 
-            if (slot.isPrayer) {
-                html += `<td colspan="${days.length}" style="background:#eff6ff; text-align:center; color:#1e40af; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bfdbfe;">MORNING PRAYER / HOLY ROSARY / HOMEROOM</td></tr>`;
-                return;
-            }
-            if (slot.isLunch) {
-                html += `<td colspan="${days.length}" style="background:#f0fdf4; text-align:center; color:#166534; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bbf7d0;">LUNCH BREAK</td></tr>`;
-                return;
-            }
-
             days.forEach(d => {
                 if (skipMap[d][slotIdx]) {
                     return;
                 }
 
                 const rec = getDayRecess(d);
-                const dRecessStart = rec.start;
-                const dRecessEnd = rec.end;
+                const lun = getDayLunch(d);
 
                 const isPrayer = (cfg.prayerStart && cfg.prayerEnd && slot.start >= normTime(cfg.prayerStart) && slot.end <= normTime(cfg.prayerEnd));
-                const isRecess = (dRecessStart && dRecessEnd && slot.start >= normTime(dRecessStart) && slot.end <= normTime(dRecessEnd));
-                const isLunch = (cfg.lunchStart && cfg.lunchEnd && slot.start >= normTime(cfg.lunchStart) && slot.end <= normTime(cfg.lunchEnd));
+                const isRecess = (!rec.disabled && rec.start && rec.end && slot.start >= rec.start && slot.end <= rec.end);
+                const isLunch = (!lun.disabled && lun.start && lun.end && slot.start >= lun.start && slot.end <= lun.end);
 
                 if (isPrayer) {
                     html += `<td style="background:#eff6ff; text-align:center; color:#1e40af; font-weight:800; font-size:0.75rem; border-bottom:1px solid #bfdbfe;">MORNING PRAYER</td>`;
@@ -406,9 +428,11 @@
                     while (k < timeSlots.length) {
                         const nextSlot = timeSlots[k];
                         const nextRec = getDayRecess(d);
+                        const nextLun = getDayLunch(d);
+
                         const nextIsPrayer = (cfg.prayerStart && cfg.prayerEnd && nextSlot.start >= normTime(cfg.prayerStart) && nextSlot.end <= normTime(cfg.prayerEnd));
-                        const nextIsRecess = (nextRec.start && nextRec.end && nextSlot.start >= normTime(nextRec.start) && nextSlot.end <= normTime(nextRec.end));
-                        const nextIsLunch = (cfg.lunchStart && cfg.lunchEnd && nextSlot.start >= normTime(cfg.lunchStart) && nextSlot.end <= normTime(cfg.lunchEnd));
+                        const nextIsRecess = (!nextRec.disabled && nextRec.start && nextRec.end && nextSlot.start >= nextRec.start && nextSlot.end <= nextRec.end);
+                        const nextIsLunch = (!nextLun.disabled && nextLun.start && nextLun.end && nextSlot.start >= nextLun.start && nextSlot.end <= nextLun.end);
 
                         if (nextIsPrayer || nextIsRecess || nextIsLunch) break;
                         if (nextSlot.start < maxEndTime) {
