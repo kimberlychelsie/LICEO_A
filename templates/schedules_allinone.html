@@ -1862,9 +1862,24 @@
         });
         if (cfg.lunchStart && cfg.lunchEnd) { pointsSet.add(normTime(cfg.lunchStart)); pointsSet.add(normTime(cfg.lunchEnd)); }
 
-        // 2. Add standard period cutoffs
+        // 2. Add standard period cutoffs — but skip any that fall strictly inside a break period
+        //    (prevents a single recess block from being split into multiple rows)
         const defaultCutoffs = ['07:15', '08:05', '08:55', '09:05', '09:55', '10:45', '11:30', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
-        defaultCutoffs.forEach(pt => pointsSet.add(normTime(pt)));
+
+        // Build list of all break intervals (default + per-day overrides) to check against
+        const breakIntervals = [];
+        if (cfg.prayerStart && cfg.prayerEnd)   breakIntervals.push([cfg.prayerStart, cfg.prayerEnd]);
+        if (cfg.recessStart && cfg.recessEnd)    breakIntervals.push([cfg.recessStart, cfg.recessEnd]);
+        if (cfg.lunchStart  && cfg.lunchEnd)     breakIntervals.push([cfg.lunchStart,  cfg.lunchEnd]);
+        Object.values(cfg.dayBreaks || {}).forEach(db => {
+            if (db.recessStart && db.recessEnd) breakIntervals.push([normTime(db.recessStart), normTime(db.recessEnd)]);
+        });
+
+        defaultCutoffs.forEach(pt => {
+            const npt = normTime(pt);
+            const insideBreak = breakIntervals.some(([bs, be]) => npt > bs && npt < be);
+            if (!insideBreak) pointsSet.add(npt);
+        });
 
         // 3. Add schedule start & end times
         filtered.forEach(s => {
