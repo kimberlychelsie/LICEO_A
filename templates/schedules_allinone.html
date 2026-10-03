@@ -1916,13 +1916,12 @@
             }
         }
 
-        // Collapse adjacent identical break slots (e.g., 12:30-13:00 and 13:00-13:30 lunch into one 12:30-13:30 slot)
+        // Collapse adjacent identical break slots (e.g., prayer or lunch)
         const timeSlots = [];
         rawTimeSlots.forEach(slot => {
             const prev = timeSlots[timeSlots.length - 1];
             if (prev && (
                 (slot.isPrayer && prev.isPrayer) ||
-                (slot.isRecess && prev.isRecess) ||
                 (slot.isLunch && prev.isLunch)
             )) {
                 prev.end = slot.end;
@@ -1992,7 +1991,12 @@
                     let k = slotIdx + 1;
                     while (k < timeSlots.length) {
                         const nextSlot = timeSlots[k];
-                        if (nextSlot.isPrayer || nextSlot.isRecess || nextSlot.isLunch) break;
+                        const nextRec = getDayRecess(d, grade);
+                        const nextIsPrayer = (cfg.prayerStart && cfg.prayerEnd && nextSlot.start >= normTime(cfg.prayerStart) && nextSlot.end <= normTime(cfg.prayerEnd));
+                        const nextIsRecess = (nextRec.start && nextRec.end && nextSlot.start >= normTime(nextRec.start) && nextSlot.end <= normTime(nextRec.end));
+                        const nextIsLunch = (cfg.lunchStart && cfg.lunchEnd && nextSlot.start >= normTime(cfg.lunchStart) && nextSlot.end <= normTime(cfg.lunchEnd));
+
+                        if (nextIsPrayer || nextIsRecess || nextIsLunch) break;
                         if (nextSlot.start < maxEndTime) {
                             rowSpan++;
                             skipMap[d][k] = true;
