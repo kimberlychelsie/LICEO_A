@@ -202,25 +202,44 @@
       text-transform: capitalize;
     }
 
-    .school-year-badge {
-      font-size: 0.7rem;
-      color: var(--muted);
-      font-weight: 500;
-      text-transform: capitalize;
-      margin-top: 2px;
-    }
-
-    .school-year-badge {
-      margin: 10px 16px 6px;
-      padding: 8px 12px;
+    .sidebar-info-bar {
+      margin: 12px 16px 6px 16px;
+      padding: 6px 12px;
       border-radius: 10px;
       background: var(--sidebar-hover);
       border: 1px solid var(--border);
-      color: var(--sidebar-text);
-      font-size: 0.78rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.76rem;
       font-weight: 700;
-      text-align: center;
+      color: var(--sidebar-text);
+      max-width: calc(100% - 32px);
+      white-space: nowrap;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+
+    .sidebar-info-bar .sy-text {
       letter-spacing: 0.02em;
+    }
+
+    .sidebar-info-bar .info-dot {
+      color: var(--sidebar-muted);
+      opacity: 0.4;
+      font-size: 0.6rem;
+    }
+
+    .term-badge {
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(37, 99, 235, 0.12);
+      border: 1px solid rgba(37, 99, 235, 0.28);
+      color: var(--info);
+      font-size: 0.70rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
     }
 
     /* Nav */
@@ -680,7 +699,9 @@
       body.sidebar-collapsed .top-brand-text,
       body.sidebar-collapsed .sb-user-name,
       body.sidebar-collapsed .sb-user-role,
+      body.sidebar-collapsed .sidebar-info-bar,
       body.sidebar-collapsed .school-year-badge,
+      body.sidebar-collapsed .term-badge,
       body.sidebar-collapsed .sb-dropdown-arrow,
       body.sidebar-collapsed .sb-section-label,
       body.sidebar-collapsed .sb-count {
@@ -1414,10 +1435,12 @@
   <aside class="sidebar" id="sidebar">
 
     {% if active_school_year %}
-    <div style="margin-top: 10px;">
-      <div class="school-year-badge">
-        S.Y. {{ active_school_year }}
-      </div>
+    <div class="sidebar-info-bar">
+      <span class="sy-text">S.Y. {{ active_school_year }}</span>
+      {% if global_active_term_label %}
+      <span class="info-dot">&bull;</span>
+      <span class="term-badge">{{ global_active_term_label }}</span>
+      {% endif %}
     </div>
     {% endif %}
 

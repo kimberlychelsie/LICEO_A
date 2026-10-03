@@ -732,6 +732,41 @@ def inject_super_admin_notifications():
 
 
 @app.context_processor
+def inject_active_term_label():
+    """Inject the currently active term label (e.g. '1st Term') into all templates globally."""
+    branch_id = session.get('branch_id')
+    if not branch_id:
+        return dict(global_active_term_label=None)
+    try:
+        from db import get_db_connection
+        import psycopg2.extras
+        from datetime import date
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            today = date.today()
+            cursor.execute("""
+                SELECT period_name FROM grading_period_ranges
+                WHERE branch_id = %s
+                  AND year_id = (SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1)
+                  AND start_date <= %s AND end_date >= %s
+                ORDER BY start_date LIMIT 1
+            """, (branch_id, branch_id, today, today))
+            row = cursor.fetchone()
+            period_name = row['period_name'] if row else None
+            if period_name in ('1st', '2nd', '3rd'):
+                label = f"{period_name} Term"
+            else:
+                label = None
+            return dict(global_active_term_label=label)
+        finally:
+            cursor.close()
+            db.close()
+    except Exception:
+        return dict(global_active_term_label=None)
+
+
+@app.context_processor
 def inject_branch_admin_notifications():
     if session.get('role') == 'branch_admin':
         branch_id = session.get('branch_id')
