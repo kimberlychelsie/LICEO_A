@@ -657,8 +657,8 @@
                                 {% for grade_name, items in combinations|groupby('grade_name') %}
                                 <optgroup label="{{ grade_name }}">
                                     {% for c in items %}
-                                    <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
-                                        {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
+                                    <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}|{{c.term_name or ''}}">
+                                        {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}}){% if c.term_name %} — [{{ c.term_name }}]{% endif %}
                                     </option>
                                     {% endfor %}
                                 </optgroup>
@@ -780,6 +780,12 @@
                         <option value="{{ sec.section_id }}" data-grade="{{ sec.grade_name }}">{{ sec.section_name }}</option>
                         {% endfor %}
                     </select>
+                    <select id="termFilter" class="premium-input" style="padding: 7px 14px; font-size: 0.84rem; width: auto; min-width: 130px; height: 38px;" onchange="filterTable(); renderMatrixView();">
+                        <option value="">-- All Terms --</option>
+                        <option value="1st Term">1st Term</option>
+                        <option value="2nd Term">2nd Term</option>
+                        <option value="3rd Term">3rd Term</option>
+                    </select>
                 </div>
             </div>
             
@@ -805,13 +811,13 @@
                 </thead>
                 <tbody>
                     {% for sched in schedules %}
-                    <tr class="schedule-row" data-grade="{{ sched.grade_name }}" data-section-id="{{ sched.section_id }}">
+                    <tr class="schedule-row" data-grade="{{ sched.grade_name }}" data-section-id="{{ sched.section_id }}" data-term-name="{{ sched.term_name or '' }}">
                         <td><span style="color: var(--sch-blue); font-weight: 800;">{{sched.year_label}}</span></td>
                         <td><span style="background: var(--sch-blue-light); color: var(--sch-blue); padding: 4px 10px; border-radius: 8px; font-weight: 800; font-size: 0.8rem; border: 1px solid #bfdbfe;">{{sched.grade_name}}</span></td>
                         <td>
                             <div class="class-info">
                                 <span class="class-main">{{sched.section_name}}</span>
-                                <span class="class-sub">{{sched.subject_name}}</span>
+                                <span class="class-sub">{{sched.subject_name}}{% if sched.term_name %} <span style="font-size:0.68rem; background:rgba(37,99,235,0.1); color:#2563eb; border:1px solid rgba(37,99,235,0.25); padding:1px 6px; border-radius:4px; font-weight:700; margin-left:4px; white-space:nowrap;">{{sched.term_name}}</span>{% endif %}</span>
                             </div>
                         </td>
                         <td><span style="font-weight: 600; color: #334155;">{{sched.teacher_name}}</span></td>
@@ -1429,11 +1435,34 @@
             subjSelect.innerHTML = '<option value="">-- No subjects assigned to this section yet --</option>';
             subjSelect.disabled = true;
         } else {
+            // Group subjects by term_name for ultra-clean dropdown organization
+            const termGroups = {};
             matchedSubjs.forEach(c => {
-                const val = `${c.section_id}|${c.subject_id}|${c.teacher_id}|${c.term_name || ''}`;
-                const termTag = c.term_name ? ` — [${c.term_name}]` : '';
-                subjSelect.innerHTML += `<option value="${val}">${c.subject_name} (${c.teacher_name})${termTag}</option>`;
+                const tName = (c.term_name && c.term_name.trim()) ? c.term_name.trim() : 'Full Year / General Subjects';
+                if (!termGroups[tName]) termGroups[tName] = [];
+                termGroups[tName].push(c);
             });
+
+            const preferredOrder = ['1st Term', '2nd Term', '3rd Term', 'Full Year / General Subjects'];
+            const sortedTerms = Object.keys(termGroups).sort((a, b) => {
+                const idxA = preferredOrder.indexOf(a);
+                const idxB = preferredOrder.indexOf(b);
+                const posA = idxA !== -1 ? idxA : 99;
+                const posB = idxB !== -1 ? idxB : 99;
+                if (posA !== posB) return posA - posB;
+                return a.localeCompare(b);
+            });
+
+            let optsHtml = '<option value="">-- Select Subject --</option>';
+            sortedTerms.forEach(tName => {
+                optsHtml += `<optgroup label="── ${tName} ──">`;
+                termGroups[tName].forEach(c => {
+                    const val = `${c.section_id}|${c.subject_id}|${c.teacher_id}|${c.term_name || ''}`;
+                    optsHtml += `<option value="${val}">${c.subject_name} (${c.teacher_name})</option>`;
+                });
+                optsHtml += `</optgroup>`;
+            });
+            subjSelect.innerHTML = optsHtml;
             subjSelect.disabled = false;
         }
     }
@@ -1713,10 +1742,12 @@
 
         const grade = document.getElementById('gradeFilter').value;
         const sectionId = document.getElementById('sectionFilter').value;
+        const termFilter = document.getElementById('termFilter') ? document.getElementById('termFilter').value : '';
 
         let filtered = ALL_SCHEDULES;
         if (grade) filtered = filtered.filter(s => s.grade_name === grade);
         if (sectionId) filtered = filtered.filter(s => String(s.section_id) === String(sectionId));
+        if (termFilter) filtered = filtered.filter(s => s.term_name === termFilter);
 
         const cfg = getBreakConfig(grade);
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -2091,6 +2122,7 @@
     function filterTable() {
         const grade = document.getElementById('gradeFilter').value;
         const sectionId = document.getElementById('sectionFilter').value;
+        const termFilter = document.getElementById('termFilter') ? document.getElementById('termFilter').value : '';
         if (grade) localStorage.setItem('sch_active_grade_filter', grade);
         localStorage.setItem('sch_active_section_filter', sectionId);
 
@@ -2100,11 +2132,13 @@
         rows.forEach(row => {
             const rowGrade = row.getAttribute('data-grade');
             const rowSectionId = row.getAttribute('data-section-id');
+            const rowTerm = row.getAttribute('data-term-name') || '';
             
             const gradeMatch = (grade === "" || rowGrade === grade);
             const sectionMatch = (sectionId === "" || rowSectionId === sectionId);
+            const termMatch = (termFilter === "" || rowTerm === termFilter);
             
-            if (gradeMatch && sectionMatch) {
+            if (gradeMatch && sectionMatch && termMatch) {
                 row.style.display = 'table-row';
                 visibleCount++;
             } else {
