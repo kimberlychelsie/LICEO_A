@@ -218,6 +218,7 @@
         return {
             prayerStart: normTime(raw.prayerStart || "06:45"),
             prayerEnd: normTime(raw.prayerEnd || "07:15"),
+            noPrayer: !!raw.noPrayer,
             recessStart: normTime(raw.recessStart || "10:15"),
             recessEnd: normTime(raw.recessEnd || "10:30"),
             noRecess: !!raw.noRecess,
@@ -225,6 +226,30 @@
             lunchEnd: normTime(raw.lunchEnd || "13:00"),
             noLunch: !!raw.noLunch,
             dayBreaks: raw.dayBreaks || {}
+        };
+    }
+
+    function getDayPrayer(dayName) {
+        const cfg = getBreakConfig();
+        const dayBreaks = cfg.dayBreaks || {};
+        const db = dayBreaks[dayName] || {};
+        if (db.noPrayer === true) {
+            return { start: null, end: null, disabled: true };
+        }
+        if (db.prayerStart && db.prayerEnd) {
+            return {
+                start: normTime(db.prayerStart),
+                end: normTime(db.prayerEnd),
+                disabled: false
+            };
+        }
+        if (cfg.noPrayer) {
+            return { start: null, end: null, disabled: true };
+        }
+        return {
+            start: normTime(cfg.prayerStart || "06:45"),
+            end: normTime(cfg.prayerEnd || "07:15"),
+            disabled: false
         };
     }
 
@@ -299,15 +324,14 @@
         const pointsSet = new Set();
         const breakIntervals = [];
 
-        // 1. Add prayer boundaries & interval
-        if (cfg.prayerStart && cfg.prayerEnd) {
-            pointsSet.add(normTime(cfg.prayerStart));
-            pointsSet.add(normTime(cfg.prayerEnd));
-            breakIntervals.push([cfg.prayerStart, cfg.prayerEnd]);
-        }
-
-        // Add active per-day breaks (recess & lunch) to boundary points and break intervals
+        // Add active per-day breaks (prayer, recess & lunch) to boundary points and break intervals
         days.forEach(d => {
+            const pray = getDayPrayer(d);
+            if (!pray.disabled && pray.start && pray.end) {
+                pointsSet.add(pray.start);
+                pointsSet.add(pray.end);
+                breakIntervals.push([pray.start, pray.end]);
+            }
             const rec = getDayRecess(d);
             if (!rec.disabled && rec.start && rec.end) {
                 pointsSet.add(rec.start);
@@ -387,10 +411,11 @@
                     return;
                 }
 
+                const pray = getDayPrayer(d);
                 const rec = getDayRecess(d);
                 const lun = getDayLunch(d);
 
-                const isPrayer = (cfg.prayerStart && cfg.prayerEnd && slot.start >= normTime(cfg.prayerStart) && slot.end <= normTime(cfg.prayerEnd));
+                const isPrayer = (!pray.disabled && pray.start && pray.end && slot.start >= pray.start && slot.end <= pray.end);
                 const isRecess = (!rec.disabled && rec.start && rec.end && slot.start >= rec.start && slot.end <= rec.end);
                 const isLunch = (!lun.disabled && lun.start && lun.end && slot.start >= lun.start && slot.end <= lun.end);
 
@@ -427,10 +452,11 @@
                     let k = slotIdx + 1;
                     while (k < timeSlots.length) {
                         const nextSlot = timeSlots[k];
+                        const nextPray = getDayPrayer(d);
                         const nextRec = getDayRecess(d);
                         const nextLun = getDayLunch(d);
 
-                        const nextIsPrayer = (cfg.prayerStart && cfg.prayerEnd && nextSlot.start >= normTime(cfg.prayerStart) && nextSlot.end <= normTime(cfg.prayerEnd));
+                        const nextIsPrayer = (!nextPray.disabled && nextPray.start && nextPray.end && nextSlot.start >= nextPray.start && nextSlot.end <= nextPray.end);
                         const nextIsRecess = (!nextRec.disabled && nextRec.start && nextRec.end && nextSlot.start >= nextRec.start && nextSlot.end <= nextRec.end);
                         const nextIsLunch = (!nextLun.disabled && nextLun.start && nextLun.end && nextSlot.start >= nextLun.start && nextSlot.end <= nextLun.end);
 
