@@ -2840,7 +2840,7 @@ def branch_admin_assign_teachers():
         teachers = cursor.fetchall() or []
 
         base_query = """
-            SELECT st.id AS section_teacher_id, st.section_id, st.subject_id, st.teacher_id, s.section_name, g.name AS grade_level_name, sub.name AS subject_name, u.full_name AS teacher_full_name
+            SELECT st.id AS section_teacher_id, st.section_id, st.subject_id, st.teacher_id, st.term_name, s.section_name, g.name AS grade_level_name, sub.name AS subject_name, u.full_name AS teacher_full_name
             FROM section_teachers st
             JOIN sections s ON st.section_id = s.section_id
             JOIN grade_levels g ON s.grade_level_id = g.id
@@ -2896,7 +2896,7 @@ def branch_admin_api_get_all_subjects(teacher_id):
 
         # ── Subject slots (for Subject Loads tab) ──
         query = """
-            SELECT st.id AS assignment_id, st.subject_id, st.section_id, st.teacher_id,
+            SELECT st.id AS assignment_id, st.subject_id, st.section_id, st.teacher_id, st.term_name,
                    sub.name AS subject_name, s.section_name,
                    g.name AS grade_level_name,
                    (st.teacher_id = %s) AS is_assigned_to_this_teacher,
