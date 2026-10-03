@@ -575,9 +575,20 @@
                                     style="background: #e0f2fe; color: #0369a1; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">{{ a.track }}</span>
                                 {% endif %}
                                 {% endif %}
-                                {% if a.term_name %}
-                                <span class="badge-pill"
-                                    style="background: #fef9c3; color: #854d0e; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">{{ a.term_name }}</span>
+                                {% if a.term_name and a.term_name not in ['Full Term', 'Full Year', 'full_term', ''] %}
+                                    {% if '1' in a.term_name or 'First' in a.term_name or '1st' in a.term_name %}
+                                    <span class="badge-pill"
+                                        style="background: #e0e7ff; color: #3730a3; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; border: 1px solid #c7d2fe;">{{ a.term_name }}</span>
+                                    {% elif '2' in a.term_name or 'Second' in a.term_name or '2nd' in a.term_name %}
+                                    <span class="badge-pill"
+                                        style="background: #f3e8ff; color: #6b21a8; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; border: 1px solid #e9d5ff;">{{ a.term_name }}</span>
+                                    {% elif '3' in a.term_name or 'Third' in a.term_name or '3rd' in a.term_name or 'Summer' in a.term_name %}
+                                    <span class="badge-pill"
+                                        style="background: #ffedd5; color: #9a3412; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; border: 1px solid #fed7aa;">{{ a.term_name }}</span>
+                                    {% else %}
+                                    <span class="badge-pill"
+                                        style="background: #fef9c3; color: #854d0e; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; border: 1px solid #fef08a;">{{ a.term_name }}</span>
+                                    {% endif %}
                                 {% endif %}
                             </td>
                             <td data-label="Assigned To">

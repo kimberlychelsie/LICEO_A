@@ -35,6 +35,201 @@ def validate_password_policy(password):
 def _hash_token(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
+def _activate_user_session(user, db, cursor, client_ip):
+    """Centralized helper to activate user session and determine redirect dashboard URL"""
+    next_url = session.get("next_url")
+    session.clear()
+    session.permanent = True
+
+    session["user_id"]   = user["user_id"]
+    session["role"]      = user["role"]
+    session["branch_id"] = user.get("branch_id")
+    session["username"]  = user.get("username")
+    session["full_name"] = user.get("full_name")  # for display in sidebar
+    session["last_activity"] = time.time()
+
+    # Load multi-roles into session
+    roles_list = []
+    ur_raw = user.get("user_roles")
+    if ur_raw:
+        try:
+            roles_list = json.loads(ur_raw) if isinstance(ur_raw, str) else list(ur_raw)
+        except Exception:
+            roles_list = []
+
+    if not roles_list:
+        roles_list = [user["role"]]
+
+    if user["role"] == "student":
+        roles_list = ["student"]
+    else:
+        if user["role"] not in roles_list:
+            roles_list.insert(0, user["role"])
+
+        # Sync parent links and roles dynamically with strict branch matching
+        try:
+            sync_res = sync_user_parent_links(db, cursor, user["user_id"])
+            db.commit()
+            roles_list = sync_res.get("user_roles", roles_list)
+        except Exception as ex:
+            print(f"Error checking parent role auto-link on login: {ex}")
+
+    session["roles"] = roles_list
+
+    try:
+        cursor.execute("DELETE FROM failed_logins WHERE username = %s OR ip_address = %s", (user.get("username"), client_ip))
+        log_audit_event(
+            cursor, user["user_id"], user.get("full_name") or user.get("username"), user.get("role"), user.get("branch_id"),
+            "USER_LOGIN", f"Successful login from IP {client_ip}", client_ip
+        )
+        db.commit()
+    except Exception:
+        pass
+
+    # Fetch branch name and code for sidebar display
+    if user.get("branch_id"):
+        cursor.execute(
+            "SELECT branch_name, branch_code, is_active FROM branches WHERE branch_id = %s",
+            (user["branch_id"],)
+        )
+        brow = cursor.fetchone()
+        
+        # BLOCK LOGIN IF BRANCH IS INACTIVE (Except for Super Admin)
+        if brow and not brow.get("is_active") and user["role"] != "super_admin":
+            return None, "This branch is currently deactivated. Access is restricted."
+
+        session["branch_name"] = brow["branch_name"] if brow else None
+        session["branch_code"] = brow["branch_code"] if brow else None
+    else:
+        session["branch_name"] = None
+        session["branch_code"] = None
+
+    role = user["role"]
+
+    # ── For teachers: load is_swafo flag into session ──
+    if role == "teacher":
+        session["is_swafo"] = bool(user.get("is_swafo", False))
+
+    # ── For students: load enrollment session FIRST (before any redirects)
+    if role == "student":
+        cursor.execute("SELECT sa.account_id, sa.enrollment_id FROM student_accounts sa WHERE sa.username = %s LIMIT 1", (user.get("username"),))
+        sa_check = cursor.fetchone()
+        if sa_check and sa_check.get("enrollment_id"):
+            enrollment_id = sa_check["enrollment_id"]
+            if enrollment_id != user.get("enrollment_id"):
+                cursor.execute("UPDATE users SET enrollment_id = %s WHERE user_id = %s", (enrollment_id, user["user_id"]))
+        else:
+            enrollment_id = user.get("enrollment_id")
+
+        if enrollment_id:
+            cursor.execute("""
+                SELECT
+                    e.enrollment_id,
+                    e.student_first_name,
+                    e.student_middle_name,
+                    e.student_last_name,
+                    e.grade_level,
+                    e.branch_id,
+                    sa.account_id
+                FROM enrollments e
+                LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+                WHERE e.enrollment_id = %s
+                LIMIT 1
+            """, (enrollment_id,))
+        else:
+            cursor.execute("""
+                SELECT sa.account_id, sa.enrollment_id,
+                       e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level, e.branch_id
+                FROM student_accounts sa
+                JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
+                WHERE sa.username = %s
+                LIMIT 1
+            """, (user.get("username"),))
+        en = cursor.fetchone()
+        if en:
+            student_name = " ".join(filter(None, [
+                en.get("student_first_name"),
+                en.get("student_middle_name"),
+                en.get("student_last_name")
+            ]))
+
+            session["student_account_id"] = en.get("account_id")
+            session["enrollment_id"] = en.get("enrollment_id")
+            session["student_name"] = student_name
+            session["student_grade_level"] = en.get("grade_level")
+            session["branch_id"]           = en.get("branch_id") or session.get("branch_id")
+
+            if session.get("branch_id"):
+                cursor.execute(
+                    "SELECT branch_name FROM branches WHERE branch_id = %s",
+                    (session["branch_id"],),
+                )
+                brow = cursor.fetchone()
+                if brow:
+                    session["branch_name"] = brow["branch_name"]
+
+    # ── Force password change if required (session is already complete)
+    if check_password_change_required(user):
+        return url_for("auth.change_password"), None
+
+    # ── Route to correct dashboard
+    if role == "super_admin":
+        return "/super-admin", None
+    elif role == "branch_admin":
+        return "/branch-admin", None
+    elif role == "registrar":
+        return "/registrar", None
+    elif role == "cashier":
+        return "/cashier", None
+    elif role == "librarian":
+        return "/librarian", None
+    elif role == "teacher":
+        return "/teacher", None
+    elif role == "parent":
+        try:
+            cursor.execute("""
+                SELECT e.guardian_first_name, e.guardian_middle_name, e.guardian_last_name
+                FROM parent_student ps
+                JOIN enrollments e ON ps.student_id = e.enrollment_id
+                WHERE ps.parent_id = %s
+                ORDER BY e.updated_at DESC, e.created_at DESC
+                LIMIT 1
+            """, (user["user_id"],))
+            grow = cursor.fetchone()
+            if grow:
+                gfull = " ".join(filter(None, [
+                    grow.get("guardian_first_name"),
+                    grow.get("guardian_middle_name"),
+                    grow.get("guardian_last_name")
+                ])).strip()
+                if gfull:
+                    session["full_name"] = gfull
+                    cursor.execute("""
+                        UPDATE users 
+                        SET first_name = COALESCE(NULLIF(TRIM(first_name), ''), %s),
+                            middle_name = COALESCE(NULLIF(TRIM(middle_name), ''), %s),
+                            last_name = COALESCE(NULLIF(TRIM(last_name), ''), %s),
+                            full_name = %s
+                        WHERE user_id = %s
+                    """, (
+                        grow.get("guardian_first_name"),
+                        grow.get("guardian_middle_name"),
+                        grow.get("guardian_last_name"),
+                        gfull,
+                        user["user_id"]
+                    ))
+                    db.commit()
+        except Exception:
+            pass
+        return "/parent/dashboard", None
+    elif role == "student":
+        if next_url:
+            return next_url, None
+        return "/student/dashboard", None
+    else:
+        return "/", None
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("8 per minute", exempt_when=lambda: request.method != "POST")
 def login():
@@ -121,200 +316,63 @@ def login():
                     password_valid = (stored == password)
 
                 if password_valid:
-                    next_url = session.get("next_url")
-                    session.clear()
-                    session.permanent = True
+                    user_email = (user.get("email") or "").strip()
+                    enable_2fa = os.getenv("ENABLE_2FA", "false").lower() in ["true", "1", "yes"]
+                    requires_2fa_role = enable_2fa and (user.get("role") in ["super_admin", "branch_admin", "registrar", "cashier", "teacher", "librarian"])
 
-                    session["user_id"]   = user["user_id"]
-                    session["role"]      = user["role"]
-                    session["branch_id"] = user.get("branch_id")
-                    session["username"]  = user.get("username")
-                    session["full_name"] = user.get("full_name")  # for display in sidebar
-                    session["last_activity"] = time.time()
+                    if user_email and requires_2fa_role:
+                        raw_token = secrets.token_urlsafe(32)
+                        token_hash = _hash_token(raw_token)
+                        expiry = datetime.utcnow() + timedelta(minutes=5)
 
-                    # Load multi-roles into session
-                    roles_list = []
-                    ur_raw = user.get("user_roles")
-                    if ur_raw:
-                        try:
-                            roles_list = json.loads(ur_raw) if isinstance(ur_raw, str) else list(ur_raw)
-                        except Exception:
-                            roles_list = []
-
-                    if not roles_list:
-                        roles_list = [user["role"]]
-
-                    if user["role"] == "student":
-                        roles_list = ["student"]
-                    else:
-                        if user["role"] not in roles_list:
-                            roles_list.insert(0, user["role"])
-
-                        # Sync parent links and roles dynamically with strict branch matching
-                        try:
-                            sync_res = sync_user_parent_links(db, cursor, user["user_id"])
-                            db.commit()
-                            roles_list = sync_res.get("user_roles", roles_list)
-                        except Exception as ex:
-                            print(f"Error checking parent role auto-link on login: {ex}")
-
-                    session["roles"] = roles_list
-
-                    try:
-                        cursor.execute("DELETE FROM failed_logins WHERE username = %s OR ip_address = %s", (username, client_ip))
-                        log_audit_event(
-                            cursor, user["user_id"], user.get("full_name") or user.get("username"), user.get("role"), user.get("branch_id"),
-                            "USER_LOGIN", f"Successful login from IP {client_ip}", client_ip
-                        )
+                        cursor.execute("""
+                            INSERT INTO login_2fa_tokens (token_hash, user_id, user_role, ip_address, status, created_at, expires_at)
+                            VALUES (%s, %s, %s, %s, 'PENDING', NOW(), %s)
+                        """, (token_hash, user["user_id"], user["role"], client_ip, expiry))
                         db.commit()
-                    except Exception:
-                        pass
 
-                    # Fetch branch name and code for sidebar display
-                    if user.get("branch_id"):
-                        cursor.execute(
-                            "SELECT branch_name, branch_code, is_active FROM branches WHERE branch_id = %s",
-                            (user["branch_id"],)
+                        session["pending_2fa_token_hash"] = token_hash
+                        session["pending_2fa_user_id"] = user["user_id"]
+
+                        base_url = os.getenv("BASE_URL") or request.host_url.rstrip("/")
+                        auth_link = f"{base_url}/login/authorize/{raw_token}"
+                        email_body = (
+                            f"Hello {user.get('full_name') or user.get('username')},\n\n"
+                            f"A login request was initiated for your {user.get('role').replace('_', ' ').title()} account on Liceo LMS.\n\n"
+                            f"Click here to authorize your login: {auth_link}\n\n"
+                            "This link is valid for 5 minutes."
                         )
-                        brow = cursor.fetchone()
-                        
-                        # BLOCK LOGIN IF BRANCH IS INACTIVE (Except for Super Admin)
-                        if brow and not brow.get("is_active") and user["role"] != "super_admin":
-                            flash("This branch is currently deactivated. Access is restricted.", "error")
-                            return redirect(url_for("auth.login"))
-
-                        session["branch_name"] = brow["branch_name"] if brow else None
-                        session["branch_code"] = brow["branch_code"] if brow else None
-                    else:
-                        session["branch_name"] = None
-                        session["branch_code"] = None
-
-                    role = user["role"]
-
-                    # ── For teachers: load is_swafo flag into session ──
-                    if role == "teacher":
-                        session["is_swafo"] = bool(user.get("is_swafo", False))
-
-                    # ── For students: load enrollment session FIRST (before any redirects)
-                    if role == "student":
-                        # Ensure users.enrollment_id is in sync with student_accounts.enrollment_id if present
-                        cursor.execute("SELECT sa.account_id, sa.enrollment_id FROM student_accounts sa WHERE sa.username = %s LIMIT 1", (username,))
-                        sa_check = cursor.fetchone()
-                        if sa_check and sa_check.get("enrollment_id"):
-                            enrollment_id = sa_check["enrollment_id"]
-                            if enrollment_id != user.get("enrollment_id"):
-                                cursor.execute("UPDATE users SET enrollment_id = %s WHERE user_id = %s", (enrollment_id, user["user_id"]))
-                        else:
-                            enrollment_id = user.get("enrollment_id")
-
-                        if enrollment_id:
-                            cursor.execute("""
-                                SELECT
-                                    e.enrollment_id,
-                                    e.student_first_name,
-                                    e.student_middle_name,
-                                    e.student_last_name,
-                                    e.grade_level,
-                                    e.branch_id,
-                                    sa.account_id
-                                FROM enrollments e
-                                LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
-                                WHERE e.enrollment_id = %s
-                                LIMIT 1
-                            """, (enrollment_id,))
-                        else:
-                            cursor.execute("""
-                                SELECT sa.account_id, sa.enrollment_id,
-                                       e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level, e.branch_id
-                                FROM student_accounts sa
-                                JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
-                                WHERE sa.username = %s
-                                LIMIT 1
-                            """, (username,))
-                        en = cursor.fetchone()
-                        if en:
-                            student_name = " ".join(filter(None, [
-                                en.get("student_first_name"),
-                                en.get("student_middle_name"),
-                                en.get("student_last_name")
-                            ]))
-
-                            session["student_account_id"] = en.get("account_id")
-                            session["enrollment_id"] = en.get("enrollment_id")
-                            session["student_name"] = student_name
-                            session["student_grade_level"] = en.get("grade_level")
-                            session["branch_id"]           = en.get("branch_id") or session.get("branch_id")
-
-                            # Make sure sidebar branch label follows the student's actual branch
-                            if session.get("branch_id"):
-                                cursor.execute(
-                                    "SELECT branch_name FROM branches WHERE branch_id = %s",
-                                    (session["branch_id"],),
-                                )
-                                brow = cursor.fetchone()
-                                if brow:
-                                    session["branch_name"] = brow["branch_name"]
-
-                    # ── Force password change if required (session is already complete)
-                    if check_password_change_required(user):
-                        return redirect(url_for("auth.change_password"))
-
-                    # ── Route to correct dashboard
-                    if role == "super_admin":
-                        return redirect("/super-admin")
-                    elif role == "branch_admin":
-                        return redirect("/branch-admin")
-                    elif role == "registrar":
-                        return redirect("/registrar")
-                    elif role == "cashier":
-                        return redirect("/cashier")
-                    elif role == "librarian":
-                        return redirect("/librarian")
-                    elif role == "teacher":
-                        return redirect("/teacher")
-                    elif role == "parent":
+                        html_body = f"""
+                        <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+                            <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #0c2461;">
+                                <h2 style="color: #0c2461; margin: 0; font-size: 22px;">Liceo LMS — Login Security Authorization</h2>
+                            </div>
+                            <div style="padding: 24px 0; color: #334155; line-height: 1.6;">
+                                <p style="font-size: 15px;">Hello <strong>{user.get('full_name') or user.get('username')}</strong>,</p>
+                                <p style="font-size: 15px;">A login request was initiated for your <strong>{user.get('role').replace('_', ' ').title()}</strong> account on Liceo LMS from IP address <code>{client_ip}</code>.</p>
+                                <p style="font-size: 15px;">To complete your login, please click the authorization button below within <strong>5 minutes</strong>:</p>
+                                <div style="text-align: center; margin: 28px 0;">
+                                    <a href="{auth_link}" style="background-color: #0c2461; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Authorize Login Request</a>
+                                </div>
+                                <p style="font-size: 13px; color: #64748b;">If you did not initiate this login request, please ignore this email.</p>
+                            </div>
+                            <div style="text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                                &copy; 2026 Liceo Learning Management System. All rights reserved.
+                            </div>
+                        </div>
+                        """
                         try:
-                            cursor.execute("""
-                                SELECT e.guardian_first_name, e.guardian_middle_name, e.guardian_last_name
-                                FROM parent_student ps
-                                JOIN enrollments e ON ps.student_id = e.enrollment_id
-                                WHERE ps.parent_id = %s
-                                ORDER BY e.updated_at DESC, e.created_at DESC
-                                LIMIT 1
-                            """, (user["user_id"],))
-                            grow = cursor.fetchone()
-                            if grow:
-                                gfull = " ".join(filter(None, [
-                                    grow.get("guardian_first_name"),
-                                    grow.get("guardian_middle_name"),
-                                    grow.get("guardian_last_name")
-                                ])).strip()
-                                if gfull:
-                                    session["full_name"] = gfull
-                                    cursor.execute("""
-                                        UPDATE users 
-                                        SET first_name = COALESCE(NULLIF(TRIM(first_name), ''), %s),
-                                            middle_name = COALESCE(NULLIF(TRIM(middle_name), ''), %s),
-                                            last_name = COALESCE(NULLIF(TRIM(last_name), ''), %s),
-                                            full_name = %s
-                                        WHERE user_id = %s
-                                    """, (
-                                        grow.get("guardian_first_name"),
-                                        grow.get("guardian_middle_name"),
-                                        grow.get("guardian_last_name"),
-                                        gfull,
-                                        user["user_id"]
-                                    ))
-                                    db.commit()
-                        except Exception:
-                            pass
-                        return redirect("/parent/dashboard")
-                    elif role == "student":
-                        if next_url:
-                            return redirect(next_url)
-                        return redirect("/student/dashboard")
-                    else:
-                        return redirect("/")
+                            send_email(user_email, "Login Security Authorization Request — Liceo LMS", email_body, html_body=html_body)
+                        except Exception as ex:
+                            print(f"[2FA EMAIL ERROR]: {ex}")
+
+                        return render_template("login.html", pending_2fa=True, pending_email=user_email, expires_in_seconds=300)
+
+                    dest_url, err_msg = _activate_user_session(user, db, cursor, client_ip)
+                    if err_msg:
+                        flash(err_msg, "error")
+                        return redirect(url_for("auth.login"))
+                    return redirect(dest_url)
 
 
             # ✅ 2) Check student accounts (MAIN student login path)
@@ -593,7 +651,7 @@ def forgot_password():
         db = get_db_connection()
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
-            expiry = datetime.now(timezone.utc) + timedelta(minutes=30)
+            base_url = os.getenv("BASE_URL") or request.host_url.rstrip("/")
 
             # 1) Try users table
             cur.execute("""
@@ -606,7 +664,7 @@ def forgot_password():
 
             if u and (u.get("email") or "").strip().lower() == email:
 
-                # ✅ RESEND TIMER for users (put it HERE)
+                # RESEND TIMER for users
                 cur.execute("""
                     SELECT 1
                     FROM password_reset_tokens
@@ -625,18 +683,37 @@ def forgot_password():
 
                 cur.execute("""
                     INSERT INTO password_reset_tokens (token_hash, user_id, student_account_id, email, expires_at)
-                    VALUES (%s, %s, NULL, %s, %s)
-                """, (th, u["user_id"], email, expiry))
+                    VALUES (%s, %s, NULL, %s, NOW() + INTERVAL '30 minutes')
+                """, (th, u["user_id"], email))
                 db.commit()
 
-                link = f"{BASE_URL}/reset-password/{raw}"
+                link = f"{base_url}/reset-password/{raw}"
                 body = (
                     "We received a request to reset your password.\n\n"
                     f"Account: {u['role']} ({u['username']})\n"
                     f"Reset link: {link}\n\n"
                     "This link expires in 30 minutes. If you did not request this, ignore this email."
                 )
-                send_email(email, "Password Reset Request", body)
+                html_body = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+                    <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #0c2461;">
+                        <h2 style="color: #0c2461; margin: 0; font-size: 22px;">Liceo LMS — Password Reset Request</h2>
+                    </div>
+                    <div style="padding: 24px 0; color: #334155; line-height: 1.6;">
+                        <p style="font-size: 15px;">Hello <strong>{u['username']}</strong>,</p>
+                        <p style="font-size: 15px;">We received a request to reset the password for your <strong>{u['role'].replace('_', ' ').title()}</strong> account on Liceo LMS.</p>
+                        <p style="font-size: 15px;">Please click the button below to set a new password within <strong>30 minutes</strong>:</p>
+                        <div style="text-align: center; margin: 28px 0;">
+                            <a href="{link}" style="background-color: #0c2461; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Reset Password</a>
+                        </div>
+                        <p style="font-size: 13px; color: #64748b;">If you did not request a password reset, you can safely ignore this email.</p>
+                    </div>
+                    <div style="text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                        &copy; 2026 Liceo Learning Management System. All rights reserved.
+                    </div>
+                </div>
+                """
+                send_email(email, "Password Reset Request — Liceo LMS", body, html_body=html_body)
 
                 flash(generic_msg, "success")
                 return redirect(url_for("auth.login"))
@@ -656,7 +733,7 @@ def forgot_password():
 
             if s and (s.get("match_email") or "").strip().lower() == email:
 
-                # ✅ RESEND TIMER for student_accounts (put it HERE)
+                # RESEND TIMER for student_accounts
                 cur.execute("""
                     SELECT 1
                     FROM password_reset_tokens
@@ -675,11 +752,11 @@ def forgot_password():
 
                 cur.execute("""
                     INSERT INTO password_reset_tokens (token_hash, user_id, student_account_id, email, expires_at)
-                    VALUES (%s, NULL, %s, %s, %s)
-                """, (th, s["account_id"], email, expiry))
+                    VALUES (%s, NULL, %s, %s, NOW() + INTERVAL '30 minutes')
+                """, (th, s["account_id"], email))
                 db.commit()
 
-                link = f"{BASE_URL}/reset-password/{raw}"
+                link = f"{base_url}/reset-password/{raw}"
                 who = " ".join(filter(None, [
                     s.get("student_first_name"),
                     s.get("student_middle_name"),
@@ -691,7 +768,26 @@ def forgot_password():
                     f"Reset link: {link}\n\n"
                     "This link expires in 30 minutes. If you did not request this, ignore this email."
                 )
-                send_email(email, "Password Reset Request", body)
+                html_body = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+                    <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #0c2461;">
+                        <h2 style="color: #0c2461; margin: 0; font-size: 22px;">Liceo LMS — Password Reset Request</h2>
+                    </div>
+                    <div style="padding: 24px 0; color: #334155; line-height: 1.6;">
+                        <p style="font-size: 15px;">Hello <strong>{who}</strong> ({s['username']}),</p>
+                        <p style="font-size: 15px;">We received a request to reset your student account password on Liceo LMS.</p>
+                        <p style="font-size: 15px;">Please click the button below to set a new password within <strong>30 minutes</strong>:</p>
+                        <div style="text-align: center; margin: 28px 0;">
+                            <a href="{link}" style="background-color: #0c2461; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Reset Password</a>
+                        </div>
+                        <p style="font-size: 13px; color: #64748b;">If you did not request a password reset, you can safely ignore this email.</p>
+                    </div>
+                    <div style="text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                        &copy; 2026 Liceo Learning Management System. All rights reserved.
+                    </div>
+                </div>
+                """
+                send_email(email, "Password Reset Request — Liceo LMS", body, html_body=html_body)
 
                 flash(generic_msg, "success")
                 return redirect(url_for("auth.login"))
@@ -1064,4 +1160,161 @@ def user_profile_update():
         return redirect(url_for("auth.user_profile"))
     finally:
         cursor.close()
-        db.close()
+        db.close()
+
+
+@auth_bp.route("/login/check-2fa-status", methods=["GET"])
+def check_2fa_status():
+    token_hash = session.get("pending_2fa_token_hash")
+    user_id = session.get("pending_2fa_user_id")
+
+    if not token_hash or not user_id:
+        return {"status": "INVALID"}, 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT status, expires_at
+            FROM login_2fa_tokens
+            WHERE token_hash = %s AND user_id = %s
+            ORDER BY created_at DESC LIMIT 1
+        """, (token_hash, user_id))
+        row = cursor.fetchone()
+
+        if not row:
+            return {"status": "INVALID"}
+
+        if row["expires_at"] < datetime.utcnow():
+            return {"status": "EXPIRED"}
+
+        if row["status"] == "APPROVED":
+            cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+            user = cursor.fetchone()
+            if not user:
+                return {"status": "INVALID"}
+
+            client_ip = request.remote_addr or "127.0.0.1"
+            dest_url, err = _activate_user_session(user, db, cursor, client_ip)
+            if err:
+                return {"status": "ERROR", "message": err}
+
+            session.pop("pending_2fa_token_hash", None)
+            session.pop("pending_2fa_user_id", None)
+            return {"status": "APPROVED", "redirect_url": dest_url}
+
+        return {"status": "PENDING"}
+    finally:
+        cursor.close()
+        db.close()
+
+
+@auth_bp.route("/login/authorize/<raw_token>", methods=["GET"])
+def authorize_login_token(raw_token):
+    if not raw_token:
+        return render_template("auth_status.html", success=False, title="Invalid Request", message="Authorization token is missing.")
+
+    token_hash = _hash_token(raw_token)
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT token_id, status, expires_at
+            FROM login_2fa_tokens
+            WHERE token_hash = %s
+            LIMIT 1
+        """, (token_hash,))
+        row = cursor.fetchone()
+
+        if not row:
+            return render_template("auth_status.html", success=False, title="Invalid Link", message="The login authorization link is invalid or has already expired.")
+
+        if row["expires_at"] < datetime.utcnow():
+            cursor.execute("UPDATE login_2fa_tokens SET status = 'EXPIRED' WHERE token_id = %s", (row["token_id"],))
+            db.commit()
+            return render_template("auth_status.html", success=False, title="Token Expired", message="This login authorization link has expired (valid for 5 minutes). Please return to the login page and try logging in again.")
+
+        if row["status"] == "APPROVED":
+            return render_template("auth_status.html", success=True, title="Already Approved", message="This login attempt has already been approved. You may close this page and return to your active application tab.")
+
+        cursor.execute("UPDATE login_2fa_tokens SET status = 'APPROVED' WHERE token_id = %s", (row["token_id"],))
+        db.commit()
+
+        return render_template("auth_status.html", success=True, title="Login Authorized", message="Your login request has been successfully approved. You can close this window and return to your main login tab to access your dashboard.")
+    finally:
+        cursor.close()
+        db.close()
+
+
+@auth_bp.route("/login/cancel-2fa")
+def cancel_2fa():
+    session.pop("pending_2fa_token_hash", None)
+    session.pop("pending_2fa_user_id", None)
+    flash("Login process cancelled.", "info")
+    return redirect(url_for("auth.login"))
+
+
+@auth_bp.route("/login/resend-2fa", methods=["POST"])
+def resend_2fa():
+    user_id = session.get("pending_2fa_user_id")
+    if not user_id:
+        flash("No pending 2FA login session found.", "error")
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
+        user = cursor.fetchone()
+        if not user or not user.get("email"):
+            flash("User email not found for 2FA resend.", "error")
+            return redirect(url_for("auth.login"))
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = _hash_token(raw_token)
+        expiry = datetime.utcnow() + timedelta(minutes=5)
+        client_ip = request.remote_addr or "127.0.0.1"
+
+        cursor.execute("""
+            INSERT INTO login_2fa_tokens (token_hash, user_id, user_role, ip_address, status, created_at, expires_at)
+            VALUES (%s, %s, %s, %s, 'PENDING', NOW(), %s)
+        """, (token_hash, user["user_id"], user["role"], client_ip, expiry))
+        db.commit()
+
+        session["pending_2fa_token_hash"] = token_hash
+
+        base_url = os.getenv("BASE_URL") or request.host_url.rstrip("/")
+        auth_link = f"{base_url}/login/authorize/{raw_token}"
+        email_body = (
+            f"Hello {user.get('full_name') or user.get('username')},\n\n"
+            f"A new authorization link was requested for your {user.get('role').replace('_', ' ').title()} account on Liceo LMS.\n\n"
+            f"Click here to authorize your login: {auth_link}\n\n"
+            "This link is valid for 5 minutes."
+        )
+        html_body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+            <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #0c2461;">
+                <h2 style="color: #0c2461; margin: 0; font-size: 22px;">Liceo LMS — Login Security Authorization</h2>
+            </div>
+            <div style="padding: 24px 0; color: #334155; line-height: 1.6;">
+                <p style="font-size: 15px;">Hello <strong>{user.get('full_name') or user.get('username')}</strong>,</p>
+                <p style="font-size: 15px;">A new login authorization link was requested for your <strong>{user.get('role').replace('_', ' ').title()}</strong> account on Liceo LMS from IP address <code>{client_ip}</code>.</p>
+                <p style="font-size: 15px;">To complete your login, please click the authorization button below within <strong>5 minutes</strong>:</p>
+                <div style="text-align: center; margin: 28px 0;">
+                    <a href="{auth_link}" style="background-color: #0c2461; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Authorize Login Request</a>
+                </div>
+                <p style="font-size: 13px; color: #64748b;">If you did not initiate this login request, please ignore this email.</p>
+            </div>
+            <div style="text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                &copy; 2026 Liceo Learning Management System. All rights reserved.
+            </div>
+        </div>
+        """
+        send_email((user.get("email") or "").strip(), "Login Security Authorization Request — Liceo LMS", email_body, html_body=html_body)
+
+        flash("A new authorization link has been sent to your email.", "success")
+        return render_template("login.html", pending_2fa=True, pending_email=user["email"], expires_in_seconds=300)
+    finally:
+        cursor.close()
+        db.close()
+

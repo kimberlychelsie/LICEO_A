@@ -658,6 +658,150 @@
                 min-height: 100vh;
             }
         }
+
+        /* ─── 2FA MODAL STYLING ─── */
+        .tfa-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.25s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .tfa-card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            max-width: 440px;
+            width: 100%;
+            padding: 40px 32px;
+            text-align: center;
+            position: relative;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .tfa-shield-icon {
+            width: 68px;
+            height: 68px;
+            background: linear-gradient(135deg, #0c2461, #1e3799);
+            color: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 10px 25px rgba(12, 36, 97, 0.3);
+        }
+        .tfa-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0c2461;
+            margin-bottom: 8px;
+        }
+        .tfa-desc {
+            font-size: 0.9rem;
+            color: #475569;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        .tfa-desc strong {
+            color: #0c2461;
+            word-break: break-all;
+        }
+        .tfa-timer-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .tfa-timer-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .tfa-clock {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #0c2461;
+            letter-spacing: 2px;
+            font-variant-numeric: tabular-nums;
+        }
+        .tfa-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1d4ed8;
+            font-size: 0.82rem;
+            font-weight: 500;
+            margin-bottom: 24px;
+        }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2563eb;
+            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+            animation: pulse-ring 1.5s infinite;
+        }
+        @keyframes pulse-ring {
+            0% {
+                box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+            }
+        }
+        .tfa-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .btn-tfa-resend {
+            width: 100%;
+            padding: 12px;
+            background: #0c2461;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-tfa-resend:hover {
+            background: #081a4a;
+        }
+        .btn-tfa-cancel {
+            display: block;
+            text-align: center;
+            font-size: 0.88rem;
+            color: #64748b;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px;
+            transition: color 0.15s;
+        }
+        .btn-tfa-cancel:hover {
+            color: #0f172a;
+        }
     </style>
 </head>
 
@@ -784,6 +928,114 @@
 
     </div>
 
+    {% if pending_2fa %}
+    <!-- 2FA Authorization Modal -->
+    <div class="tfa-overlay" id="tfaOverlay">
+        <div class="tfa-card">
+            <div class="tfa-shield-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </div>
+            <h2 class="tfa-title">Authorization Required</h2>
+            <p class="tfa-desc">A verification email was sent to <strong>{{ pending_email }}</strong>. Open the email and click <strong>Authorize Login Request</strong> to proceed.</p>
+
+            <div class="tfa-timer-box">
+                <div class="tfa-timer-label">Link expires in</div>
+                <div class="tfa-clock" id="tfaClock">05:00</div>
+            </div>
+
+            <div class="tfa-status-pill" id="tfaStatusPill">
+                <span class="pulse-dot"></span>
+                <span id="tfaStatusText">Waiting for email authorization...</span>
+            </div>
+
+            <div class="tfa-actions">
+                <form method="post" action="/login/resend-2fa" id="resendForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-tfa-resend" id="resendBtn">Resend Authorization Email</button>
+                </form>
+                <a href="/login/cancel-2fa" class="btn-tfa-cancel">Cancel and return to login</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var totalSeconds = {{ expires_in_seconds | default(300) }};
+            var pollInterval = null;
+            var countInterval = null;
+
+            function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+            function updateClock() {
+                var m = Math.floor(totalSeconds / 60);
+                var s = totalSeconds % 60;
+                document.getElementById('tfaClock').textContent = pad(m) + ':' + pad(s);
+
+                if (totalSeconds <= 30) {
+                    document.getElementById('tfaClock').style.color = '#dc2626';
+                } else if (totalSeconds <= 60) {
+                    document.getElementById('tfaClock').style.color = '#d97706';
+                }
+
+                if (totalSeconds <= 0) {
+                    clearInterval(countInterval);
+                    clearInterval(pollInterval);
+                    document.getElementById('tfaStatusText').textContent = 'Authorization link expired.';
+                    document.getElementById('tfaClock').textContent = '00:00';
+                    var pill = document.getElementById('tfaStatusPill');
+                    pill.style.background = '#fef2f2';
+                    pill.style.borderColor = '#fecaca';
+                    pill.style.color = '#dc2626';
+                    var dot = pill.querySelector('.pulse-dot');
+                    if (dot) { dot.style.background = '#dc2626'; dot.style.animation = 'none'; }
+                    return;
+                }
+                totalSeconds--;
+            }
+
+            function pollStatus() {
+                fetch('/login/check-2fa-status', {
+                    method: 'GET',
+                    headers: { 'Cache-Control': 'no-cache' }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.status === 'APPROVED') {
+                        clearInterval(countInterval);
+                        clearInterval(pollInterval);
+                        document.getElementById('tfaStatusText').textContent = 'Login approved — redirecting...';
+                        var pill = document.getElementById('tfaStatusPill');
+                        pill.style.background = '#ecfdf5';
+                        pill.style.borderColor = '#6ee7b7';
+                        pill.style.color = '#065f46';
+                        var dot = pill.querySelector('.pulse-dot');
+                        if (dot) { dot.style.background = '#10b981'; dot.style.animation = 'none'; }
+                        setTimeout(function () {
+                            window.location.href = data.redirect_url;
+                        }, 800);
+                    } else if (data.status === 'EXPIRED') {
+                        clearInterval(countInterval);
+                        clearInterval(pollInterval);
+                        document.getElementById('tfaStatusText').textContent = 'Authorization link expired.';
+                        totalSeconds = 0;
+                        updateClock();
+                    }
+                })
+                .catch(function () {});
+            }
+
+            updateClock();
+            countInterval = setInterval(updateClock, 1000);
+            pollInterval = setInterval(pollStatus, 2000);
+
+            document.getElementById('resendForm').addEventListener('submit', function () {
+                clearInterval(countInterval);
+                clearInterval(pollInterval);
+            });
+        })();
+    </script>
+    {% endif %}
+
     <script>
         function togglePw() {
             var p = document.getElementById('password');
@@ -803,7 +1055,7 @@
             var btn = document.getElementById('loginBtn');
             btn.disabled = true;
             document.getElementById('sp').style.display = 'block';
-            document.getElementById('btnLabel').textContent = 'Logging in…';
+            document.getElementById('btnLabel').textContent = 'Logging in...';
         }
     </script>
 

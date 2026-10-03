@@ -5,13 +5,15 @@ import os
 from dotenv import load_dotenv
 import time
 
-load_dotenv()
+load_dotenv(override=True)
 
 def _send_email_core(to_email, subject, body, html_body=None):
+    load_dotenv(override=True)
     start = time.time()
 
-    smtp_user = os.getenv('MAIL_USERNAME') or os.getenv('SMTP_USER') or os.getenv('MAIL_USER')
-    smtp_pass = os.getenv('MAIL_PASSWORD') or os.getenv('SMTP_PASS')
+    smtp_user = (os.getenv('MAIL_USERNAME') or os.getenv('SMTP_USER') or os.getenv('MAIL_USER') or '').strip()
+    smtp_pass = (os.getenv('MAIL_PASSWORD') or os.getenv('SMTP_PASS') or '').strip().replace(' ', '')
+
     
     # Auto-detect host & port if not explicitly set
     smtp_host = os.getenv('MAIL_SERVER') or os.getenv('SMTP_HOST')

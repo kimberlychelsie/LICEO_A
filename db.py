@@ -632,6 +632,25 @@ def get_db_connection():
                 logger.warning(f"Could not migrate section_teachers table: {e}")
                 conn.rollback()
 
+            # login_2fa_tokens migration
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS login_2fa_tokens (
+                        token_id SERIAL PRIMARY KEY,
+                        token_hash VARCHAR(64) UNIQUE NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        user_role VARCHAR(50),
+                        ip_address VARCHAR(45),
+                        status VARCHAR(20) DEFAULT 'PENDING',
+                        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'UTC'),
+                        expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create login_2fa_tokens table: {e}")
+                conn.rollback()
+
 
             # Add ON DELETE CASCADE for enrollments related tables
             try:
