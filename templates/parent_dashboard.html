@@ -352,6 +352,12 @@
         transform: translateY(-1px);
     }
 
+    .btn-action-profile:hover {
+        background: rgba(26, 58, 143, 0.12) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.1);
+    }
+
     .btn-action-reserve {
         background: var(--par-primary);
         color: #fff;
@@ -682,9 +688,13 @@
     <div class="children-grid">
         {% for child in children %}
         <div class="child-card">
-            <div class="card-header-styled">
+            <div class="card-header-styled" style="cursor: pointer;" onclick="window.location.href='/parent/child/{{ child.enrollment_id }}'">
                 <div class="child-name-block">
-                    <h3>{{ child.student_name }}</h3>
+                    <h3>
+                        <a href="/parent/child/{{ child.enrollment_id }}" style="color: var(--par-primary); text-decoration: none;">
+                            {{ child.student_name }}
+                        </a>
+                    </h3>
                     <div class="child-sub-info">
                         {{ child.branch_name }} • {{ child.section_name or 'Section Unassigned' }}
                     </div>
@@ -719,6 +729,12 @@
                     <span style="font-size: 0.72rem; font-weight: 800; color: var(--par-success); background: #ecfdf5; padding: 4px 8px; border-radius: 6px;">PAID</span>
                     {% endif %}
                 </div>
+
+                <!-- Primary Action: View Grades & Academic Performance -->
+                <a href="/parent/child/{{ child.enrollment_id }}" class="btn-action-profile" style="background: var(--par-primary-soft); color: var(--par-primary); border: 1.5px solid rgba(26, 58, 143, 0.2); padding: 10px 14px; border-radius: 10px; font-size: 0.85rem; font-weight: 800; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; transition: all 0.2s;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+                    View Grades, Schedule & Performance &rarr;
+                </a>
 
                 <!-- Exact 2 Buttons -->
                 <div class="card-actions-two">

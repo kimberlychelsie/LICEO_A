@@ -1607,32 +1607,8 @@
       </div>
       {% endif %}
 
-      {% if parent_global_children and parent_global_children|length > 1 %}
-      <button
-        class="sb-dropdown-btn {% if request.path == '/reservation' or request.path.startswith('/parent/reserve') %}open{% endif %}"
-        onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
-        <div class="sb-left">
-          <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="8" cy="21" r="1"></circle>
-              <circle cx="19" cy="21" r="1"></circle>
-              <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
-            </svg></span> Reserve Items
-        </div>
-        <span class="sb-dropdown-arrow">▼</span>
-      </button>
-      <div
-        class="sb-dropdown-content {% if request.path == '/reservation' or request.path.startswith('/parent/reserve') %}show{% endif %}">
-        {% for child in parent_global_children %}
-        <a class="sb-link {% if request.path == '/reservation' and request.args.get('enrollment_id') == child.enrollment_id|string %}active{% endif %}"
-          href="{{ url_for('student.student_reservation', enrollment_id=child.enrollment_id) }}">
-          {{ child.student_name }}
-        </a>
-        {% endfor %}
-      </div>
-      {% elif parent_global_children and parent_global_children|length == 1 %}
       <a class="sb-link {% if request.path == '/reservation' or request.path.startswith('/parent/reserve') %}active{% endif %}"
-        href="{{ url_for('student.student_reservation', enrollment_id=parent_global_children[0].enrollment_id) }}">
+        href="/parent/reserve">
         <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="8" cy="21" r="1"></circle>
@@ -1640,47 +1616,7 @@
             <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
           </svg></span> Reserve Items
       </a>
-      {% else %}
-      <a class="sb-link {% if request.path.startswith('/parent/reserve') %}active{% endif %}" href="/parent/reserve">
-        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="8" cy="21" r="1"></circle>
-            <circle cx="19" cy="21" r="1"></circle>
-            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
-          </svg></span> Reserve Items
-      </a>
-      {% endif %}
 
-      {% if parent_global_children and parent_global_children|length > 1 %}
-      <button class="sb-dropdown-btn {% if '/bills' in request.path %}open{% endif %}"
-        onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
-        <div class="sb-left">
-          <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="5" width="20" height="14" rx="2"></rect>
-              <line x1="2" y1="10" x2="22" y2="10"></line>
-            </svg></span> Billing
-        </div>
-        <span class="sb-dropdown-arrow">▼</span>
-      </button>
-      <div class="sb-dropdown-content {% if '/bills' in request.path %}show{% endif %}">
-        {% for child in parent_global_children %}
-        <a class="sb-link {% if request.path == '/parent/child/' ~ child.enrollment_id ~ '/bills' %}active{% endif %}"
-          href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}">
-          {{ child.student_name }}
-        </a>
-        {% endfor %}
-      </div>
-      {% elif parent_global_children and parent_global_children|length == 1 %}
-      <a class="sb-link {% if '/bills' in request.path %}active{% endif %}"
-        href="{{ url_for('parent.child_bills', enrollment_id=parent_global_children[0].enrollment_id) }}">
-        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="5" width="20" height="14" rx="2"></rect>
-            <line x1="2" y1="10" x2="22" y2="10"></line>
-          </svg></span> Billing
-      </a>
-      {% else %}
       <a class="sb-link {% if '/bills' in request.path %}active{% endif %}" href="/parent/bills">
         <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1688,7 +1624,6 @@
             <line x1="2" y1="10" x2="22" y2="10"></line>
           </svg></span> Billing
       </a>
-      {% endif %}
 
       <a class="sb-link {% if request.path.startswith('/parent/reservations') %}active{% endif %}"
         href="/parent/reservations">

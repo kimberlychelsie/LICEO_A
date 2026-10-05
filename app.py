@@ -948,17 +948,20 @@ def inject_parent_children():
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
             cursor.execute("""
-                SELECT ps.student_id as enrollment_id, e.student_first_name, e.student_last_name
+                SELECT ps.student_id as enrollment_id, 
+                       e.student_first_name, e.student_middle_name, e.student_last_name
                 FROM parent_student ps
                 JOIN enrollments e ON ps.student_id = e.enrollment_id
-                JOIN school_years sy ON sy.year_id = e.year_id
                 WHERE ps.parent_id = %s
-                  AND sy.is_active = TRUE
-                  AND e.status IN ('enrolled', 'approved', 'open_for_enrollment', 'completed')
+                ORDER BY e.created_at DESC
             """, (session['user_id'],))
             children = cursor.fetchall()
             for c in children:
-                c['student_name'] = f"{c.get('student_first_name','')} {c.get('student_last_name','')}".strip()
+                fname = c.get("student_first_name") or ""
+                mname = c.get("student_middle_name") or ""
+                lname = c.get("student_last_name") or ""
+                s_name = " ".join(filter(None, [fname, mname, lname])).strip()
+                c['student_name'] = s_name if s_name else f"Student #{c['enrollment_id']}"
             return dict(parent_global_children=children)
         except Exception as e:
             print(f"Error in Parent context processor: {e}")
