@@ -1479,6 +1479,7 @@
                             display: grid;
                             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
                             gap: 20px;
+                            align-items: start;
                         }
 
                         .product-card-grid {
@@ -1601,9 +1602,31 @@
 
                                 <!-- Price displayed in details instead of floating on image -->
                                 <div class="price-tag-js"
-                                    style="font-size: 1.25rem; font-weight: 900; color: var(--res-text); margin-bottom: 16px;">
+                                    style="font-size: 1.25rem; font-weight: 900; color: var(--res-text); margin-bottom: 8px;">
                                     ₱{{ "{:,.2f}".format(it.price or 0.0) }}
                                 </div>
+
+                                {% if g.pieces and g.pieces|length > 0 %}
+                                <div class="set-breakdown-box" style="width: 100%; margin: 6px 0 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; text-align: left;">
+                                    <button type="button" onclick="toggleSetBreakdown(this)" style="background: none; border: none; padding: 0; font-size: 0.78rem; font-weight: 800; color: #1e3a8a; cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                        <span><i class="fas fa-layer-group" style="color: #2563eb; margin-right: 5px;"></i> Set Breakdown & Prices</span>
+                                        <span class="breakdown-chevron" style="transition: transform 0.2s; font-size: 0.7rem; font-weight: 900; transform: rotate(-180deg);">▼</span>
+                                    </button>
+                                    <div class="set-breakdown-list" style="margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 6px; display: none;">
+                                        {% for p in g.pieces %}
+                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; padding: 3px 0; color: #334155;">
+                                            <span><i class="fas fa-check-circle" style="color: #16a34a; font-size: 0.7rem; margin-right: 4px;"></i> {{ p.item_name }}</span>
+                                            <span style="font-weight: 700; color: #1e293b;">₱{{ "{:,.2f}".format(p.price or 0.0) }}</span>
+                                        </div>
+                                        {% endfor %}
+                                        <!-- Dynamic +size fee row (shown/hidden by JS) -->
+                                        <div class="breakdown-size-fee-row" style="display:none; justify-content: space-between; align-items: center; font-size: 0.78rem; padding: 4px 0 2px; margin-top: 4px; border-top: 1px dashed #e0f2fe; color: #0369a1;">
+                                            <span><i class="fas fa-tag" style="font-size: 0.7rem; margin-right: 4px;"></i> <strong>+Size Fee</strong></span>
+                                            <span class="breakdown-size-fee-amount" style="font-weight: 800;"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
 
                                 <div style="width: 100%; margin-top: auto;">
                                     {% if it.category == "UNIFORM" %}
@@ -1620,18 +1643,23 @@
                                             style="width: 100%; padding: 8px 12px; font-size: 0.85rem; border-radius: 8px; border: 1px solid var(--res-border);">
                                             {% if it.sizes and it.sizes|length > 0 %}
                                             {% for s in it.sizes %}
+                                            {% set price_diff = (s.price - it.price) if (s.price and it.price and s.price > it.price) else 0 %}
                                             <option value="{{ s.size_label }}" data-price="{{ s.price }}" {% if
                                                 loop.first %}selected{% endif %} {% if s.available <=0 and not
                                                 it.is_preorder %}disabled{% endif %}>
-                                                {{ s.size_label }} — ₱{{ "{:,.2f}".format(s.price or it.price or 0) }}{%
-                                                if s.available <= 0 and not it.is_preorder %} (Out){% endif %} </option>
-                                                    {% endfor %}
-                                                    {% else %}
-                                            <option value="XS" data-price="{{ it.price }}" selected>XS</option>
-                                            <option value="S" data-price="{{ it.price }}">S</option>
-                                            <option value="M" data-price="{{ it.price }}">M</option>
-                                            <option value="L" data-price="{{ it.price }}">L</option>
-                                            <option value="XL" data-price="{{ it.price }}">XL</option>
+                                                {{ s.size_label }} — ₱{{ "{:,.2f}".format(s.price or it.price or 0) }}{% if price_diff > 0 %} (+₱{{ "{:,.2f}".format(price_diff) }}){% endif %}{%
+                                                if s.available <= 0 and not it.is_preorder %} (Out){% endif %}
+                                            </option>
+                                            {% endfor %}
+                                            {% else %}
+                                            {% set default_sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] %}
+                                            {% for s_lbl in default_sizes %}
+                                            {% set s_step = loop.index0 * (it.size_price_step or 20) %}
+                                            {% set s_calc_price = (it.price or 0) + s_step %}
+                                            <option value="{{ s_lbl }}" data-price="{{ s_calc_price }}" {% if loop.first %}selected{% endif %}>
+                                                {{ s_lbl }} — ₱{{ "{:,.2f}".format(s_calc_price) }}{% if s_step > 0 %} (+₱{{ "{:,.2f}".format(s_step) }}){% endif %}
+                                            </option>
+                                            {% endfor %}
                                             {% endif %}
                                         </select>
                                     </div>
@@ -1649,6 +1677,8 @@
                                             <input type="number" name="qty_{{ it.item_id }}" min="0" max="3" value="0"
                                                 class="qty-input" data-item-id="{{ it.item_id }}"
                                                 data-category="{{ it.category }}" data-item-name="{{ it.item_name }}"
+                                                data-img-url="{{ it.image_url or '' }}"
+                                                data-pieces="{% if g.pieces %}[{% for p in g.pieces %}{&quot;name&quot;:&quot;{{ p.item_name|replace('"', '') }}&quot;,&quot;price&quot;:{{ p.price or 0 }}}{% if not loop.last %},{% endif %}{% endfor %}]{% else %}[]{% endif %}"
                                                 data-price="{{ it.price }}" data-base-price="{{ it.price }}" {% if
                                                 it.available <=0 and not it.is_preorder %}disabled{% endif %}
                                                 onchange="updateTotal(); showFloatingCart();"
@@ -1837,6 +1867,24 @@
         }
     }
 
+    function toggleSetBreakdown(btn) {
+        const list = btn.nextElementSibling;
+        const chevron = btn.querySelector('.breakdown-chevron');
+        if (!list) return;
+        const isHidden = list.style.display === 'none';
+        list.style.display = isHidden ? 'block' : 'none';
+        if (chevron) chevron.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-180deg)';
+    }
+
+    function toggleCheckoutBreakdown(btn) {
+        const list = btn.nextElementSibling;
+        const chevron = btn.querySelector('.chk-chevron');
+        if (!list) return;
+        const isHidden = list.style.display === 'none' || !list.style.display;
+        list.style.display = isHidden ? 'block' : 'none';
+        if (chevron) chevron.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
+    }
+
     function toggleUniformSet(btn) {
         const card = btn.closest('.uniform-set-card');
         if (!card) return;
@@ -1887,6 +1935,26 @@
             }
         }
 
+        // Update +size surcharge in the set breakdown box
+        if (row) {
+            const basePrice = parseFloat(qtyInput ? (qtyInput.getAttribute('data-base-price') || qtyInput.getAttribute('data-price')) : 0);
+            const sizeFee = (!isNaN(price) && !isNaN(basePrice) && price > basePrice) ? (price - basePrice) : 0;
+            const breakdownBox = row.querySelector('.set-breakdown-box');
+            if (breakdownBox) {
+                const feeRow = breakdownBox.querySelector('.breakdown-size-fee-row');
+                const feeAmt = breakdownBox.querySelector('.breakdown-size-fee-amount');
+                if (feeRow && feeAmt) {
+                    if (sizeFee > 0) {
+                        feeAmt.textContent = '+₱' + sizeFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        feeRow.style.display = 'flex';
+                    } else {
+                        feeRow.style.display = 'none';
+                        feeAmt.textContent = '';
+                    }
+                }
+            }
+        }
+
         if (selectEl.classList.contains('full-set-size-select') || selectEl.getAttribute('data-full-set') === 'true') {
             syncPieceSizesInSet(selectEl);
         }
@@ -1896,6 +1964,7 @@
             showFloatingCart();
         }
     }
+
 
     function updateTotal() {
         const qtyInputs = document.querySelectorAll(".qty-input");
@@ -1943,17 +2012,57 @@
                         ? input.closest('.product-card').querySelector('h3').innerText
                         : 'Item');
 
+                const imgUrl = input.getAttribute('data-img-url') || '';
+                const piecesAttr = input.getAttribute('data-pieces') || '[]';
+                let pieces = [];
+                try { pieces = JSON.parse(piecesAttr); } catch (e) { pieces = []; }
+
+                let imgHtml = '';
+                if (imgUrl) {
+                    imgHtml = `<img src="${imgUrl}" alt="${itemName}" onclick="openImagePreview('${imgUrl}')" style="width: 52px; height: 52px; object-fit: cover; border-radius: 10px; border: 1px solid var(--res-border); cursor: pointer; flex-shrink: 0;" />`;
+                } else {
+                    imgHtml = `<div style="font-size: 1.3rem; background: #f8fafc; border-radius: 10px; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; color: var(--res-muted); border: 1px solid var(--res-border); flex-shrink: 0;">
+                        <i class="fas fa-box-open"></i>
+                    </div>`;
+                }
+
+                let breakdownHtml = '';
+                if (pieces && pieces.length > 0) {
+                    breakdownHtml = `
+                        <div style="margin-top: 6px; width: 100%;">
+                            <button type="button" onclick="toggleCheckoutBreakdown(this)" style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 10px; font-size: 0.72rem; font-weight: 800; color: #1e3a8a; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-layer-group" style="color: #2563eb; font-size: 0.68rem;"></i>
+                                <span>Set Breakdown (${pieces.length} items)</span>
+                                <span class="chk-chevron" style="transition: transform 0.2s; font-size: 0.65rem; transform: rotate(-90deg); margin-left: 2px;">▼</span>
+                            </button>
+                            <div class="chk-breakdown-list" style="display: none; margin-top: 6px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 6px 10px; font-size: 0.75rem; width: 100%; max-width: 360px;">
+                                ${pieces.map(p => `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; color: #334155; padding: 2px 0;">
+                                        <span><i class="fas fa-check-circle" style="color: #16a34a; font-size: 0.65rem; margin-right: 4px;"></i> ${p.name}</span>
+                                        <span style="font-weight: 700; color: #1e293b;">₱${parseFloat(p.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                `).join('')}
+                                ${sizeFee > 0 ? `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; padding: 4px 0 2px; margin-top: 4px; border-top: 1px dashed #e0f2fe; color: #0369a1;">
+                                        <span><i class="fas fa-tag" style="font-size: 0.65rem; margin-right: 4px;"></i> <strong>+Size Fee</strong></span>
+                                        <span style="font-weight: 800; color: #0284c7;">+₱${(sizeFee * qty).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+
                 itemsHtml += `
                     <div class="checkout-item-row">
                         <!-- Desktop & Mobile Top Part -->
-                        <div class="checkout-item-top" style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
-                            <div style="font-size: 1.3rem; background: #f8fafc; border-radius: 8px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--res-muted); flex-shrink: 0;">
-                                <i class="fas fa-box-open"></i>
-                            </div>
+                        <div class="checkout-item-top" style="display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0;">
+                            ${imgHtml}
                             <div style="flex: 1; min-width: 0;">
                                 <div style="font-weight: 800; font-size: 0.95rem; color: var(--res-text); margin-bottom: 2px;">${itemName}</div>
                                 ${sizeVal ? `<div style="font-size: 0.78rem; color: var(--res-muted); font-weight: 600;">Variation: <strong style="color: var(--res-primary);">${sizeVal}</strong></div>` : ''}
-                                ${sizeFee > 0 ? `<div style="font-size: 0.72rem; color: #0284c7; margin-top: 2px;"><i class="fas fa-tag"></i> +₱${(sizeFee * qty).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Size Fee included</div>` : ''}
+                                ${(sizeFee > 0 && pieces.length === 0) ? `<div style="font-size: 0.72rem; color: #0284c7; margin-top: 2px;"><i class="fas fa-tag"></i> +₱${(sizeFee * qty).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Size Fee included</div>` : ''}
+                                ${breakdownHtml}
                             </div>
                         </div>
 

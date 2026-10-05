@@ -195,6 +195,96 @@
     }
     .btn-add-item:hover { background: #172554; }
 
+    /* Catalog Action Dropdown Menu */
+    .catalog-action-wrap {
+        position: relative;
+        display: inline-block;
+    }
+    .btn-manage-action {
+        padding: 7px 14px;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        background: #ffffff;
+        color: var(--u-primary);
+        border: 1.5px solid var(--u-border);
+        cursor: pointer;
+        transition: all .15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn-manage-action:hover {
+        background: #f8fafc;
+        border-color: var(--u-primary);
+        color: var(--u-primary);
+    }
+    .btn-manage-action svg.chevron {
+        transition: transform 0.2s ease;
+    }
+    .catalog-action-wrap.is-open .btn-manage-action {
+        background: var(--u-primary);
+        color: #ffffff;
+        border-color: var(--u-primary);
+    }
+    .catalog-action-wrap.is-open .btn-manage-action svg.chevron {
+        transform: rotate(180deg);
+    }
+
+    .catalog-dropdown-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 6px);
+        min-width: 170px;
+        background: #ffffff;
+        border: 1px solid var(--u-border);
+        border-radius: 14px;
+        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15), 0 4px 12px rgba(0,0,0,0.05);
+        z-index: 1000;
+        padding: 6px;
+        animation: dropFade .15s ease-out;
+    }
+    @keyframes dropFade {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .catalog-action-wrap.is-open .catalog-dropdown-menu {
+        display: block;
+    }
+    .catalog-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--u-text);
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: left;
+        transition: background .12s ease, color .12s ease;
+        text-decoration: none;
+    }
+    .catalog-dropdown-item:hover:not(:disabled) {
+        background: #f1f5f9;
+        color: var(--u-primary);
+    }
+    .catalog-dropdown-item.danger {
+        color: #dc2626;
+    }
+    .catalog-dropdown-item.danger:hover:not(:disabled) {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+    .catalog-dropdown-item:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
     .set-row {
         background: #ffffff;
         cursor: pointer;
@@ -346,6 +436,78 @@
                     <tbody>
                     {% for s in catalog_sets %}
                     {% set pieces = pieces_by_set.get(s.item_id, []) %}
+
+                    {% if pieces|length == 1 %}
+                    {# CASE 1: EXACTLY 1 PIECE — Treat directly as an Individual Piece row #}
+                    {% set single_piece = pieces[0] %}
+                    {% if single_piece.item_name|lower in s.item_name|lower %}
+                        {% set display_name = s.item_name %}
+                    {% else %}
+                        {% set display_name = s.item_name ~ ' ' ~ single_piece.item_name %}
+                    {% endif %}
+                    <tr class="set-row no-expand" data-set-id="{{ s.item_id }}" style="cursor: default;">
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 14px;">
+                                <span class="set-toggle-icon no-pieces"></span>
+                                {% if s.image_url or single_piece.image_url %}
+                                <div style="width: 44px; height: 44px; border-radius: 12px; overflow: hidden; border: 1px solid var(--u-border);">
+                                    <img src="{{ s.image_url or single_piece.image_url }}" alt="{{ display_name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                                {% else %}
+                                <div style="width: 44px; height: 44px; border-radius: 12px; background: #dbeafe; display: flex; align-items: center; justify-content: center; color: var(--u-primary);">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <strong style="color: var(--u-primary); font-size: 1rem;">{{ display_name }}</strong>
+                                    <span style="display:block; font-size:0.72rem; color: var(--u-muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em;">Individual Piece</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="grade-pill">{{ s.grade_level or 'All Grades' }}</span></td>
+                        <td><span style="font-size:0.8rem; font-weight:700; color:var(--u-muted);">{{ single_piece.size_label or s.size_label or 'XS, S, M, L, XL, XXL, XXXL' }}</span></td>
+                        <td>
+                            <span class="amount" style="color: var(--u-primary); font-size: 1.05rem;">₱{{ "%.2f"|format(single_piece.price or s.price or 0) }}</span>
+                            <span style="font-size:0.7rem; color:var(--u-muted); display:block;">Base (smallest) · +₱{{ "%.0f"|format(single_piece.size_price_step or s.size_price_step or 20) }}/size</span>
+                        </td>
+                        <td><span class="badge badge-for-ordering">PIECE</span></td>
+                        <td>
+                            <div class="catalog-action-wrap" onclick="event.stopPropagation()">
+                                <button type="button" class="btn-manage-action" onclick="toggleCatalogDropdown(this, event)">
+                                    <span>Manage</span>
+                                    <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="catalog-dropdown-menu">
+                                    <button type="button" class="catalog-dropdown-item btn-edit-catalog"
+                                        data-item-id="{{ single_piece.item_id }}"
+                                        data-item-name="{{ display_name }}"
+                                        data-grade-level="{{ s.grade_level or 'All Grades' }}"
+                                        data-price="{{ '%.2f'|format(single_piece.price or s.price or 0) }}"
+                                        data-price-step="{{ '%.0f'|format(single_piece.size_price_step or s.size_price_step or 20) }}"
+                                        data-size-label="{{ single_piece.size_label or s.size_label or 'XS, S, M, L, XL, XXL, XXXL' }}"
+                                        data-image-url="{{ s.image_url or single_piece.image_url or '' }}"
+                                        data-is-piece="1"
+                                        data-has-child-pieces="0"
+                                        onclick="closeAllCatalogDropdowns(); openEditModalFromBtn(this);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                        Edit Piece
+                                    </button>
+                                    <button type="button" class="catalog-dropdown-item" onclick="closeAllCatalogDropdowns(); openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', 1);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        + Add Piece
+                                    </button>
+                                    <div style="height: 1px; background: var(--u-border); margin: 4px 0;"></div>
+                                    <button type="button" class="catalog-dropdown-item danger" onclick="closeAllCatalogDropdowns(); deleteSet({{ s.item_id }}, '{{ display_name|replace("'","\'")|safe }}');">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                        Delete Piece
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+
+                    {% else %}
+                    {# CASE 2 & 3: 2+ PIECES (FULL UNIFORM SET) OR 0 PIECES #}
                     {# SET ROW — click to expand pieces #}
                     <tr class="set-row {% if pieces|length == 0 %}no-expand{% endif %}" data-set-id="{{ s.item_id }}" onclick="{% if pieces|length > 0 %}toggleCatalogSet({{ s.item_id }}){% endif %}">
                         <td>
@@ -383,14 +545,43 @@
                         </td>
                         <td><span class="badge badge-ready">SET</span></td>
                         <td>
-                            <div style="display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
-                                <button class="btn-view" onclick="openPriceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(s.price or 0) }}', '{{ '%.0f'|format(s.size_price_step or 20) }}', false)">Edit Price</button>
-                                {% if pieces|length >= 2 %}
-                                <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;" disabled title="+ Add Piece (Max Reached)">+ Add Piece</button>
-                                {% else %}
-                                <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;" onclick="openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', {{ pieces|length }})">+ Add Piece</button>
-                                {% endif %}
-                                <button class="btn-delete-piece" style="padding:6px 12px; font-size:0.74rem; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;" onclick="deleteSet({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}')">Delete</button>
+                            <div class="catalog-action-wrap" onclick="event.stopPropagation()">
+                                <button type="button" class="btn-manage-action" onclick="toggleCatalogDropdown(this, event)">
+                                    <span>Manage</span>
+                                    <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="catalog-dropdown-menu">
+                                    <button type="button" class="catalog-dropdown-item btn-edit-catalog"
+                                        data-item-id="{{ s.item_id }}"
+                                        data-item-name="{{ s.item_name or '' }}"
+                                        data-grade-level="{{ s.grade_level or 'All Grades' }}"
+                                        data-price="{{ '%.2f'|format(s.price or 0) }}"
+                                        data-price-step="{{ '%.0f'|format(s.size_price_step or 20) }}"
+                                        data-size-label="{{ s.size_label or 'XS, S, M, L, XL, XXL, XXXL' }}"
+                                        data-image-url="{{ s.image_url or '' }}"
+                                        data-is-piece="0"
+                                        data-has-child-pieces="{{ pieces|length }}"
+                                        onclick="closeAllCatalogDropdowns(); openEditModalFromBtn(this);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                        Edit Set
+                                    </button>
+                                    {% if pieces|length >= 2 %}
+                                    <button type="button" class="catalog-dropdown-item" disabled title="+ Add Piece (Max Reached)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        + Add Piece <small style="font-size:0.68rem; color:#94a3b8; margin-left:auto;">(Max)</small>
+                                    </button>
+                                    {% else %}
+                                    <button type="button" class="catalog-dropdown-item" onclick="closeAllCatalogDropdowns(); openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', {{ pieces|length }});">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        + Add Piece
+                                    </button>
+                                    {% endif %}
+                                    <div style="height: 1px; background: var(--u-border); margin: 4px 0;"></div>
+                                    <button type="button" class="catalog-dropdown-item danger" onclick="closeAllCatalogDropdowns(); deleteSet({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}');">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                        Delete Set
+                                    </button>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -414,13 +605,37 @@
                         </td>
                         <td><span class="badge badge-for-ordering">PIECE</span></td>
                         <td>
-                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                <button class="btn-view" onclick="openPriceModal({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(p.price or 0) }}', '{{ '%.0f'|format(p.size_price_step or 20) }}', true)">Edit Price</button>
-                                <button class="btn-delete-piece" onclick="deletePiece({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', {{ s.item_id }})">Delete</button>
+                            <div class="catalog-action-wrap" onclick="event.stopPropagation()">
+                                <button type="button" class="btn-manage-action" onclick="toggleCatalogDropdown(this, event)">
+                                    <span>Manage</span>
+                                    <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                </button>
+                                <div class="catalog-dropdown-menu">
+                                    <button type="button" class="catalog-dropdown-item btn-edit-catalog"
+                                        data-item-id="{{ p.item_id }}"
+                                        data-item-name="{{ p.item_name or '' }}"
+                                        data-grade-level="{{ p.grade_level or '' }}"
+                                        data-price="{{ '%.2f'|format(p.price or 0) }}"
+                                        data-price-step="{{ '%.0f'|format(p.size_price_step or 20) }}"
+                                        data-size-label="{{ p.size_label or 'XS, S, M, L, XL, XXL, XXXL' }}"
+                                        data-image-url="{{ p.image_url or '' }}"
+                                        data-is-piece="1"
+                                        data-has-child-pieces="0"
+                                        onclick="closeAllCatalogDropdowns(); openEditModalFromBtn(this);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                        Edit Piece
+                                    </button>
+                                    <div style="height: 1px; background: var(--u-border); margin: 4px 0;"></div>
+                                    <button type="button" class="catalog-dropdown-item danger" onclick="closeAllCatalogDropdowns(); deletePiece({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', {{ s.item_id }});">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                        Delete Piece
+                                    </button>
+                                </div>
                             </div>
                         </td>
                     </tr>
                     {% endfor %}
+                    {% endif %}
                     {% else %}
                     <tr>
                         <td colspan="6">
@@ -463,28 +678,58 @@
     </div>
 
 
-<!-- Edit Price Modal -->
-<div class="modal-backdrop" id="priceModal">
+<!-- Edit Uniform Modal -->
+<div class="modal-backdrop" id="editModal">
     <div class="modal-box">
-        <div class="modal-title">Edit Price</div>
-        <div class="modal-sub" id="priceModalSub"></div>
-        <form id="priceForm">
-            <input type="hidden" id="priceItemId">
+        <div class="modal-title" id="editModalTitle">Edit Uniform Set</div>
+        <div class="modal-sub" id="editModalSub">Update uniform details, grade range, base price, sizes, and image.</div>
+        <form id="editForm">
+            <input type="hidden" id="editItemId">
+            <input type="hidden" id="editIsPiece">
+
+            <div class="form-group">
+                <label id="editNameLabel">Name</label>
+                <input type="text" id="editName" required placeholder="e.g. JHS Boys Uniform Set">
+            </div>
+
+            <div class="form-group" id="editGradeGroup">
+                <label>Grade Level</label>
+                <select id="editGrade" style="width: 100%; padding: 10px; border: 1.5px solid var(--u-border); border-radius: 10px; font-size: 0.875rem; background: #fff; color: var(--u-text);">
+                    <option value="Pre-Elementary">Pre-Elementary (Nursery, Kinder)</option>
+                    <option value="Elementary">Elementary (Grade 1-6)</option>
+                    <option value="JHS">JHS (Grade 7-10)</option>
+                    <option value="SHS">SHS (Grade 11-12)</option>
+                    <option value="All Grades">All Grades (Pre-Elem to SHS)</option>
+                </select>
+            </div>
+
             <div class="form-group">
                 <label>Base Price — smallest size (₱)</label>
-                <input type="text" inputmode="decimal" id="priceInput" required placeholder="0.00" onkeydown="filterPriceKeys(event)" oninput="sanitizePriceInput(this)">
-                <small style="color:#2563eb; font-size:0.75rem; font-weight:600; display:block; margin-top:4px;" id="priceMaxHint">
+                <input type="text" inputmode="decimal" id="editPrice" required placeholder="0.00" onkeydown="filterPriceKeys(event)" oninput="sanitizePriceInput(this)">
+                <small style="color:#2563eb; font-size:0.75rem; font-weight:600; display:block; margin-top:4px;" id="editMaxHint">
                     Piece: Max 3 digits (₱999.99) • Set: Max 4 digits (₱9,999.99)
                 </small>
             </div>
+
             <div class="form-group">
                 <label>Add per next size (₱)</label>
-                <input type="text" id="priceStepInput" value="20" readonly style="background:#f1f5f9; color:#475569; cursor:not-allowed; font-weight:700;">
+                <input type="text" id="editPriceStep" value="20" readonly style="background:#f1f5f9; color:#475569; cursor:not-allowed; font-weight:700;">
                 <small style="color:#64748b; font-size:0.75rem;">Standard fixed increment: ₱20.00 per larger size</small>
             </div>
+
+            <div class="form-group">
+                <label>Available Sizes (comma separated)</label>
+                <input type="text" id="editSizes" value="XS, S, M, L, XL, XXL, XXXL">
+            </div>
+
+            <div class="form-group" id="editImageGroup">
+                <label>Image URL (Optional)</label>
+                <input type="url" id="editImage" placeholder="https://...">
+            </div>
+
             <div class="modal-actions">
-                <button type="button" class="btn-cancel-modal" onclick="closeModal('priceModal')">Cancel</button>
-                <button type="submit" class="btn-save-modal">Update Price</button>
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('editModal')">Cancel</button>
+                <button type="submit" class="btn-save-modal">Save Changes</button>
             </div>
         </form>
     </div>
@@ -684,38 +929,116 @@
         inputEl.value = val;
     }
 
-    function openPriceModal(itemId, itemName, currentPrice, priceStep, isPiece) {
-        document.getElementById('priceItemId').value = itemId;
-        document.getElementById('priceModalSub').textContent = itemName + (isPiece ? ' (Piece)' : ' (Set)');
+    function toggleCatalogDropdown(btn, e) {
+        if (e) e.stopPropagation();
+        const wrap = btn.closest('.catalog-action-wrap');
+        const isOpen = wrap.classList.contains('is-open');
+
+        closeAllCatalogDropdowns();
+
+        if (!isOpen) {
+            wrap.classList.add('is-open');
+        }
+    }
+
+    function closeAllCatalogDropdowns() {
+        document.querySelectorAll('.catalog-action-wrap.is-open').forEach(el => {
+            el.classList.remove('is-open');
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.catalog-action-wrap')) {
+            closeAllCatalogDropdowns();
+        }
+    });
+
+    function openEditModalFromBtn(btn) {
+        const itemId = btn.getAttribute('data-item-id');
+        const itemName = btn.getAttribute('data-item-name');
+        const gradeLevel = btn.getAttribute('data-grade-level');
+        const currentPrice = btn.getAttribute('data-price');
+        const priceStep = btn.getAttribute('data-price-step');
+        const sizeLabel = btn.getAttribute('data-size-label');
+        const imageUrl = btn.getAttribute('data-image-url');
+        const isPiece = btn.getAttribute('data-is-piece') === '1';
+        const hasChildPieces = parseInt(btn.getAttribute('data-has-child-pieces') || '0', 10);
+
+        openEditModal(itemId, itemName, gradeLevel, currentPrice, priceStep, sizeLabel, imageUrl, isPiece, hasChildPieces);
+    }
+
+    function openEditModal(itemId, itemName, gradeLevel, currentPrice, priceStep, sizeLabel, imageUrl, isPiece, hasChildPieces) {
+        document.getElementById('editItemId').value = itemId;
+        document.getElementById('editIsPiece').value = isPiece ? '1' : '0';
         
-        const priceInput = document.getElementById('priceInput');
-        priceInput.value = currentPrice;
+        document.getElementById('editModalTitle').textContent = isPiece ? 'Edit Piece' : 'Edit Uniform Set';
+        document.getElementById('editModalSub').textContent = isPiece
+            ? 'Update piece name, base price, and sizes.'
+            : 'Update uniform set details, grade range, base price, sizes, and image.';
+        document.getElementById('editNameLabel').textContent = isPiece ? 'Piece Name' : 'Set Name';
+        document.getElementById('editName').value = itemName || '';
+
+        const gradeGroup = document.getElementById('editGradeGroup');
+        const editGrade = document.getElementById('editGrade');
+        if (isPiece) {
+            gradeGroup.style.display = 'none';
+        } else {
+            gradeGroup.style.display = 'block';
+            editGrade.value = gradeLevel || 'All Grades';
+        }
+
+        const imageGroup = document.getElementById('editImageGroup');
+        if (imageGroup) {
+            if (isPiece) {
+                imageGroup.style.display = 'none';
+            } else {
+                imageGroup.style.display = 'block';
+                document.getElementById('editImage').value = imageUrl || '';
+            }
+        }
+
+        const priceInput = document.getElementById('editPrice');
+        priceInput.value = currentPrice || '0.00';
         const maxVal = isPiece ? '999.99' : '9999.99';
         priceInput.setAttribute('max', maxVal);
         priceInput.setAttribute('data-is-piece', isPiece ? '1' : '0');
 
-        const hintEl = document.getElementById('priceMaxHint');
-        if (hintEl) {
-            hintEl.textContent = isPiece
-                ? 'Piece price limit: Max 3 digits (up to ₱999.99)'
-                : 'Full set price limit: Max 4 digits (up to ₱9,999.99)';
+        const hintEl = document.getElementById('editMaxHint');
+        if (!isPiece && hasChildPieces > 0) {
+            priceInput.readOnly = true;
+            priceInput.style.background = '#f1f5f9';
+            priceInput.style.color = '#475569';
+            priceInput.style.cursor = 'not-allowed';
+            if (hintEl) hintEl.textContent = 'Set base price is automatically calculated as the sum of its piece prices.';
+        } else {
+            priceInput.readOnly = false;
+            priceInput.style.background = '#fff';
+            priceInput.style.color = 'inherit';
+            priceInput.style.cursor = 'text';
+            if (hintEl) {
+                hintEl.textContent = isPiece
+                    ? 'Piece price limit: Max 3 digits (up to ₱999.99)'
+                    : 'Full set price limit: Max 4 digits (up to ₱9,999.99)';
+            }
         }
 
-        document.getElementById('priceStepInput').value = '20';
-        document.getElementById('priceModal').classList.add('open');
+        document.getElementById('editPriceStep').value = priceStep || '20';
+        document.getElementById('editSizes').value = sizeLabel || 'XS, S, M, L, XL, XXL, XXXL';
+
+        document.getElementById('editModal').classList.add('open');
     }
 
-    function openAddModal() {
-        try { sessionStorage.setItem('uo_active_tab', 'catalog'); } catch (e) {}
-        document.getElementById('addPriceStep').value = '20';
-        document.getElementById('addModal').classList.add('open');
+    function openPriceModal(itemId, itemName, currentPrice, priceStep, isPiece) {
+        openEditModal(itemId, itemName, 'All Grades', currentPrice, priceStep, 'XS, S, M, L, XL, XXL, XXXL', '', isPiece, 0);
     }
 
-    document.getElementById('priceForm').addEventListener('submit', function(e) {
+    document.getElementById('editForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        const itemId = document.getElementById('priceItemId').value;
-        const priceInput = document.getElementById('priceInput');
-        const isPiece = priceInput.getAttribute('data-is-piece') === '1';
+        const itemId = document.getElementById('editItemId').value;
+        const isPiece = document.getElementById('editIsPiece').value === '1';
+        const itemName = document.getElementById('editName').value;
+        const gradeLevel = document.getElementById('editGrade').value;
+        const priceInput = document.getElementById('editPrice');
         const maxAllowed = isPiece ? 999.99 : 9999.99;
         const newPrice = parseFloat(priceInput.value || 0);
 
@@ -726,21 +1049,37 @@
 
         const formData = new FormData();
         formData.append('item_id', itemId);
+        formData.append('item_name', itemName);
+        formData.append('grade_level', gradeLevel);
         formData.append('new_price', newPrice);
-        formData.append('size_price_step', document.getElementById('priceStepInput').value);
+        formData.append('size_label', document.getElementById('editSizes').value);
+        formData.append('image_url', isPiece ? '' : document.getElementById('editImage').value);
+        formData.append('size_price_step', document.getElementById('editPriceStep').value);
         formData.append('csrf_token', getCsrfToken());
 
-        fetch('/cashier/uniform-catalog/update-price', {
+        fetch('/cashier/uniform-catalog/update', {
             method: 'POST',
             headers: { 'X-CSRFToken': getCsrfToken() },
             body: formData
         })
             .then(r => r.json())
             .then(data => {
-                if (data.success) { closeModal('priceModal'); reloadStayOnCatalog(); }
+                if (data.success) { closeModal('editModal'); reloadStayOnCatalog(); }
                 else { alert('Error: ' + data.error); }
-            });
+            })
+            .catch(() => alert('Failed to update uniform details.'));
     });
+
+    function openAddModal() {
+        try { sessionStorage.setItem('uo_active_tab', 'catalog'); } catch (e) {}
+        document.getElementById('addName').value = '';
+        document.getElementById('addGrade').value = '';
+        document.getElementById('addPrice').value = '';
+        document.getElementById('addPriceStep').value = '20';
+        document.getElementById('addSizes').value = 'XS, S, M, L, XL, XXL, XXXL';
+        document.getElementById('addImage').value = '';
+        document.getElementById('addModal').classList.add('open');
+    }
 
     document.getElementById('addForm').addEventListener('submit', function(e) {
         e.preventDefault();

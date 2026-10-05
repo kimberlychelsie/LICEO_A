@@ -284,13 +284,18 @@
         <!-- Student Picker (Left) -->
         <div class="student-picker-list">
             {% for child in children %}
+            {% set display_name = child.student_name if (child.student_name and child.student_name|trim) else ('Student #' ~ child.enrollment_id) %}
             <a href="{{ url_for('student.student_reservation', enrollment_id=child.enrollment_id) }}" class="student-link-card">
                 <div class="avatar-box">
-                    {{ child.student_name[0] | upper }}
+                    {% if child.student_name and child.student_name|trim %}
+                        {{ child.student_name|trim|first|upper }}
+                    {% else %}
+                        <i class="fas fa-user-graduate"></i>
+                    {% endif %}
                 </div>
                 <div class="student-info">
-                    <h3>{{ child.student_name }}</h3>
-                    <p>{{ child.grade_level }} &nbsp;•&nbsp; Enrollment ID #{{ child.enrollment_id }}</p>
+                    <h3>{{ display_name }}</h3>
+                    <p>{{ child.grade_level or 'No Grade' }} &nbsp;•&nbsp; Enrollment ID #{{ child.enrollment_id }}</p>
                 </div>
                 <div class="arrow-icon"><i class="fas fa-arrow-right"></i></div>
             </a>

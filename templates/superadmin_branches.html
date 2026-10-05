@@ -155,7 +155,7 @@
     /* ── Premium Vault Table ── */
     .vault-wrapper {
         border-radius: 20px;
-        overflow-x: auto;
+        overflow: visible;
         border: 1px solid rgba(226, 232, 240, 0.8);
         background: #ffffff;
         box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.05);
@@ -421,6 +421,13 @@
                     network.</p>
             </div>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button type="button" onclick="openRetiredAdminModal()" class="btn-prem"
+                    style="font-size: 0.9rem; padding: 12px 20px; background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 700; border-radius: 12px;">
+                    <i class="fas fa-archive text-amber-600"></i> Archived Accounts
+                    {% if archived_admins_pool %}
+                    <span style="background: #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: 800;">{{ archived_admins_pool|length }}</span>
+                    {% endif %}
+                </button>
                 <button onclick="toggleCreateBranchForm()" class="btn-prem btn-gold"
                     style="font-size: 0.95rem; padding: 12px 24px; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 800;">
                     <i class="fas fa-plus-circle"></i> Add New Branch
@@ -438,52 +445,23 @@
             <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-grid">
-                    <!-- Row 1: Admin Name -->
-                    <div class="form-node">
-                        <label>Admin First Name</label>
-                        <input type="text" name="admin_first_name" placeholder="e.g. Jocelyn" required>
-                    </div>
-                    <div class="form-node">
-                        <label>Admin Middle Name (Optional)</label>
-                        <input type="text" name="admin_middle_name" placeholder="e.g. Marie">
-                    </div>
-                    <div class="form-node">
-                        <label>Admin Last Name</label>
-                        <input type="text" name="admin_last_name" placeholder="e.g. Ramirez" required>
-                    </div>
-
-                    <!-- Row 2: Branch Details -->
                     <div class="form-node">
                         <label>Branch Name</label>
                         <input type="text" name="branch_name" placeholder="e.g. Liceo de Majayjay" required>
                     </div>
                     <div class="form-node">
                         <label>Branch Code</label>
-                        <input type="text" name="branch_code" placeholder="e.g. LDMAJ"
-                            style="text-transform: uppercase;" required>
+                        <input type="text" name="branch_code" placeholder="e.g. LDMAJ" style="text-transform: uppercase;" required>
                     </div>
                     <div class="form-node">
                         <label>Location (Town Name)</label>
                         <input type="text" name="location" placeholder="e.g. Majayjay" required>
                     </div>
-
-                    <!-- Row 3: Additional Details -->
-                    <div class="form-node">
-                        <label>Gender</label>
-                        <select name="gender" required>
-                            <option value="Male" selected>Male</option>
-                            <option value="Female">Female</option>
-                        </select>
-                    </div>
-                    <div class="form-node">
-                        <label>Admin Email</label>
-                        <input type="email" name="admin_email" placeholder="admin@liceo.edu.ph" required>
-                    </div>
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap: 12px;">
+                <div style="display:flex; justify-content:flex-end; gap: 12px; margin-top: 20px;">
                     <button type="button" onclick="toggleCreateBranchForm()" class="btn-prem"
                         style="background: #f1f5f9; color: #64748b;">Cancel</button>
-                    <button type="submit" class="btn-prem btn-gold">Add Branch & Admin</button>
+                    <button type="submit" class="btn-prem btn-gold"><i class="fas fa-plus-circle"></i> Create Branch</button>
                 </div>
             </form>
         </div>
@@ -525,7 +503,7 @@
                 <tbody>
                     {% for b in branches %}
                     <tr>
-                        <td style="text-align: center; font-weight: 900; color: #94a3b8; font-size: 1rem;">#{{
+                        <td style="text-align: center; font-weight: 900; color: #94a3b8; font-size: 1rem;">{{
                             b.branch_id }}</td>
                         <td style="text-align: center;">
                             {% if b.admin_username %}
@@ -535,8 +513,8 @@
                             </span>
                             {% else %}
                             <span
-                                style="background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; padding: 6px 12px; border-radius: 99px; font-weight: 800; font-size: 0.8rem; display: inline-block;">
-                                PENDING
+                                style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 4px 10px; border-radius: 99px; font-weight: 800; font-size: 0.78rem; display: inline-block;">
+                                <i class="fas fa-user-clock"></i> VACANT
                             </span>
                             {% endif %}
                         </td>
@@ -562,6 +540,7 @@
                             </div>
                         </td>
                         <td>
+                            {% if b.admin_username %}
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 {% set initial = b.admin_first_name[0] if b.admin_first_name else '?' %}
                                 <div class="user-avatar">{{ initial|upper }}</div>
@@ -569,16 +548,28 @@
                                     <div style="font-weight: 800; color: var(--ma-primary);">
                                         {% if b.admin_last_name %}
                                         {{ b.admin_first_name }} {{ b.admin_last_name }}
-                                        {% elif b.admin_full_name %}
-                                        {{ b.admin_full_name }}
                                         {% else %}
-                                        No Principal Assigned
+                                        {{ b.admin_full_name }}
                                         {% endif %}
                                     </div>
                                     <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; margin-top: 2px;">
                                         {{ b.admin_email }}</div>
                                 </div>
                             </div>
+                            {% else %}
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="background: #fef3c7; color: #d97706; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; border: 1px solid #fde68a;">
+                                    <i class="fas fa-user-slash"></i>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 800; color: #92400e; font-size: 0.85rem;">No Principal Assigned</div>
+                                    <button type="button" onclick="openTransferModal('{{ b.branch_id }}','{{ b.branch_name|e }}')" 
+                                        style="background: none; border: none; padding: 0; color: #2563eb; font-size: 0.78rem; font-weight: 700; cursor: pointer; text-decoration: underline;">
+                                        + Assign Principal Now
+                                    </button>
+                                </div>
+                            </div>
+                            {% endif %}
                         </td>
                         <td style="text-align: center;">
                             <div class="action-menu">
@@ -587,7 +578,7 @@
                                 </button>
                                 <div class="action-dropdown">
                                     <button type="button" class="action-item"
-                                        onclick="openEditBranch('{{ b.branch_id }}','{{ b.branch_name|e }}','{{ b.branch_code }}','{{ b.location|e }}','{{ b.admin_email }}','{{ b.admin_first_name|e }}','{{ b.admin_middle_name|e }}','{{ b.admin_last_name|e }}')">
+                                        onclick="openEditBranch('{{ b.branch_id }}','{{ b.branch_name|e }}','{{ b.branch_code }}','{{ b.location|e }}','{{ b.admin_email }}','{{ b.admin_first_name|e }}','{{ b.admin_middle_name|e }}','{{ b.admin_last_name|e }}', {{ 'true' if b.admin_username else 'false' }})">
                                         <i class="fas fa-edit text-indigo-600"></i> Edit Details
                                     </button>
                                     {% if b.admin_username %}
@@ -616,6 +607,13 @@
                                         onclick="openTransferModal('{{ b.branch_id }}','{{ b.branch_name|e }}')">
                                         <i class="fas fa-user-plus text-emerald-600"></i> Assign Principal
                                     </button>
+                                    <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/delete" style="display:contents;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="action-item danger"
+                                            onclick="return confirm('Are you sure you want to delete branch {{ b.branch_name|e }}? This will permanently delete this vacant branch.');">
+                                            <i class="fas fa-trash-alt"></i> Delete Branch
+                                        </button>
+                                    </form>
                                     {% endif %}
 
                                 </div>
@@ -674,29 +672,36 @@
                 </div>
             </div>
 
-            <h4
-                style="margin-bottom: 12px; color: #475569; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                Principal Admin Details</h4>
-            <div class="entry-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div class="form-node">
-                    <label>First Name</label>
-                    <input type="text" name="admin_first_name" id="editAdminFirstName"
-                        oninput="checkEditBranchChanges()" required />
+            <div id="editNoAdminNotice" style="display:none; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; padding:14px 16px; margin-top:16px;">
+                <div style="display:flex; align-items:center; gap:10px; color:#64748b; font-size:0.85rem; font-weight:600;">
+                    <i class="fas fa-info-circle" style="color:#3b82f6; font-size:1.1rem;"></i>
+                    <div>
+                        No principal is currently assigned to this branch.
+                        <div style="font-size:0.78rem; color:#94a3b8; font-weight:500;">Use the <strong>Assign Principal</strong> action button to assign an administrator.</div>
+                    </div>
                 </div>
-                <div class="form-node">
-                    <label>Last Name</label>
-                    <input type="text" name="admin_last_name" id="editAdminLastName" oninput="checkEditBranchChanges()"
-                        required />
-                </div>
-                <div class="form-node">
-                    <label>Middle Name (Optional)</label>
-                    <input type="text" name="admin_middle_name" id="editAdminMiddleName"
-                        oninput="checkEditBranchChanges()" />
-                </div>
-                <div class="form-node">
-                    <label>Admin Email</label>
-                    <input type="email" name="admin_email" id="editAdminEmail" oninput="checkEditBranchChanges()"
-                        required />
+            </div>
+
+            <div id="editAdminSection">
+                <h4 style="margin-bottom: 12px; margin-top: 20px; color: #475569; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Principal Admin Details</h4>
+                <div class="entry-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-node">
+                        <label>First Name</label>
+                        <input type="text" name="admin_first_name" id="editAdminFirstName" oninput="checkEditBranchChanges()" />
+                    </div>
+                    <div class="form-node">
+                        <label>Last Name</label>
+                        <input type="text" name="admin_last_name" id="editAdminLastName" oninput="checkEditBranchChanges()" />
+                    </div>
+                    <div class="form-node">
+                        <label>Middle Name (Optional)</label>
+                        <input type="text" name="admin_middle_name" id="editAdminMiddleName" oninput="checkEditBranchChanges()" />
+                    </div>
+                    <div class="form-node">
+                        <label>Admin Email</label>
+                        <input type="email" name="admin_email" id="editAdminEmail" oninput="checkEditBranchChanges()" />
+                    </div>
                 </div>
             </div>
 
@@ -712,32 +717,87 @@
 
 <!-- Replace Admin Modal -->
 <div id="transferAdminModal" class="glass-overlay">
-    <div class="glass-modal" style="max-width: 600px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-            <h2 id="transferBranchName"
-                style="font-weight: 900; color: var(--ma-primary); margin: 0; font-size: 1.3rem;">Assign Branch
-                Principal</h2>
-            <button type="button" onclick="closeTransferModal()"
-                style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;"><i
-                    class="fas fa-times"></i></button>
+    <div class="glass-modal" style="max-width: 620px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+                <h2 id="transferBranchName" style="font-weight: 900; color: var(--ma-primary); margin: 0 0 4px 0; font-size: 1.3rem;">Assign Branch Principal</h2>
+                <p id="transferBranchSub" style="margin:0; font-size:0.82rem; color:#64748b;"></p>
+            </div>
+            <button type="button" onclick="closeTransferModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;"><i class="fas fa-times"></i></button>
         </div>
-        <form id="transferAdminForm" method="post">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="replacement_mode" value="new">
 
-            <div id="newAdminFields">
-                <h4
-                    style="margin-bottom: 12px; color: #475569; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                    New Principal Details</h4>
-                <div class="entry-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
+        <!-- Tab Switcher -->
+        <div style="display:flex; gap:0; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; margin-bottom:24px;">
+            <button type="button" id="tabPickExisting" onclick="switchAssignTab('existing')"
+                style="flex:1; padding:10px 0; font-size:0.85rem; font-weight:800; border:none; cursor:pointer; transition:all .2s; background:#1a3a8f; color:#fff;">
+                <i class="fas fa-user-clock"></i> Pick Existing
+            </button>
+            <button type="button" id="tabCreateNew" onclick="switchAssignTab('new')"
+                style="flex:1; padding:10px 0; font-size:0.85rem; font-weight:800; border:none; cursor:pointer; transition:all .2s; background:#f1f5f9; color:#64748b;">
+                <i class="fas fa-user-plus"></i> Create New
+            </button>
+        </div>
+
+        <!-- Panel: Pick Existing (Retired Admins Pool) -->
+        <div id="panelPickExisting">
+            <p style="font-size:0.85rem; color:#64748b; margin-bottom:14px;">
+                Select a previously removed principal to reassign — no duplicate account needed.
+            </p>
+            {% set pool = retired_admins_pool %}
+            {% if pool %}
+            <form method="post" id="transferExistingForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="replacement_mode" value="transfer">
+                <div style="max-height:280px; overflow-y:auto; padding-right:6px; display:flex; flex-direction:column; gap:10px;">
+                    {% for ra in pool %}
+                    <label style="display:flex; align-items:center; gap:14px; background:#f8fafc; border:2px solid #e2e8f0; border-radius:14px; padding:14px 16px; cursor:pointer; transition:all .2s;"
+                        onclick="selectRetiredAdmin(this, '{{ ra.user_id }}')">
+                        <div style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#1a3a8f,#3b82f6); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:1rem; flex-shrink:0;">
+                            {{ ra.full_name[0] | upper }}
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:800; color:#0f172a; font-size:0.95rem;">{{ ra.full_name }}</div>
+                            <div style="font-size:0.78rem; color:#64748b;">@{{ ra.username }} &nbsp;·&nbsp; {{ ra.email or 'No email' }}</div>
+                        </div>
+                        <div style="width:20px; height:20px; border-radius:50%; border:2px solid #cbd5e1; flex-shrink:0; display:flex; align-items:center; justify-content:center;" class="ra-radio-dot"></div>
+                    </label>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="transfer_user_id" id="selectedRetiredAdminId">
+                <div style="display:flex; gap:12px; margin-top:20px; justify-content:flex-end;">
+                    <button type="button" onclick="closeTransferModal()" class="btn-prem" style="background:#f1f5f9; color:#64748b; padding:12px 24px;">Cancel</button>
+                    <button type="submit" id="btnConfirmExisting" class="btn-prem btn-gold" style="padding:12px 32px; min-width:150px; opacity:0.5; cursor:not-allowed;" disabled>
+                        <i class="fas fa-check"></i> Reassign
+                    </button>
+                </div>
+            </form>
+            {% else %}
+            <div style="text-align:center; padding:40px 0;">
+                <i class="fas fa-user-slash" style="font-size:2.5rem; color:#cbd5e1; margin-bottom:12px;"></i>
+                <div style="font-weight:800; color:#94a3b8; font-size:0.95rem;">No removed principals available.</div>
+                <div style="font-size:0.8rem; color:#cbd5e1; margin-top:6px;">Principals will appear here after being removed from a branch.</div>
+            </div>
+            <div style="margin-top:20px; text-align:right;">
+                <button type="button" onclick="closeTransferModal()" class="btn-prem" style="background:#f1f5f9; color:#64748b;">Close</button>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Panel: Create New -->
+        <div id="panelCreateNew" style="display:none;">
+            <form id="transferAdminForm" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="replacement_mode" value="new">
+                <div class="entry-grid" style="grid-template-columns: 1fr 1fr; gap:16px;">
                     <div class="form-node">
                         <label>First Name</label>
-                        <input type="text" name="new_admin_first_name" required />
+                        <input type="text" name="new_admin_first_name" id="newAdminFirstName" oninput="checkModalName()" required />
                     </div>
                     <div class="form-node">
                         <label>Last Name</label>
-                        <input type="text" name="new_admin_last_name" required />
+                        <input type="text" name="new_admin_last_name" id="newAdminLastName" oninput="checkModalName()" required />
                     </div>
+                    <div id="modalNameWarning" style="grid-column: span 2; display:none; background:#fef3c7; border:1px solid #fde68a; border-radius:12px; padding:10px 14px; font-size:0.82rem; color:#92400e;"></div>
                     <div class="form-node">
                         <label>Middle Name (Optional)</label>
                         <input type="text" name="new_admin_middle_name" />
@@ -751,51 +811,87 @@
                     </div>
                     <div class="form-node" style="grid-column: span 2;">
                         <label>Email</label>
-                        <input type="email" name="new_admin_email" required />
+                        <input type="email" name="new_admin_email" id="newAdminEmail" required
+                            oninput="checkEmailDuplicate(this)" autocomplete="off" />
+                        <div id="emailDupMsg" style="font-size:0.78rem; margin-top:6px; display:none;"></div>
                     </div>
                 </div>
-            </div>
-
-            <div style="display: flex; gap: 12px; margin-top: 32px; justify-content: flex-end;">
-                <button type="button" onclick="closeTransferModal()" class="btn-prem"
-                    style="background: #f1f5f9; color: #64748b; padding: 12px 24px;">Cancel</button>
-                <button type="submit" class="btn-prem btn-gold" style="padding: 12px 32px; min-width: 150px;">Confirm
-                    Assignment</button>
-            </div>
-        </form>
+                <div style="display:flex; gap:12px; margin-top:24px; justify-content:flex-end;">
+                    <button type="button" onclick="closeTransferModal()" class="btn-prem" style="background:#f1f5f9; color:#64748b; padding:12px 24px;">Cancel</button>
+                    <button type="submit" id="btnConfirmNew" class="btn-prem btn-gold" style="padding:12px 32px; min-width:150px;">
+                        <i class="fas fa-user-check"></i> Create & Assign
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
-<!-- Retired Admin Modal -->
+<!-- Archived & Retired Admin Modal -->
 <div id="retiredAdminModal" class="glass-overlay">
-    <div class="glass-modal" style="max-width: 500px;">
-        <h2 style="font-weight: 900; color: var(--ma-primary); margin-bottom: 24px; text-align: center;"><i
-                class="fas fa-chalkboard-teacher text-indigo-600"></i> Assign to Faculty</h2>
-        {% if retired_admins_pool %}
-        <p style="font-size: 0.9rem; color: var(--ma-muted); text-align: center; margin-bottom: 24px;">Select a retired
-            administrator to transition them back to the active Faculty roster.</p>
-        <div style="max-height: 300px; overflow-y: auto; padding-right: 10px;">
-            {% for ra in retired_admins_pool %}
-            <div
-                style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+    <div class="glass-modal" style="max-width: 540px;">
+        <h2 style="font-weight: 900; color: var(--ma-primary); margin-bottom: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <i class="fas fa-archive text-amber-500"></i> Archived & Retired Accounts
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--ma-muted); text-align: center; margin-bottom: 20px;">
+            Directory of former branch administrators. Manage archive status or delete unused accounts.
+        </p>
+        {% if archived_admins_pool %}
+        <div style="max-height: 360px; overflow-y: auto; padding-right: 6px;">
+            {% for ra in archived_admins_pool %}
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
                 <div>
-                    <div style="font-weight: 800; color: var(--ma-primary); font-size: 0.95rem;">{{ ra.full_name }}
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span style="font-weight: 800; color: var(--ma-primary); font-size: 0.95rem;">{{ ra.full_name }}</span>
+                        {% if ra.is_archived %}
+                        <span style="background: #e2e8f0; color: #475569; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 700;"><i class="fas fa-box-archive"></i> Archived</span>
+                        {% else %}
+                        <span style="background: #fef3c7; color: #92400e; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 700;"><i class="fas fa-user-clock"></i> Retired</span>
+                        {% endif %}
                     </div>
-                    <div style="font-size: 0.75rem; color: var(--ma-muted);">@{{ ra.username }} • Branch ID: {{
-                        ra.branch_id }}</div>
+                    <div style="font-size: 0.78rem; color: var(--ma-muted); margin-top: 2px;">
+                        @{{ ra.username }} {% if ra.email %}• {{ ra.email }}{% endif %}
+                    </div>
+                    <div style="font-size: 0.74rem; color: #64748b; margin-top: 2px;">
+                        <i class="fas fa-building" style="font-size: 0.7rem;"></i> Former Branch: <strong>{{ ra.branch_name or 'Unassigned' }}</strong>
+                    </div>
                 </div>
-                <form method="POST" action="/super-admin/transition-to-teacher/{{ ra.user_id }}" style="margin: 0;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn-prem btn-gold" style="padding: 8px 16px; font-size: 0.8rem;"
-                        onclick="return confirm('Are you sure you want to transition {{ ra.full_name|e }} to Faculty?');">Assign</button>
-                </form>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    {% if ra.is_archived %}
+                    <form method="POST" action="/super-admin/retired-admin/{{ ra.user_id }}/unarchive" style="margin: 0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-prem" style="padding: 6px 12px; font-size: 0.78rem; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;"
+                            title="Restore account from archive"
+                            onclick="return confirm('Restore {{ ra.full_name|e }} from Archives?');">
+                            <i class="fas fa-undo"></i> Restore
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="/super-admin/retired-admin/{{ ra.user_id }}/archive" style="margin: 0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-prem" style="padding: 6px 10px; font-size: 0.78rem; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;"
+                            title="Move to Archives"
+                            onclick="return confirm('Move {{ ra.full_name|e }} to Archives?');">
+                            <i class="fas fa-archive"></i> Archive
+                        </button>
+                    </form>
+                    {% endif %}
+                    <form method="POST" action="/super-admin/retired-admin/{{ ra.user_id }}/delete" style="margin: 0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-prem" style="padding: 6px 10px; font-size: 0.78rem; background: #fef2f2; color: #ef4444; border: 1px solid #fecaca;"
+                            title="Permanently delete account"
+                            onclick="return confirm('Permanently delete {{ ra.full_name|e }}? This action cannot be undone.');">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </form>
+                </div>
             </div>
             {% endfor %}
         </div>
         {% else %}
         <div style="text-align: center; padding: 32px 0;">
             <i class="fas fa-inbox" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 16px;"></i>
-            <div style="font-weight: 800; color: var(--ma-muted);">No retired administrators available.</div>
+            <div style="font-weight: 800; color: var(--ma-muted);">No archived or retired accounts found.</div>
         </div>
         {% endif %}
         <div style="margin-top: 24px;">
@@ -892,28 +988,53 @@
 
     let initialEditData = {};
 
-    function openEditBranch(id, name, code, location, email, firstName, middleName, lastName) {
+    function openEditBranch(id, name, code, location, email, firstName, middleName, lastName, hasAdmin) {
         document.getElementById('editBranchName').value = name;
         document.getElementById('editBranchCode').value = code;
         document.getElementById('editBranchLocation').value = location;
-        document.getElementById('editAdminFirstName').value = firstName || '';
-        document.getElementById('editAdminMiddleName').value = middleName || '';
-        document.getElementById('editAdminLastName').value = lastName || '';
-        document.getElementById('editAdminEmail').value = email;
         document.getElementById('editBranchForm').action = '/super-admin/branches/' + id + '/edit';
 
-        initialEditData = {
-            name: name,
-            code: code,
-            location: location,
-            firstName: firstName || '',
-            middleName: middleName || '',
-            lastName: lastName || '',
-            email: email
-        };
+        const adminSection = document.getElementById('editAdminSection');
+        const noAdminNotice = document.getElementById('editNoAdminNotice');
+        const fnInput = document.getElementById('editAdminFirstName');
+        const lnInput = document.getElementById('editAdminLastName');
+        const emailInput = document.getElementById('editAdminEmail');
+
+        if (hasAdmin) {
+            if (adminSection) adminSection.style.display = 'block';
+            if (noAdminNotice) noAdminNotice.style.display = 'none';
+            if (fnInput) { fnInput.required = true; fnInput.value = firstName || ''; }
+            if (document.getElementById('editAdminMiddleName')) document.getElementById('editAdminMiddleName').value = middleName || '';
+            if (lnInput) { lnInput.required = true; lnInput.value = lastName || ''; }
+            if (emailInput) { emailInput.required = true; emailInput.value = email || ''; }
+
+            initialEditData = {
+                name: name,
+                code: code,
+                location: location,
+                hasAdmin: true,
+                firstName: firstName || '',
+                middleName: middleName || '',
+                lastName: lastName || '',
+                email: email || ''
+            };
+        } else {
+            if (adminSection) adminSection.style.display = 'none';
+            if (noAdminNotice) noAdminNotice.style.display = 'block';
+            if (fnInput) { fnInput.required = false; fnInput.value = ''; }
+            if (document.getElementById('editAdminMiddleName')) document.getElementById('editAdminMiddleName').value = '';
+            if (lnInput) { lnInput.required = false; lnInput.value = ''; }
+            if (emailInput) { emailInput.required = false; emailInput.value = ''; }
+
+            initialEditData = {
+                name: name,
+                code: code,
+                location: location,
+                hasAdmin: false
+            };
+        }
 
         checkEditBranchChanges();
-
         document.getElementById('editBranchModal').style.display = 'flex';
     }
 
@@ -925,11 +1046,15 @@
             name: document.getElementById('editBranchName').value,
             code: document.getElementById('editBranchCode').value,
             location: document.getElementById('editBranchLocation').value,
-            firstName: document.getElementById('editAdminFirstName').value,
-            middleName: document.getElementById('editAdminMiddleName').value,
-            lastName: document.getElementById('editAdminLastName').value,
-            email: document.getElementById('editAdminEmail').value
+            hasAdmin: initialEditData.hasAdmin
         };
+
+        if (initialEditData.hasAdmin) {
+            currentData.firstName = document.getElementById('editAdminFirstName')?.value || '';
+            currentData.middleName = document.getElementById('editAdminMiddleName')?.value || '';
+            currentData.lastName = document.getElementById('editAdminLastName')?.value || '';
+            currentData.email = document.getElementById('editAdminEmail')?.value || '';
+        }
 
         const hasChanges = Object.keys(initialEditData).some(key => initialEditData[key] !== currentData[key]);
 
@@ -940,14 +1065,124 @@
 
     function closeEditBranch() { document.getElementById('editBranchModal').style.display = 'none'; }
 
-    function openTransferModal(id, name) {
-        document.getElementById('transferBranchName').innerText = "Assign to " + name;
-        document.getElementById('transferAdminForm').action =
-            '/super-admin/branches/' + id + '/replace-admin';
+    let _currentTransferBranchId = null;
 
-        document.getElementById('transferAdminModal').style.display = 'flex';
+    function openTransferModal(id, name) {
+        _currentTransferBranchId = id;
+        const nameEl = document.getElementById('transferBranchName');
+        const subEl  = document.getElementById('transferBranchSub');
+        if (nameEl) nameEl.innerText = 'Assign to ' + name;
+        if (subEl)  subEl.innerText = 'Branch ID: ' + id;
+
+        // Auto-select tab: if there are retired admins, show 'existing', else 'new'
+        const hasRetiredForm = !!document.getElementById('transferExistingForm');
+        switchAssignTab(hasRetiredForm ? 'existing' : 'new');
+
+        // Reset selection safely
+        const selInput = document.getElementById('selectedRetiredAdminId');
+        if (selInput) selInput.value = '';
+
+        const btn = document.getElementById('btnConfirmExisting');
+        if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
+        document.querySelectorAll('#transferAdminModal .ra-radio-dot').forEach(d => {
+            d.style.background = '';
+            d.style.borderColor = '#cbd5e1';
+        });
+        document.querySelectorAll('#transferAdminModal label[onclick]').forEach(l => {
+            l.style.borderColor = '#e2e8f0';
+            l.style.background = '#f8fafc';
+        });
+
+        // Set form action for both forms
+        const newForm = document.getElementById('transferAdminForm');
+        if (newForm) newForm.action = '/super-admin/branches/' + id + '/replace-admin';
+        const exForm = document.getElementById('transferExistingForm');
+        if (exForm) exForm.action = '/super-admin/branches/' + id + '/replace-admin';
+
+        // Reset email check
+        const emailInput = document.getElementById('newAdminEmail');
+        const emailMsg   = document.getElementById('emailDupMsg');
+        if (emailInput) { emailInput.value = ''; emailInput.style.borderColor = ''; }
+        if (emailMsg)   { emailMsg.style.display = 'none'; }
+
+        const modal = document.getElementById('transferAdminModal');
+        if (modal) modal.style.display = 'flex';
     }
-    function closeTransferModal() { document.getElementById('transferAdminModal').style.display = 'none'; }
+
+    function closeTransferModal() {
+        const modal = document.getElementById('transferAdminModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function switchAssignTab(tab) {
+        const isExisting = tab === 'existing';
+        const panelEx = document.getElementById('panelPickExisting');
+        const panelNew = document.getElementById('panelCreateNew');
+        if (panelEx)  panelEx.style.display  = isExisting ? '' : 'none';
+        if (panelNew) panelNew.style.display = isExisting ? 'none' : '';
+
+        const tabEx = document.getElementById('tabPickExisting');
+        const tabNew = document.getElementById('tabCreateNew');
+        if (tabEx) {
+            tabEx.style.background = isExisting ? '#1a3a8f' : '#f1f5f9';
+            tabEx.style.color      = isExisting ? '#fff' : '#64748b';
+        }
+        if (tabNew) {
+            tabNew.style.background = isExisting ? '#f1f5f9' : '#1a3a8f';
+            tabNew.style.color      = isExisting ? '#64748b' : '#fff';
+        }
+    }
+
+    function selectRetiredAdmin(labelEl, userId) {
+        // Reset all
+        document.querySelectorAll('#transferAdminModal label[onclick]').forEach(l => {
+            l.style.borderColor = '#e2e8f0';
+            l.style.background = '#f8fafc';
+            l.querySelector('.ra-radio-dot').style.background = '';
+            l.querySelector('.ra-radio-dot').style.borderColor = '#cbd5e1';
+        });
+        // Highlight selected
+        labelEl.style.borderColor = '#1a3a8f';
+        labelEl.style.background  = '#eff6ff';
+        const dot = labelEl.querySelector('.ra-radio-dot');
+        dot.style.background  = '#1a3a8f';
+        dot.style.borderColor = '#1a3a8f';
+        const selInput = document.getElementById('selectedRetiredAdminId');
+        if (selInput) selInput.value = userId;
+        const btn = document.getElementById('btnConfirmExisting');
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        }
+    }
+
+    let _emailCheckTimer = null;
+    function checkEmailDuplicate(input) {
+        const msg = document.getElementById('emailDupMsg');
+        const btn = document.getElementById('btnConfirmNew');
+        const val = input.value.trim();
+        clearTimeout(_emailCheckTimer);
+        if (!val || !val.includes('@')) { msg.style.display = 'none'; input.style.borderColor = ''; return; }
+        _emailCheckTimer = setTimeout(() => {
+            fetch('/super-admin/check-email?email=' + encodeURIComponent(val))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.exists) {
+                        msg.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i> <span style="color:#ef4444;">This email is already registered to <strong>' + data.name + '</strong>. Use &ldquo;Pick Existing&rdquo; tab instead.</span>';
+                        msg.style.display = 'block';
+                        input.style.borderColor = '#ef4444';
+                        btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed';
+                    } else {
+                        msg.innerHTML = '<i class="fas fa-check-circle" style="color:#22c55e;"></i> <span style="color:#22c55e;">Email is available.</span>';
+                        msg.style.display = 'block';
+                        input.style.borderColor = '#22c55e';
+                        btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
+                    }
+                })
+                .catch(() => { msg.style.display = 'none'; });
+        }, 500);
+    }
 
     function toggleActionMenu(btn, event) {
         event.stopPropagation();
@@ -975,12 +1210,15 @@
                 currentRow.style.zIndex = '9999';
             }
 
-            const rect = dropdown.getBoundingClientRect();
+            const btnRect = btn.getBoundingClientRect();
             const viewportHeight = window.innerHeight;
-            const containerRect = container ? container.getBoundingClientRect() : null;
+            const dropdownHeight = dropdown.offsetHeight || 220;
 
-            // Flip up if hitting viewport bottom OR container bottom
-            if (rect.bottom > viewportHeight || (containerRect && rect.bottom > containerRect.bottom - 10)) {
+            const spaceBelow = viewportHeight - btnRect.bottom;
+            const spaceAbove = btnRect.top;
+
+            // Only flip up if dropping down overflows viewport AND there is enough room above
+            if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
                 dropdown.classList.add('drop-up');
             }
         } else {
@@ -1081,7 +1319,94 @@
             container.style.display = 'block';
         } else {
             container.style.display = 'none';
+            // Reset email & name check state on close
+            const input = document.getElementById('addBranchEmail');
+            const msg   = document.getElementById('addBranchEmailMsg');
+            const btn   = document.getElementById('addBranchSubmitBtn');
+            const warn  = document.getElementById('addAdminNameWarning');
+            if (input) { input.value = ''; input.style.borderColor = ''; }
+            if (msg)   { msg.style.display = 'none'; }
+            if (warn)  { warn.style.display = 'none'; }
+            if (btn)   { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
         }
+    }
+
+    let _addEmailTimer = null;
+    function checkAddEmail(input) {
+        const msg = document.getElementById('addBranchEmailMsg');
+        const btn = document.getElementById('addBranchSubmitBtn');
+        const val = input.value.trim();
+        clearTimeout(_addEmailTimer);
+        if (!val || !val.includes('@')) {
+            msg.style.display = 'none';
+            input.style.borderColor = '';
+            btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
+            return;
+        }
+        _addEmailTimer = setTimeout(() => {
+            fetch('/super-admin/check-email?email=' + encodeURIComponent(val))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.exists) {
+                        msg.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i> <span style="color:#ef4444;">Already registered to <strong>' + data.name + '</strong>. This account already exists.</span>';
+                        msg.style.display = 'block';
+                        input.style.borderColor = '#ef4444';
+                        btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed';
+                    } else {
+                        msg.innerHTML = '<i class="fas fa-check-circle" style="color:#22c55e;"></i> <span style="color:#22c55e;">Email is available.</span>';
+                        msg.style.display = 'block';
+                        input.style.borderColor = '#22c55e';
+                        btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer';
+                    }
+                })
+                .catch(() => { msg.style.display = 'none'; });
+        }, 500);
+    }
+
+    let _addNameTimer = null;
+    function checkAddName() {
+        const fn = (document.getElementById('addAdminFirstName')?.value || '').trim();
+        const ln = (document.getElementById('addAdminLastName')?.value || '').trim();
+        const warn = document.getElementById('addAdminNameWarning');
+        if (!warn) return;
+        clearTimeout(_addNameTimer);
+        if (!fn || !ln) { warn.style.display = 'none'; return; }
+        _addNameTimer = setTimeout(() => {
+            fetch('/super-admin/check-name?first_name=' + encodeURIComponent(fn) + '&last_name=' + encodeURIComponent(ln))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.exists) {
+                        warn.innerHTML = '<i class="fas fa-info-circle" style="color:#d97706; margin-right:6px;"></i> <strong>Note:</strong> A user named <strong>' + data.name + '</strong> (Role: ' + data.role + ', Branch: ' + data.branch + ') already exists in the system. If this is the same person, consider using <strong>Pick Existing</strong> instead.';
+                        warn.style.display = 'block';
+                    } else {
+                        warn.style.display = 'none';
+                    }
+                })
+                .catch(() => { warn.style.display = 'none'; });
+        }, 500);
+    }
+
+    let _modalNameTimer = null;
+    function checkModalName() {
+        const fn = (document.getElementById('newAdminFirstName')?.value || '').trim();
+        const ln = (document.getElementById('newAdminLastName')?.value || '').trim();
+        const warn = document.getElementById('modalNameWarning');
+        if (!warn) return;
+        clearTimeout(_modalNameTimer);
+        if (!fn || !ln) { warn.style.display = 'none'; return; }
+        _modalNameTimer = setTimeout(() => {
+            fetch('/super-admin/check-name?first_name=' + encodeURIComponent(fn) + '&last_name=' + encodeURIComponent(ln))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.exists) {
+                        warn.innerHTML = '<i class="fas fa-info-circle" style="color:#d97706; margin-right:6px;"></i> <strong>Note:</strong> A user named <strong>' + data.name + '</strong> (Role: ' + data.role + ', Branch: ' + data.branch + ') already exists in the system. If this is the same person, switch to the <strong>Pick Existing</strong> tab.';
+                        warn.style.display = 'block';
+                    } else {
+                        warn.style.display = 'none';
+                    }
+                })
+                .catch(() => { warn.style.display = 'none'; });
+        }, 500);
     }
 </script>
 {% endblock %}

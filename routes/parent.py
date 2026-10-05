@@ -122,11 +122,12 @@ def dashboard():
         re_enrollment_children = []
 
         for child in children:
-            child["student_name"] = " ".join(filter(None, [
+            s_fullname = " ".join(filter(None, [
                 child.get("student_first_name"),
                 child.get("student_middle_name"),
                 child.get("student_last_name"),
-            ]))
+            ])).strip()
+            child["student_name"] = s_fullname if s_fullname else f"Student #{child.get('enrollment_id')}"
             child["guardian_full_name"] = " ".join(filter(None, [
                 child.get("guardian_first_name"),
                 child.get("guardian_middle_name"),
@@ -1109,11 +1110,12 @@ def parent_reserve():
         """, (session.get("user_id"),))
         children = cursor.fetchall()
         for child in children:
-            child["student_name"] = " ".join(filter(None, [
+            full_name = " ".join(filter(None, [
                 child.get("student_first_name"),
                 child.get("student_middle_name"),
                 child.get("student_last_name"),
-            ]))
+            ])).strip()
+            child["student_name"] = full_name if full_name else f"Student #{child.get('enrollment_id')}"
 
         if not children:
             flash("No linked children found. Please link a child first.", "warning")

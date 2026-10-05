@@ -4150,7 +4150,7 @@ def uniform_catalog():
 
         # Fetch all pieces (items with a parent_item_id)
         cursor.execute("""
-            SELECT item_id, item_name, grade_level, price, size_label, parent_item_id,
+            SELECT item_id, item_name, grade_level, price, size_label, parent_item_id, image_url,
                    COALESCE(size_price_step, 20) AS size_price_step
             FROM inventory_items
             WHERE branch_id = %s AND UPPER(category) = 'UNIFORM'
@@ -4482,21 +4482,27 @@ def _sync_parent_set_price(cursor, parent_item_id, branch_id):
         """, (total_price, int(parent_item_id), branch_id))
 
 
+@cashier_bp.route("/cashier/uniform-catalog/update", methods=["POST"])
 @cashier_bp.route("/cashier/uniform-catalog/update-price", methods=["POST"])
-def uniform_catalog_update_price():
+def uniform_catalog_update():
+    """Update uniform catalog item details (name, grade level, price, sizes, image URL)."""
     if not _require_cashier():
         return jsonify({"error": "Unauthorized"}), 403
 
     branch_id = session.get("branch_id")
     item_id = request.form.get("item_id")
-    new_price_str = (request.form.get("new_price") or "").strip()
+    item_name = (request.form.get("item_name") or "").strip()
+    grade_level = (request.form.get("grade_level") or "All Grades").strip()
+    new_price_str = (request.form.get("new_price") or request.form.get("price") or "").strip()
+    size_label = (request.form.get("size_label") or "XS, S, M, L, XL, XXL, XXXL").strip()
+    image_url = (request.form.get("image_url") or "").strip()
     size_price_step_str = (request.form.get("size_price_step") or str(DEFAULT_SIZE_PRICE_STEP)).strip()
 
-    if not item_id or not new_price_str:
-        return jsonify({"error": "Missing item_id or price"}), 400
+    if not item_id:
+        return jsonify({"error": "Missing item ID"}), 400
 
     try:
-        new_price = float(new_price_str)
+        new_price = float(new_price_str or 0)
         size_price_step = float(size_price_step_str or DEFAULT_SIZE_PRICE_STEP)
     except ValueError:
         return jsonify({"error": "Price must be a valid number"}), 400
@@ -4506,16 +4512,21 @@ def uniform_catalog_update_price():
     if size_price_step < 0 or size_price_step > 999.99:
         return jsonify({"error": "Price increment per size must be between ₱0.00 and ₱999.99 (max 3 digits)"}), 400
 
+    size_label = ", ".join(parse_size_list(size_label))
+
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute(
-            "SELECT parent_item_id, item_name FROM inventory_items WHERE item_id = %s AND branch_id = %s",
+            "SELECT item_id, parent_item_id, item_name, grade_level, image_url FROM inventory_items WHERE item_id = %s AND branch_id = %s",
             (item_id, branch_id)
         )
         row = cursor.fetchone()
         if not row:
             return jsonify({"error": "Item not found"}), 404
+
+        if not item_name:
+            item_name = row["item_name"]
 
         is_piece = row["parent_item_id"] is not None
         if is_piece:
@@ -4525,17 +4536,31 @@ def uniform_catalog_update_price():
             if new_price > 9999.99:
                 return jsonify({"error": "Full set price cannot exceed ₱9,999.99 (maximum 4 digits)"}), 400
 
-        cursor.execute("""
-            UPDATE inventory_items
-            SET price = %s, size_price_step = %s
-            WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
-        """, (new_price, size_price_step, item_id, branch_id))
+        if is_piece:
+            cursor.execute("""
+                UPDATE inventory_items
+                SET item_name = %s, price = %s, size_label = %s, image_url = %s, size_price_step = %s
+                WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
+            """, (item_name, new_price, size_label, image_url or None, size_price_step, item_id, branch_id))
 
-        if is_piece and row["parent_item_id"]:
-            _sync_parent_set_price(cursor, row["parent_item_id"], branch_id)
+            if row["parent_item_id"]:
+                _sync_parent_set_price(cursor, row["parent_item_id"], branch_id)
+        else:
+            cursor.execute("""
+                UPDATE inventory_items
+                SET item_name = %s, grade_level = %s, price = %s, size_label = %s, image_url = %s, size_price_step = %s
+                WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
+            """, (item_name, grade_level, new_price, size_label, image_url or None, size_price_step, item_id, branch_id))
+
+            # Sync grade_level to child pieces
+            cursor.execute("""
+                UPDATE inventory_items
+                SET grade_level = %s
+                WHERE parent_item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
+            """, (grade_level, item_id, branch_id))
 
         db.commit()
-        return jsonify({"success": True, "message": "Price updated successfully"})
+        return jsonify({"success": True, "message": "Uniform item updated successfully"})
     except Exception as e:
         db.rollback()
         return jsonify({"error": str(e)}), 500

@@ -236,22 +236,10 @@ def super_admin_branches():
         branch_name = request.form.get("branch_name", "").strip()
         branch_code = (request.form.get("branch_code") or "").strip().upper()
         location    = request.form.get("location", "").strip()
-        admin_email = request.form.get("admin_email", "").strip()
-        admin_first_name  = request.form.get("admin_first_name", "").strip()
-        admin_middle_name = request.form.get("admin_middle_name", "").strip()
-        admin_last_name   = request.form.get("admin_last_name", "").strip()
-        gender      = request.form.get("gender", "").strip()
 
-        if not branch_name or not branch_code or not location or not admin_email or not admin_first_name or not admin_last_name or not gender:
-            flash("All fields (Branch Name, Code, Location, Admin First/Last Name, Gender, Email) are required.", "error")
+        if not branch_name or not branch_code or not location:
+            flash("Branch Name, Branch Code, and Location are required.", "error")
             return redirect(url_for("super_admin.super_admin_branches"))
-
-        admin_name = f"{admin_first_name} {admin_middle_name} {admin_last_name}".strip().replace("  ", " ")
-
-        # USERNAME CONVENTION: [BRANCH_CODE]_Admin
-        username      = f"{branch_code}_Admin"
-        temp_password = generate_password()
-        hashed        = generate_password_hash(temp_password)
 
         db = get_db_connection()
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -269,12 +257,6 @@ def super_admin_branches():
                 db.rollback()
                 flash("Branch code already exists.", "error")
                 return redirect(url_for("super_admin.super_admin_branches"))
-                
-            cursor.execute("SELECT 1 FROM users WHERE email ILIKE %s", (admin_email,))
-            if cursor.fetchone():
-                db.rollback()
-                flash("Email address is already in use by another user.", "error")
-                return redirect(url_for("super_admin.super_admin_branches"))
 
             cursor.execute(
                 "INSERT INTO branches (branch_name, location, branch_code, is_active) VALUES (%s, %s, %s, TRUE) RETURNING branch_id",
@@ -282,11 +264,6 @@ def super_admin_branches():
             )
             branch_id = cursor.fetchone()["branch_id"]
 
-            cursor.execute(
-                "INSERT INTO users (branch_id, username, password, role, email, first_name, middle_name, last_name, full_name, gender, require_password_change) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)",
-                (branch_id, username, hashed, "branch_admin", admin_email, admin_first_name, admin_middle_name or None, admin_last_name, admin_name, gender)
-            )
-            
             # Auto-insert active school year for new branch
             cursor.execute("SELECT label FROM school_years WHERE is_active=TRUE LIMIT 1")
             active_sy = cursor.fetchone()
@@ -297,53 +274,13 @@ def super_admin_branches():
                 )
 
             db.commit()
-
-            db.commit()
-
-            subject = f"Liceo Management System: Admin Credentials for {branch_name}"
-            
-            # Premium HTML Template
-            honorific = "Mr." if gender == "Male" else "Ms."
-            html_body = f"""
-            <div style="font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; padding: 40px; border-radius: 24px; color: #0f172a; max-width: 600px; margin: 0 auto; border: 1px solid rgba(26, 58, 143, 0.1);">
-                <div style="background: linear-gradient(135deg, #1a3a8f 0%, #0c2461 100%); padding: 32px; border-radius: 20px 20px 0 0; text-align: center; color: #ffffff;">
-                    <h2 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em;">Liceo Management System</h2>
-                    <p style="margin: 8px 0 0 0; opacity: 0.8; font-weight: 500;">Secure Node Deployment Protocols</p>
-                </div>
-                <div style="background: #ffffff; padding: 32px; border-radius: 0 0 20px 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
-                    <p style="font-size: 16px; line-height: 1.6;">Hello <strong>{honorific} {admin_name}</strong>,</p>
-                    <p style="font-size: 16px; line-height: 1.6;">Your administrative node for <strong>{branch_name}</strong> has been successfully initialized. Below are your secure access credentials:</p>
-                    
-                    <div style="background: #f1f5f9; padding: 24px; border-radius: 16px; margin: 24px 0; border: 1px dashed #cbd5e1;">
-                        <div style="margin-bottom: 12px; font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Access Protocol</div>
-                        <div style="font-size: 15px; margin-bottom: 8px;"><strong>Username:</strong> <code style="color: #1a3a8f;">{username}</code></div>
-                        <div style="font-size: 15px;"><strong>Secure Key:</strong> <code style="color: #1a3a8f;">{temp_password}</code></div>
-                    </div>
-
-                    <div style="text-align: center; margin: 32px 0;">
-                        <a href="https://www.liceo-lms.com/" style="background: #facc15; color: #1a3a8f; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 800; font-size: 15px; box-shadow: 0 4px 12px rgba(250, 204, 21, 0.4);">Access Dashboard</a>
-                    </div>
-
-                    <p style="font-size: 13px; color: #64748b; line-height: 1.6; font-style: italic;">Note: For security reasons, you will be required to update your "Secure Key" upon your first successful protocol authentication.</p>
-                    
-                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 32px 0;">
-                    <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">&copy; 2026 Liceo Management System. All rights reserved.</p>
-                </div>
-            </div>
-            """
-            body = f"Hello {honorific} {admin_name}, your credentials for {branch_name} are: Username: {username}, Password: {temp_password}. Login at https://www.liceo-lms.com/"
-
-            email_sent = send_email(admin_email, subject, body, html_body=html_body)
-            if not email_sent:
-                flash("Branch admin account created, but failed to send email.", "warning")
-
-            flash(f"Account for {admin_name} created successfully! Credentials have been sent to {admin_email}.", "success")
+            flash(f"School Branch '{branch_name}' created successfully! Click 'Assign Principal' to designate a leader.", "success")
             return redirect(url_for("super_admin.super_admin_branches"))
 
         except Exception as e:
             db.rollback()
-            logger.error(f"Failed to create branch/admin: {str(e)}")
-            flash("Failed to create branch/admin. Please try again.", "error")
+            logger.error(f"Failed to create branch: {str(e)}")
+            flash("Failed to create school branch. Please try again.", "error")
             return redirect(url_for("super_admin.super_admin_branches"))
         finally:
             cursor.close()
@@ -374,15 +311,30 @@ def super_admin_branches():
         """)
         branches = cursor.fetchall()
 
-        # Fetch retired admins for transfer pool
-        cursor.execute("SELECT user_id, full_name, username, branch_id FROM users WHERE role = 'retired_admin'")
+        # Fetch NON-archived retired admins for Assign Principal transfer pool
+        cursor.execute("""
+            SELECT u.user_id, u.full_name, u.username, u.branch_id, u.email
+            FROM users u
+            WHERE u.role = 'retired_admin' AND (u.is_archived IS NOT TRUE)
+            ORDER BY u.full_name ASC
+        """)
         retired_admins_pool = cursor.fetchall()
+
+        # Fetch ALL retired + archived for the Archived Accounts modal
+        cursor.execute("""
+            SELECT u.user_id, u.full_name, u.username, u.branch_id, u.email, COALESCE(u.is_archived, FALSE) AS is_archived, u.status, b.branch_name
+            FROM users u
+            LEFT JOIN branches b ON u.branch_id = b.branch_id
+            WHERE u.role = 'retired_admin' OR u.is_archived IS TRUE OR (u.role = 'branch_admin' AND u.status = 'inactive')
+            ORDER BY u.full_name ASC
+        """)
+        archived_admins_pool = cursor.fetchall()
         
         cursor.execute("SELECT label FROM school_years WHERE is_active = TRUE LIMIT 1")
         sy_row = cursor.fetchone()
         active_school_year = (sy_row[0] if isinstance(sy_row, tuple) else sy_row["label"]) if sy_row else "No Active SY"
 
-        return render_template("superadmin_branches.html", branches=branches, retired_admins_pool=retired_admins_pool, active_school_year=active_school_year)
+        return render_template("superadmin_branches.html", branches=branches, retired_admins_pool=retired_admins_pool, archived_admins_pool=archived_admins_pool, active_school_year=active_school_year)
 
     except Exception as e:
         logger.error(f"Error fetching branches: {str(e)}")
@@ -404,16 +356,10 @@ def super_admin_edit_branch(branch_id):
     branch_name  = (request.form.get("branch_name") or "").strip()
     branch_code  = (request.form.get("branch_code") or "").strip().upper()
     location     = (request.form.get("location") or "").strip()
-    admin_email  = (request.form.get("admin_email") or "").strip()
-    admin_first  = (request.form.get("admin_first_name") or "").strip()
-    admin_middle = (request.form.get("admin_middle_name") or "").strip()
-    admin_last   = (request.form.get("admin_last_name") or "").strip()
 
-    if not branch_name or not branch_code or not location or not admin_email or not admin_first or not admin_last:
-        flash("Branch Name, Code, Location, Admin First/Last Name, and Email are required.", "error")
+    if not branch_name or not branch_code or not location:
+        flash("Branch Name, Code, and Location are required.", "error")
         return redirect(url_for("super_admin.super_admin_branches"))
-
-    admin_full_name = f"{admin_first} {admin_middle} {admin_last}".strip().replace("  ", " ")
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -433,28 +379,48 @@ def super_admin_edit_branch(branch_id):
         if cursor.fetchone():
             flash(f"Branch name '{branch_name}' is already used by another branch.", "error")
             return redirect(url_for("super_admin.super_admin_branches"))
-            
-        cursor.execute(
-            "SELECT user_id FROM users WHERE email ILIKE %s AND branch_id != %s AND role = 'branch_admin'",
-            (admin_email, branch_id)
-        )
-        if cursor.fetchone():
-            flash("Email address is already in use by another admin.", "error")
-            return redirect(url_for("super_admin.super_admin_branches"))
 
+        # Update branch table
         cursor.execute("""
             UPDATE branches
             SET branch_name = %s, branch_code = %s, location = %s
             WHERE branch_id = %s
         """, (branch_name, branch_code, location, branch_id))
-        
-        cursor.execute("""
-            UPDATE users
-            SET email = %s, first_name = %s, middle_name = %s, last_name = %s, full_name = %s
-            WHERE branch_id = %s AND role = 'branch_admin'
-        """, (admin_email, admin_first, admin_middle, admin_last, admin_full_name, branch_id))
+
+        # Check if this branch has an active principal admin
+        cursor.execute(
+            "SELECT user_id FROM users WHERE branch_id = %s AND role = 'branch_admin' LIMIT 1",
+            (branch_id,)
+        )
+        existing_admin = cursor.fetchone()
+
+        if existing_admin:
+            admin_email  = (request.form.get("admin_email") or "").strip()
+            admin_first  = (request.form.get("admin_first_name") or "").strip()
+            admin_middle = (request.form.get("admin_middle_name") or "").strip()
+            admin_last   = (request.form.get("admin_last_name") or "").strip()
+
+            if admin_email and admin_first and admin_last:
+                admin_full_name = f"{admin_first} {admin_middle} {admin_last}".strip().replace("  ", " ")
+                
+                # Check email duplicate among other users
+                cursor.execute(
+                    "SELECT user_id FROM users WHERE LOWER(email) = LOWER(%s) AND user_id != %s",
+                    (admin_email, existing_admin["user_id"])
+                )
+                if cursor.fetchone():
+                    db.rollback()
+                    flash("Email address is already in use by another user.", "error")
+                    return redirect(url_for("super_admin.super_admin_branches"))
+
+                cursor.execute("""
+                    UPDATE users
+                    SET email = %s, first_name = %s, middle_name = %s, last_name = %s, full_name = %s
+                    WHERE user_id = %s
+                """, (admin_email, admin_first, admin_middle or None, admin_last, admin_full_name, existing_admin["user_id"]))
+
         db.commit()
-        flash(f"Branch updated! Code set to: {branch_code}", "success")
+        flash("Branch details updated successfully!", "success")
 
     except Exception as e:
         db.rollback()
@@ -647,6 +613,100 @@ def super_admin_transition_to_teacher(user_id):
 
 
 # =======================
+# UNARCHIVE RETIRED ADMIN
+# =======================
+@super_admin_bp.route("/super-admin/retired-admin/<int:user_id>/unarchive", methods=["POST"])
+def super_admin_unarchive_retired_admin(user_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("UPDATE users SET is_archived = FALSE WHERE user_id = %s RETURNING full_name", (user_id,))
+        row = cursor.fetchone()
+        db.commit()
+        name = row[0] if row else "Admin"
+        flash(f"Account for '{name}' has been restored from Archives.", "success")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unarchive admin failed: {e}")
+        flash(f"Unarchive failed: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect(url_for("super_admin.super_admin_branches"))
+
+
+# =======================
+# CHECK EMAIL (Duplicate Detection API)
+# =======================
+@super_admin_bp.route("/super-admin/check-email", methods=["GET"])
+def super_admin_check_email():
+    if session.get("role") != "super_admin":
+        return {"exists": False}
+    email = (request.args.get("email") or "").strip().lower()
+    if not email:
+        return {"exists": False}
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("SELECT full_name FROM users WHERE LOWER(email) = %s LIMIT 1", (email,))
+        row = cursor.fetchone()
+        if row:
+            return {"exists": True, "name": row["full_name"]}
+        return {"exists": False}
+    except Exception as e:
+        logger.error(f"check-email error: {e}")
+        return {"exists": False}
+    finally:
+        cursor.close()
+        db.close()
+
+
+# =======================
+# CHECK NAME (Soft Duplicate Detection API)
+# =======================
+@super_admin_bp.route("/super-admin/check-name", methods=["GET"])
+def super_admin_check_name():
+    if session.get("role") != "super_admin":
+        return {"exists": False}
+    first_name = (request.args.get("first_name") or "").strip()
+    last_name  = (request.args.get("last_name") or "").strip()
+    if not first_name or not last_name:
+        return {"exists": False}
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute(
+            """
+            SELECT u.full_name, u.role, u.email, b.branch_name 
+            FROM users u 
+            LEFT JOIN branches b ON u.branch_id = b.branch_id 
+            WHERE LOWER(TRIM(u.first_name)) = LOWER(TRIM(%s)) 
+              AND LOWER(TRIM(u.last_name)) = LOWER(TRIM(%s)) 
+            LIMIT 1
+            """,
+            (first_name, last_name)
+        )
+        row = cursor.fetchone()
+        if row:
+            return {
+                "exists": True,
+                "name": row["full_name"],
+                "role": (row["role"] or "").replace("_", " ").title(),
+                "email": row["email"] or "No email",
+                "branch": row["branch_name"] or "No Active Branch / Retired"
+            }
+        return {"exists": False}
+    except Exception as e:
+        logger.error(f"check-name error: {e}")
+        return {"exists": False}
+    finally:
+        cursor.close()
+        db.close()
+
+
+# =======================
 # REMOVE PRINCIPAL
 # =======================
 @super_admin_bp.route("/super-admin/branch/<int:branch_id>/remove-principal", methods=["POST"])
@@ -680,6 +740,150 @@ def super_admin_remove_principal(branch_id):
         db.rollback()
         logger.error(f"Failed to remove principal: {str(e)}")
         flash("Failed to remove principal.", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("super_admin.super_admin_branches"))
+
+
+# =======================
+# DELETE BRANCH
+# =======================
+@super_admin_bp.route("/super-admin/branch/<int:branch_id>/delete", methods=["POST"])
+def super_admin_delete_branch(branch_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("SELECT branch_name FROM branches WHERE branch_id = %s", (branch_id,))
+        branch = cursor.fetchone()
+        if not branch:
+            flash("Branch not found.", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+
+        # Check dependencies
+        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE branch_id = %s AND role = 'branch_admin'", (branch_id,))
+        admin_cnt = cursor.fetchone()["cnt"]
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE branch_id = %s AND role = 'student'", (branch_id,))
+        student_cnt = cursor.fetchone()["cnt"]
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE branch_id = %s AND role = 'teacher'", (branch_id,))
+        teacher_cnt = cursor.fetchone()["cnt"]
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM sections WHERE branch_id = %s", (branch_id,))
+        section_cnt = cursor.fetchone()["cnt"]
+
+        if admin_cnt > 0:
+            flash(f"Cannot delete branch '{branch['branch_name']}'. It currently has an active principal assigned. Please remove or reassign the principal first.", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+
+        if student_cnt > 0 or teacher_cnt > 0 or section_cnt > 0:
+            flash(f"Cannot delete branch '{branch['branch_name']}'. It contains active students ({student_cnt}), teachers ({teacher_cnt}), or sections ({section_cnt}).", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+
+        cursor.execute("BEGIN;")
+        # 1. Delete associated school years
+        cursor.execute("DELETE FROM school_years WHERE branch_id = %s", (branch_id,))
+
+        # 2. Remove parent_student links for users in this branch to prevent FK conflicts
+        cursor.execute("""
+            DELETE FROM parent_student 
+            WHERE parent_id IN (SELECT user_id FROM users WHERE branch_id = %s)
+               OR student_id IN (SELECT user_id FROM users WHERE branch_id = %s)
+        """, (branch_id, branch_id))
+
+        # 3. Unlink admin/retired_admin accounts from this branch so foreign key constraint passes
+        cursor.execute("""
+            UPDATE users 
+            SET branch_id = NULL, status = 'inactive', role = 'retired_admin' 
+            WHERE branch_id = %s AND role IN ('branch_admin', 'retired_admin')
+        """, (branch_id,))
+
+        # 4. Delete orphaned admin accounts that have no dependent records
+        try:
+            cursor.execute("""
+                DELETE FROM users 
+                WHERE branch_id IS NULL AND role = 'retired_admin' 
+                  AND user_id NOT IN (SELECT parent_id FROM parent_student UNION SELECT student_id FROM parent_student)
+            """)
+        except Exception:
+            pass
+
+        # 5. Delete the branch
+        cursor.execute("DELETE FROM branches WHERE branch_id = %s", (branch_id,))
+        db.commit()
+
+        flash(f"Branch '{branch['branch_name']}' was successfully deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to delete branch {branch_id}: {e}")
+        flash(f"Could not delete branch: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("super_admin.super_admin_branches"))
+
+
+# =======================
+# DELETE RETIRED ADMIN
+# =======================
+@super_admin_bp.route("/super-admin/retired-admin/<int:user_id>/delete", methods=["POST"])
+def super_admin_delete_retired_admin(user_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("SELECT full_name FROM users WHERE user_id = %s AND role = 'retired_admin'", (user_id,))
+        user = cursor.fetchone()
+        if not user:
+            flash("Retired admin not found.", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+
+        cursor.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
+        db.commit()
+        flash(f"Admin '{user['full_name']}' was permanently deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to delete retired admin {user_id}: {e}")
+        flash(f"Cannot permanently delete '{user['full_name']}' due to historical system logs. Use Archive instead.", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("super_admin.super_admin_branches"))
+
+
+# =======================
+# ARCHIVE RETIRED ADMIN
+# =======================
+@super_admin_bp.route("/super-admin/retired-admin/<int:user_id>/archive", methods=["POST"])
+def super_admin_archive_retired_admin(user_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("SELECT full_name FROM users WHERE user_id = %s AND role = 'retired_admin'", (user_id,))
+        user = cursor.fetchone()
+        if not user:
+            flash("Retired admin not found.", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+
+        cursor.execute("UPDATE users SET is_archived = TRUE WHERE user_id = %s", (user_id,))
+        db.commit()
+        flash(f"Admin '{user['full_name']}' was archived and removed from the active pool.", "success")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to archive retired admin {user_id}: {e}")
+        flash(f"Could not archive admin: {e}", "error")
     finally:
         cursor.close()
         db.close()
