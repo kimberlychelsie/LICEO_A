@@ -2,6 +2,86 @@
 {% block title %}{{ exam.title }}{% endblock %}
 {% block content %}
 <style>
+  /* ── Anti-Screenshot: Print Protection ── */
+  @media print {
+    body * { visibility: hidden !important; }
+    body::after {
+      content: 'This exam is protected. Printing is not allowed.';
+      visibility: visible !important;
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      font-weight: bold;
+      color: #1e3a8a;
+      text-align: center;
+    }
+  }
+
+  /* ── Anti-Screenshot: Blackout Overlay ── */
+  #screenshot-blackout {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    background: #000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    animation: blackout-flash 0.08s ease-in;
+  }
+  #screenshot-blackout.active {
+    display: flex;
+  }
+  #screenshot-blackout .sb-icon {
+    font-size: 4rem;
+    filter: drop-shadow(0 0 18px rgba(255,80,80,0.7));
+  }
+  #screenshot-blackout .sb-title {
+    color: #ff4444;
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+  #screenshot-blackout .sb-msg {
+    color: #aaa;
+    font-size: 1rem;
+    text-align: center;
+    max-width: 340px;
+    line-height: 1.5;
+  }
+  @keyframes blackout-flash {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ── Anti-OCR Text Jitter System ── */
+  .exam-char {
+    display: inline-block;
+    animation: char-jitter var(--jdur, 1.1s) var(--jdel, 0s) infinite alternate ease-in-out;
+    will-change: transform;
+  }
+
+  @keyframes char-jitter {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    30%  { transform: translate(var(--jx1, 0.4px), var(--jy1, -0.6px)) rotate(var(--jr1, 0.5deg)); }
+    60%  { transform: translate(var(--jx2, -0.5px), var(--jy2, 0.3px)) rotate(var(--jr2, -0.8deg)); }
+    100% { transform: translate(var(--jx3, 0.6px), var(--jy3, -0.4px)) rotate(var(--jr3, 0.6deg)); }
+  }
+
+  /* Full scramble state — triggered on visibility loss (app switch, Messenger overlay, etc.) */
+  .jitter-scramble .exam-char {
+    animation: char-scramble var(--jdur, 0.25s) var(--jdel, 0s) infinite alternate ease-in-out;
+    opacity: 0.15 !important;
+  }
+
+  @keyframes char-scramble {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    100% { transform: translate(calc(var(--jx3, 1px) * 20), calc(var(--jy3, 1px) * 18)) rotate(calc(var(--jr1, 1deg) * 25)); }
+  }
+
   /* ── Reset system UI (hide sidebar, topbar, chatbot during exam) ── */
   .sidebar,
   .topbar,
@@ -396,6 +476,13 @@
     }
   }
 </style>
+
+<!-- Anti-Screenshot Blackout Overlay -->
+<div id="screenshot-blackout" aria-hidden="true">
+  <div class="sb-icon">🚫</div>
+  <div class="sb-title">Screenshot Blocked</div>
+  <div class="sb-msg">Screenshot attempts are not allowed during the exam.<br>This incident may be recorded.</div>
+</div>
 
 <!-- Custom Blue Topbar -->
 <header class="custom-topbar">
@@ -1605,5 +1692,136 @@
   });
 
 }) ();
+
+  // ── Anti-Screenshot: PrintScreen Interception ──────────────────────────────
+  (function () {
+    const overlay = document.getElementById('screenshot-blackout');
+    if (!overlay) return;
+
+    let blackoutTimer = null;
+
+    function triggerBlackout() {
+      overlay.classList.add('active');
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(
+            '\u26a0 Exam content is protected. Screenshot attempt detected.'
+          ).catch(() => {});
+        }
+      } catch (e) {}
+      clearTimeout(blackoutTimer);
+      blackoutTimer = setTimeout(function () {
+        overlay.classList.remove('active');
+      }, 2000);
+    }
+
+    document.addEventListener('keydown', function (e) {
+      const key  = e.key  || '';
+      const code = e.code || '';
+      if (key === 'PrintScreen' || code === 'PrintScreen') { e.preventDefault(); triggerBlackout(); return; }
+      if (e.shiftKey && e.metaKey && (key === 's' || key === 'S')) { e.preventDefault(); triggerBlackout(); return; }
+      if (e.ctrlKey && e.shiftKey && (key === 's' || key === 'S')) { e.preventDefault(); triggerBlackout(); return; }
+      if (e.ctrlKey && (key === 'p' || key === 'P')) { e.preventDefault(); triggerBlackout(); return; }
+    }, true);
+
+    document.addEventListener('copy', function (e) {
+      try { if (e.clipboardData) { e.clipboardData.setData('text/plain', ''); e.preventDefault(); } } catch (ex) {}
+    });
+
+    overlay.addEventListener('click', function () {
+      clearTimeout(blackoutTimer);
+      overlay.classList.remove('active');
+    });
+  })();
+
+  // ── Anti-OCR Text Rumble / Jitter System ────────────────────────────────────
+  // Wraps every character of question text + choices in individually-animated
+  // spans. Each char has randomized direction/speed/magnitude so a screenshot
+  // (single frozen frame) shows garbled letters unreadable by AI OCR/Vision.
+  // On app-switch / Messenger overlay (visibilitychange=hidden), the jitter
+  // amplifies to full scramble (opacity 0.15, 20x displacement) so any
+  // screenshot taken while the student is in another app is completely useless.
+  (function () {
+    var examContainer = document.querySelector('.exam-container');
+    if (!examContainer) return;
+
+    // ── Wrap text node characters in jitter spans ──
+    function wrapCharsInNode(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        var text = node.textContent;
+        if (!text.trim()) return null;
+        var frag = document.createDocumentFragment();
+        for (var i = 0; i < text.length; i++) {
+          var ch = text[i];
+          if (ch === ' ' || ch === '\n' || ch === '\t') {
+            frag.appendChild(document.createTextNode(ch));
+          } else {
+            var span = document.createElement('span');
+            span.className = 'exam-char';
+            span.textContent = ch;
+            // Randomize per-character CSS animation variables
+            var s = span.style;
+            s.setProperty('--jdur',  (0.7 + Math.random() * 0.9).toFixed(2) + 's');
+            s.setProperty('--jdel',  (Math.random() * 1.5).toFixed(2) + 's');
+            s.setProperty('--jx1',   ((Math.random() - 0.5) * 2.2).toFixed(2) + 'px');
+            s.setProperty('--jy1',   ((Math.random() - 0.5) * 2.2).toFixed(2) + 'px');
+            s.setProperty('--jr1',   ((Math.random() - 0.5) * 3.5).toFixed(2) + 'deg');
+            s.setProperty('--jx2',   ((Math.random() - 0.5) * 2.2).toFixed(2) + 'px');
+            s.setProperty('--jy2',   ((Math.random() - 0.5) * 2.2).toFixed(2) + 'px');
+            s.setProperty('--jr2',   ((Math.random() - 0.5) * 3.5).toFixed(2) + 'deg');
+            s.setProperty('--jx3',   ((Math.random() - 0.5) * 2.2).toFixed(2) + 'px');
+            s.setProperty('--jy3',   ((Math.random() - 0.5) * 2.2).toFixed(2) + 'px');
+            s.setProperty('--jr3',   ((Math.random() - 0.5) * 3.5).toFixed(2) + 'deg');
+            frag.appendChild(span);
+          }
+        }
+        return frag;
+      }
+      return null;
+    }
+
+    function applyJitterToElement(el) {
+      // Only process leaf text nodes — skip inputs, buttons, scripts
+      var skipTags = ['INPUT','SELECT','TEXTAREA','BUTTON','SCRIPT','STYLE'];
+      if (skipTags.indexOf(el.tagName) !== -1) return;
+      var children = Array.from(el.childNodes);
+      children.forEach(function (child) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          var replacement = wrapCharsInNode(child);
+          if (replacement) el.replaceChild(replacement, child);
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          applyJitterToElement(child);
+        }
+      });
+    }
+
+    // Apply to question text and choice labels
+    var targets = examContainer.querySelectorAll('.q-text, .choices-grid .choice-item span, .choices-grid label');
+    targets.forEach(function (el) {
+      applyJitterToElement(el);
+    });
+
+    // ── Scramble on app-switch / Messenger overlay / Tab switch ──
+    // visibilitychange fires when student switches app on mobile (to ChatGPT, Messenger, etc.)
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        // Student left the browser — amplify jitter to full scramble
+        examContainer.classList.add('jitter-scramble');
+      } else {
+        // Student returned — instantly restore normal jitter (no delay)
+        examContainer.classList.remove('jitter-scramble');
+      }
+    });
+
+    // Also trigger scramble on window blur (covers Messenger floating button overlay)
+    window.addEventListener('blur', function () {
+      examContainer.classList.add('jitter-scramble');
+    });
+    window.addEventListener('focus', function () {
+      // Instantly restore — scramble already happened while they were away
+      examContainer.classList.remove('jitter-scramble');
+    });
+
+  })();
 </script>
 {% endblock %}
