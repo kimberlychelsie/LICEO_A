@@ -1403,10 +1403,6 @@
             </select>
             <select name="tracks" class="form-control track-select" disabled onchange="updatePathways(this)" style="font-size: 0.72rem; padding: 10px 6px;">
                 <option value="">N/A (Track)</option>
-                <option value="Academic">Academic Track</option>
-                <option value="TVL">TVL Track</option>
-                <option value="Sports">Sports Track</option>
-                <option value="Arts and Design">Arts & Design</option>
             </select>
             <select name="pathways" class="form-control pathway-select" disabled style="font-size: 0.72rem; padding: 10px 6px;">
                 <option value="">N/A (Pathway)</option>
@@ -1428,6 +1424,16 @@
             </button>
         `;
         container.appendChild(newRow);
+        const newTrackSelect = newRow.querySelector('.track-select');
+
+if (newTrackSelect) {
+    Object.keys(TRACK_PATHWAYS).forEach(track => {
+        const opt = document.createElement('option');
+        opt.value = track;
+        opt.textContent = track + ' Track';
+        newTrackSelect.appendChild(opt);
+    });
+}
         autoDetectTermForSections();
     }
 

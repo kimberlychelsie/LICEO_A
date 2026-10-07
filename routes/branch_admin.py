@@ -2505,12 +2505,49 @@ def branch_admin_subjects():
 
                 for sid_raw in section_ids:
                     sid = int(sid_raw)
-                    cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (sid, branch_id))
-                    if not cursor.fetchone(): continue
 
                     cursor.execute("""
-                        INSERT INTO section_teachers (section_id, teacher_id, subject_id, year_id, term_name)
-                        SELECT %s, NULL, %s, year_id, %s FROM sections WHERE section_id = %s
+                        SELECT s.section_id, g.name AS grade_level_name
+                        FROM sections s
+                        JOIN grade_levels g ON s.grade_level_id = g.id
+                        WHERE s.section_id = %s
+                          AND s.branch_id = %s
+                    """, (sid, branch_id))
+
+                    section_row = cursor.fetchone()
+
+                    if not section_row:
+                        continue
+
+                    grade_name = (section_row["grade_level_name"] or "").strip().lower()
+
+                    # Elective subjects are only allowed for Grade 11 and Grade 12.
+                    is_shs = (
+                        grade_name == "grade 11"
+                        or grade_name.startswith("grade 11-")
+                        or grade_name.startswith("grade 11 ")
+                        or grade_name == "grade 12"
+                        or grade_name.startswith("grade 12-")
+                        or grade_name.startswith("grade 12 ")
+                    )
+
+                    if subject_type == "ELECTIVE" and not is_shs:
+                        raise ValueError(
+                            f"Elective subjects can only be assigned to Grade 11 or Grade 12. "
+                            f"Selected section belongs to {section_row['grade_level_name']}."
+                        )
+
+                    cursor.execute("""
+                        INSERT INTO section_teachers (
+                            section_id,
+                            teacher_id,
+                            subject_id,
+                            year_id,
+                            term_name
+                        )
+                        SELECT %s, NULL, %s, year_id, %s
+                        FROM sections
+                        WHERE section_id = %s
                         ON CONFLICT DO NOTHING
                     """, (sid, subject_id, term_name, sid))
 
@@ -2695,7 +2732,6 @@ def branch_admin_subjects_bulk_delete():
         cursor.close(); db.close()
 
     return redirect(url_for("branch_admin.branch_admin_subjects", section_id=section_id_ref if section_id_ref else None))
-
 @branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/edit", methods=["POST"])
 def branch_admin_subject_edit(subject_id):
     if session.get("role") != "branch_admin":
@@ -2726,10 +2762,32 @@ def branch_admin_subject_edit(subject_id):
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (target_section_id, branch_id))
-        if not cursor.fetchone():
+        cursor.execute("""
+            SELECT s.section_id, g.name AS grade_level_name
+            FROM sections s
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE s.section_id = %s AND s.branch_id = %s
+        """, (target_section_id, branch_id))
+        section_row = cursor.fetchone()
+
+        if not section_row:
             flash("Invalid section.", "error")
             return redirect(url_for("branch_admin.branch_admin_subjects"))
+
+        grade_name = (section_row["grade_level_name"] or "").strip().lower()
+
+        is_shs = (
+            grade_name == "grade 11"
+            or grade_name.startswith("grade 11-")
+            or grade_name.startswith("grade 11 ")
+            or grade_name == "grade 12"
+            or grade_name.startswith("grade 12-")
+            or grade_name.startswith("grade 12 ")
+        )
+
+        if subject_type == "ELECTIVE" and not is_shs:
+            flash(f"Elective subjects can only be assigned to Grade 11 or Grade 12. {section_row['grade_level_name']} does not support electives.", "error")
+            return redirect(url_for("branch_admin.branch_admin_subjects", section_id=target_section_id))
 
         # Check if new_name already exists in subjects catalog
         cursor.execute("SELECT subject_id FROM subjects WHERE LOWER(name) = LOWER(%s) LIMIT 1", (new_name,))
@@ -4140,4 +4198,4 @@ def shs_pathways():
         )
     finally:
         cur.close()
-        db.close()
+        db.close()
