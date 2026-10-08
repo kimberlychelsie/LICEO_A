@@ -833,12 +833,6 @@ def get_db_connection():
                 conn.rollback()
                 logger.warning(f"Grade levels seeding failed: {e}")
 
-            # ONE-TIME CLEANUP: Delete test Teacher9 accounts directly on boot
-            try:
-                cur.execute("DELETE FROM users WHERE role='teacher' AND username ILIKE '%Teacher9%'")
-                conn.commit()
-            except Exception as e:
-                conn.rollback()
             # ── grade_overrides table (teacher manual component score edits) ──
             try:
                 cur.execute("""

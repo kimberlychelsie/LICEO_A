@@ -10,6 +10,7 @@ import pytz
 import psycopg2.extras
 from db import get_db_connection, is_branch_active
 from cloudinary_helper import upload_enrollment_document
+from cloudinary_helper import LOCAL_UPLOAD_FOLDER
 from rapidfuzz import fuzz
 from utils.send_email import send_email
 from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, price_for_size, size_price_map
@@ -80,11 +81,41 @@ def save_doc_file(cursor, enrollment_id, fileobj, doc_type):
                 INSERT INTO enrollment_documents (enrollment_id, file_name, file_path, doc_type)
                 VALUES (%s, %s, %s, %s)
             """, (enrollment_id, original, url_path, doc_type))
-            return True, None
+            return True, None, url_path
         except Exception as e:
             logger.error(f"Failed to upload document {original}: {e}")
-            return False, "Upload failed. Please try again."
+            return False, "Upload failed. Please try again.", None
+    return True, None, None
+
+def validate_doc_file(fileobj, doc_type):
+    if fileobj and fileobj.filename:
+        if not allowed_file(fileobj.filename):
+            logger.warning(f"File type not allowed: {fileobj.filename}")
+            return False, "Invalid file type. Only PDF, JPG, JPEG, and PNG are allowed."
+
+        fileobj.seek(0, os.SEEK_END)
+        size = fileobj.tell()
+        fileobj.seek(0)
+
+        if size > MAX_FILE_SIZE:
+            logger.warning(f"File too large: {fileobj.filename} ({size} bytes)")
+            return False, f"File '{doc_type}' is too large. Maximum limit is 10MB."
     return True, None
+
+def cleanup_uploaded_enrollment_documents(file_urls):
+    for url_path in file_urls:
+        if not url_path or not str(url_path).startswith("/uploads/"):
+            continue
+        local_name = os.path.basename(url_path)
+        local_path = os.path.abspath(os.path.join(LOCAL_UPLOAD_FOLDER, local_name))
+        upload_root = os.path.abspath(LOCAL_UPLOAD_FOLDER)
+        if not local_path.startswith(upload_root + os.sep):
+            continue
+        try:
+            if os.path.exists(local_path):
+                os.remove(local_path)
+        except Exception as e:
+            logger.warning(f"Could not clean up uploaded enrollment document {local_path}: {e}")
 
 # =======================
 # GRADE RANGE MAPPINGS
@@ -258,6 +289,109 @@ def get_active_school_year_id(cursor, branch_id):
     """, (branch_id,))
     row = cursor.fetchone()
     return row["year_id"] if row else None
+
+def get_open_new_student_school_years(cursor, branch_id):
+    cursor.execute("""
+        SELECT sy.year_id, sy.label, sy.is_active
+        FROM school_years sy
+        JOIN new_student_enrollment_settings ns
+          ON ns.branch_id = sy.branch_id AND ns.year_id = sy.year_id
+        WHERE sy.branch_id = %s
+          AND ns.is_open = TRUE
+        ORDER BY sy.label DESC
+    """, (branch_id,))
+    return cursor.fetchall() or []
+
+def get_open_new_student_school_year(cursor, branch_id, year_id, lock=False):
+    lock_clause = "FOR UPDATE OF ns" if lock else ""
+    cursor.execute(f"""
+        SELECT sy.year_id, sy.label, sy.is_active
+        FROM school_years sy
+        JOIN new_student_enrollment_settings ns
+          ON ns.branch_id = sy.branch_id AND ns.year_id = sy.year_id
+        WHERE sy.branch_id = %s
+          AND sy.year_id = %s
+          AND ns.is_open = TRUE
+        {lock_clause}
+    """, (branch_id, year_id))
+    return cursor.fetchone()
+
+def get_branch_school_year(cursor, branch_id, year_id):
+    cursor.execute("""
+        SELECT year_id, label, is_active
+        FROM school_years
+        WHERE branch_id = %s AND year_id = %s
+    """, (branch_id, year_id))
+    return cursor.fetchone()
+
+def get_shs_elective_offerings_for_year(cursor, branch_id, year_id):
+    if not year_id:
+        return []
+    cursor.execute("""
+        SELECT o.offering_id, o.group_code, o.shs_track,
+               s.name AS subject_name,
+               COALESCE(s.pathway, o.shs_track, 'General') AS pathway,
+               g.name AS grade_level_name
+        FROM shs_elective_offerings o
+        JOIN section_teachers st ON o.section_teacher_id = st.id
+        JOIN subjects s ON st.subject_id = s.subject_id
+        JOIN sections sec ON st.section_id = sec.section_id
+        JOIN grade_levels g ON sec.grade_level_id = g.id
+        WHERE o.branch_id = %s AND o.year_id = %s AND o.status = 'ACTIVE'
+        ORDER BY COALESCE(s.pathway, 'General'), o.group_code
+    """, (branch_id, year_id))
+    return cursor.fetchall() or []
+
+def get_shs_elective_offerings_for_years(cursor, branch_id, year_ids):
+    if not year_ids:
+        return []
+    cursor.execute("""
+        SELECT o.year_id, o.offering_id, o.group_code, o.shs_track,
+               s.name AS subject_name,
+               COALESCE(s.pathway, o.shs_track, 'General') AS pathway,
+               g.name AS grade_level_name
+        FROM shs_elective_offerings o
+        JOIN section_teachers st ON o.section_teacher_id = st.id
+        JOIN subjects s ON st.subject_id = s.subject_id
+        JOIN sections sec ON st.section_id = sec.section_id
+        JOIN grade_levels g ON sec.grade_level_id = g.id
+        WHERE o.branch_id = %s AND o.year_id = ANY(%s) AND o.status = 'ACTIVE'
+        ORDER BY o.year_id, COALESCE(s.pathway, 'General'), o.group_code
+    """, (branch_id, year_ids))
+    return cursor.fetchall() or []
+
+def _norm_pathway(value):
+    return re.sub(r"\s+", " ", str(value or "").strip()).lower()
+
+def validate_shs_pathway_for_year(shs_track, grade_level, shs_elective_offerings, official_pathways):
+    if not shs_track:
+        return True
+    grade_text = str(grade_level or "")
+    if "11" not in grade_text and "12" not in grade_text:
+        return True
+
+    selected = _norm_pathway(shs_track)
+    grade_offerings = []
+    for offering in (shs_elective_offerings or []):
+        offering_grade = str(offering.get("grade_level_name") or "")
+        if offering_grade == grade_level or (offering_grade and offering_grade in grade_text):
+            grade_offerings.append(offering)
+    if grade_offerings:
+        allowed = {_norm_pathway(o.get("pathway") or "General") for o in grade_offerings}
+        return selected in allowed
+
+    official_allowed = {_norm_pathway(p.get("pathway_name")) for p in (official_pathways or [])}
+    if official_allowed:
+        return selected in official_allowed
+
+    default_allowed = {
+        _norm_pathway("Science, Technology, Engineering, and Mathematics"),
+        _norm_pathway("Business and Entrepreneurship"),
+        _norm_pathway("Arts, Social Science, and Humanities"),
+        _norm_pathway("Automotive and Small Engine Technologies"),
+        _norm_pathway("Construction and Building Technology"),
+    }
+    return selected in default_allowed
 # =======================
 # DUPLICATE CHECK HELPER
 # =======================
@@ -454,37 +588,34 @@ def enroll(branch_id):
         """, (branch_id,))
         grade_levels = cursor.fetchall() or []
 
-        # ── Fetch school years ──
-        cursor.execute("""
-            SELECT year_id, label, is_active
-            FROM school_years
-            WHERE branch_id = %s
-            ORDER BY label DESC
-        """, (branch_id,))
-        school_years = cursor.fetchall() or []
+        # ── Fetch open school years for new student enrollment ──
+        school_years = get_open_new_student_school_years(cursor, branch_id)
+        selected_sy_id = None
+        selected_year_raw = request.form.get("year_id") if request.method == "POST" else request.args.get("year_id")
+        if selected_year_raw:
+            try:
+                selected_sy_id = int(selected_year_raw)
+            except (TypeError, ValueError):
+                selected_sy_id = None
 
-        # ── Fetch active school year ID for electives ──
-        cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
-        active_yr = cursor.fetchone()
-        active_year_id_for_form = active_yr["year_id"] if active_yr else None
+        selected_school_year = None
+        if selected_sy_id:
+            selected_school_year = next((sy for sy in school_years if sy["year_id"] == selected_sy_id), None)
+            if not selected_school_year and request.method == "POST":
+                selected_school_year = get_branch_school_year(cursor, branch_id, selected_sy_id)
+            elif not selected_school_year and request.method == "GET":
+                flash("New Student Enrollment is closed for the selected school year.", "error")
+                selected_school_year = next((sy for sy in school_years if sy.get("is_active")), None) or (school_years[0] if school_years else None)
+                selected_sy_id = selected_school_year["year_id"] if selected_school_year else None
+        else:
+            selected_school_year = next((sy for sy in school_years if sy.get("is_active")), None) or (school_years[0] if school_years else None)
+            selected_sy_id = selected_school_year["year_id"] if selected_school_year else None
 
-        # ── Fetch elective offerings and pathways (for Grade 11/12 dropdown) ──
-        shs_elective_offerings = []
-        if active_year_id_for_form:
-            cursor.execute("""
-                SELECT o.offering_id, o.group_code, o.shs_track,
-                       s.name AS subject_name,
-                       COALESCE(s.pathway, o.shs_track, 'General') AS pathway,
-                       g.name AS grade_level_name
-                FROM shs_elective_offerings o
-                JOIN section_teachers st ON o.section_teacher_id = st.id
-                JOIN subjects s ON st.subject_id = s.subject_id
-                JOIN sections sec ON st.section_id = sec.section_id
-                JOIN grade_levels g ON sec.grade_level_id = g.id
-                WHERE o.branch_id = %s AND o.year_id = %s AND o.status = 'ACTIVE'
-                ORDER BY COALESCE(s.pathway, 'General'), o.group_code
-            """, (branch_id, active_year_id_for_form))
-            shs_elective_offerings = cursor.fetchall() or []
+        # ── Fetch elective offerings and pathways for the selected target year ──
+        shs_elective_offerings = get_shs_elective_offerings_for_year(cursor, branch_id, selected_sy_id)
+        shs_elective_offerings_by_year = get_shs_elective_offerings_for_years(
+            cursor, branch_id, [sy["year_id"] for sy in school_years]
+        )
 
         # Also fetch all official active pathways from shs_pathways table
         cursor.execute("""
@@ -497,26 +628,15 @@ def enroll(branch_id):
 
         # ── POST: Handle enrollment ──
         if request.method == "POST":
-            # Selected school year from form, fallback to active
-            selected_sy_id = request.form.get("year_id")
-            if selected_sy_id:
-                try:
-                    selected_sy_id = int(selected_sy_id)
-                except (TypeError, ValueError):
-                    flash("Invalid school year selected.", "error")
-                    return redirect(request.url)
-            else:
-                selected_sy_id = get_active_school_year_id(cursor, branch_id)
-
             if not selected_sy_id:
-                flash("No active school year found. Please contact admin.", "error")
-                return redirect(url_for("public.homepage"))
-            cursor.execute("""
-                SELECT 1 FROM school_years
-                WHERE year_id = %s AND branch_id = %s
-            """, (selected_sy_id, branch_id))
-            if not cursor.fetchone():
+                flash("Please select an open school year for enrollment.", "error")
+                return redirect(request.url)
+            if not selected_school_year:
                 flash("Invalid school year selected for this branch.", "error")
+                return redirect(request.url)
+            open_year = get_open_new_student_school_year(cursor, branch_id, selected_sy_id)
+            if not open_year:
+                flash("New Student Enrollment is currently closed for the selected school year.", "error")
                 return redirect(request.url)
             if not is_branch_active(branch_id):
                 flash("This branch is currently deactivated. New enrollments are not allowed.", "error")
@@ -567,6 +687,9 @@ def enroll(branch_id):
             # Only save shs_track for SHS grades
             if grade_level and "11" not in grade_level and "12" not in grade_level:
                 shs_track = None
+            if shs_track and not validate_shs_pathway_for_year(shs_track, grade_level, shs_elective_offerings, official_pathways):
+                flash("Selected SHS pathway is not available for the selected school year.", "error")
+                return redirect(request.url)
 
             student_name = " ".join(filter(None, [
                 student_first_name,
@@ -663,6 +786,21 @@ def enroll(branch_id):
                 flash(f"The guardian email '{guardian_email}' is invalid. Please follow the correct format (e.g., name@domain.com) and avoid special characters like # % &.", "error")
                 return redirect(request.url)
 
+            document_fields = [
+                ("psa_birth_cert", "PSA Birth Certificate"),
+                ("baptismal_cert", "Baptismal Certificate"),
+                ("form_138", "Form 138"),
+                ("good_moral", "Good Moral Certificate"),
+                ("form_137", "Form 137")
+            ]
+            for file_field, doc_name in document_fields:
+                fileobj = request.files.get(file_field)
+                if fileobj and fileobj.filename:
+                    ok, err = validate_doc_file(fileobj, doc_name)
+                    if not ok:
+                        flash(err, "error")
+                        return redirect(request.url)
+
             # ── SERVER-SIDE DUPLICATE CHECK ──
             cursor.execute("""
                 SELECT
@@ -728,7 +866,9 @@ def enroll(branch_id):
                     branch=branch,
                     grade_levels=grade_levels,
                     school_years=school_years,
+                    selected_year_id=selected_sy_id,
                     shs_elective_offerings=shs_elective_offerings,
+                    shs_elective_offerings_by_year=shs_elective_offerings_by_year,
                     official_pathways=official_pathways,
                     message=None,
                     duplicate_blocked=True,
@@ -738,6 +878,16 @@ def enroll(branch_id):
             # ── Enrollment number ──
             cursor.execute("SELECT COALESCE(MAX(branch_enrollment_no), 0) + 1 AS next_no FROM enrollments WHERE branch_id = %s", (branch_id,))
             next_no = cursor.fetchone()["next_no"]
+
+            # Ordering semantics: this row lock guarantees no submission can pass
+            # the final open check after a Registrar Close transaction has
+            # committed. A submission that already holds this lock may finish
+            # before a waiting Close transaction commits.
+            open_year = get_open_new_student_school_year(cursor, branch_id, selected_sy_id, lock=True)
+            if not open_year:
+                db.rollback()
+                flash("New Student Enrollment was closed before your submission could be saved. Please contact the registrar.", "error")
+                return redirect(request.url)
 
             # ── Insert enrollment ──
             cursor.execute("""
@@ -764,19 +914,19 @@ def enroll(branch_id):
             enrollment_id = cursor.fetchone()["enrollment_id"]
 
             # ── Process & Save Documents ──
-            document_fields = [
-                ("psa_birth_cert", "PSA Birth Certificate"),
-                ("baptismal_cert", "Baptismal Certificate"),
-                ("form_138", "Form 138"),
-                ("good_moral", "Good Moral Certificate"),
-                ("form_137", "Form 137")
-            ]
-
+            uploaded_doc_urls = []
             for file_field, doc_name in document_fields:
                 fileobj = request.files.get(file_field)
                 if fileobj and fileobj.filename:
                     # Save each doc file
-                    save_doc_file(cursor, enrollment_id, fileobj, doc_name)
+                    ok, err, uploaded_url = save_doc_file(cursor, enrollment_id, fileobj, doc_name)
+                    if not ok:
+                        db.rollback()
+                        cleanup_uploaded_enrollment_documents(uploaded_doc_urls)
+                        flash(err, "error")
+                        return redirect(request.url)
+                    if uploaded_url:
+                        uploaded_doc_urls.append(uploaded_url)
 
             db.commit()
 
@@ -799,7 +949,9 @@ def enroll(branch_id):
             branch=branch,
             grade_levels=grade_levels,
             school_years=school_years,
+            selected_year_id=selected_sy_id,
             shs_elective_offerings=shs_elective_offerings,
+            shs_elective_offerings_by_year=shs_elective_offerings_by_year,
             official_pathways=official_pathways,
             message=None,
             duplicate_blocked=False,

@@ -122,6 +122,16 @@ def _validate_student_section_assignment(cursor, enrollment_id, section_id, bran
 
     return active_year_id, enrollment, section, None
 
+def _school_year_start(label):
+    match = re.search(r"(\d{4})\s*[-–—]\s*(\d{4})", str(label or ""))
+    if not match:
+        return None
+    start_year = int(match.group(1))
+    end_year = int(match.group(2))
+    if end_year <= start_year:
+        return None
+    return start_year
+
 def get_safe_redirect(default="/registrar/enrollments"):
     target = request.form.get("redirect_url") or request.args.get("redirect_url") or request.referrer
     if target:
@@ -505,12 +515,21 @@ def registrar_enrollments():
 
         # dropdown data: active + inactive
         cursor.execute("""
-            SELECT year_id, label, is_active
-            FROM school_years
-            WHERE branch_id = %s
-            ORDER BY label DESC
+            SELECT sy.year_id, sy.label, sy.is_active,
+                   COALESCE(ns.is_open, FALSE) AS new_student_enrollment_open
+            FROM school_years sy
+            LEFT JOIN new_student_enrollment_settings ns
+              ON ns.branch_id = sy.branch_id AND ns.year_id = sy.year_id
+            WHERE sy.branch_id = %s
+            ORDER BY sy.label DESC
         """, (branch_id,))
         all_school_years = cursor.fetchall()
+        selected_school_year = next((sy for sy in all_school_years if sy["year_id"] == selected_year_id), None)
+        if not selected_school_year:
+            selected_year_id = active_year_id
+            selected_school_year = next((sy for sy in all_school_years if sy["year_id"] == selected_year_id), None)
+
+        new_student_enrollment_open = bool(selected_school_year and selected_school_year.get("new_student_enrollment_open"))
 
         # can user modify on this page?
         can_modify = (selected_year_id == active_year_id)
@@ -866,8 +885,10 @@ def registrar_enrollments():
             # NEW template vars for year switcher
             all_school_years=all_school_years,
             selected_year_id=selected_year_id,
+            selected_school_year=selected_school_year,
             active_year_id=active_year_id,
             can_modify=can_modify,
+            new_student_enrollment_open=new_student_enrollment_open,
 
             # PAGINATION
             total_pages_new=total_pages_new,
@@ -1770,6 +1791,97 @@ def registrar_documents():
         total_docs=total_docs,
         total_students=total_students,
     )
+
+# ══════════════════════════════════════════
+# TOGGLE NEW STUDENT ENROLLMENT
+# ══════════════════════════════════════════
+
+@registrar_bp.route("/registrar/toggle-new-student-enrollment", methods=["POST"])
+def toggle_new_student_enrollment():
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("Missing branch in session.", "error")
+        return redirect("/logout")
+
+    action = request.form.get("action")
+    year_id = request.form.get("year_id", type=int)
+    if action not in ("open", "close") or not year_id:
+        flash("Invalid new student enrollment action.", "error")
+        return redirect(url_for("registrar.registrar_enrollments"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT year_id, label, is_active
+            FROM school_years
+            WHERE branch_id = %s AND year_id = %s
+        """, (branch_id, year_id))
+        target_year = cursor.fetchone()
+        if not target_year:
+            flash("Invalid school year for your branch.", "error")
+            return redirect(url_for("registrar.registrar_enrollments"))
+
+        if action == "open":
+            cursor.execute("""
+                SELECT label
+                FROM school_years
+                WHERE branch_id = %s AND is_active = TRUE
+                LIMIT 1
+            """, (branch_id,))
+            active_year = cursor.fetchone()
+            if not active_year:
+                flash("No active school year found for this branch.", "error")
+                return redirect(url_for("registrar.registrar_enrollments", year_id=year_id))
+
+            active_start = _school_year_start(active_year["label"])
+            target_start = _school_year_start(target_year["label"])
+            if active_start is None or target_start is None:
+                flash("Cannot determine school year chronology from the configured labels. Please use labels like 2026-2027 before opening enrollment.", "error")
+                return redirect(url_for("registrar.registrar_enrollments", year_id=year_id))
+            if target_start < active_start:
+                flash("New Student Enrollment cannot be opened for a past school year.", "error")
+                return redirect(url_for("registrar.registrar_enrollments", year_id=year_id))
+
+            cursor.execute("""
+                INSERT INTO new_student_enrollment_settings
+                  (branch_id, year_id, is_open, opened_at, opened_by, updated_at)
+                VALUES (%s, %s, TRUE, NOW(), %s, NOW())
+                ON CONFLICT (branch_id, year_id)
+                DO UPDATE SET
+                    is_open = TRUE,
+                    opened_at = NOW(),
+                    opened_by = EXCLUDED.opened_by,
+                    updated_at = NOW()
+            """, (branch_id, year_id, session.get("user_id")))
+            db.commit()
+            flash(f"New Student Enrollment opened for {target_year['label']}.", "success")
+        else:
+            cursor.execute("""
+                INSERT INTO new_student_enrollment_settings
+                  (branch_id, year_id, is_open, closed_at, closed_by, updated_at)
+                VALUES (%s, %s, FALSE, NOW(), %s, NOW())
+                ON CONFLICT (branch_id, year_id)
+                DO UPDATE SET
+                    is_open = FALSE,
+                    closed_at = NOW(),
+                    closed_by = EXCLUDED.closed_by,
+                    updated_at = NOW()
+            """, (branch_id, year_id, session.get("user_id")))
+            db.commit()
+            flash(f"New Student Enrollment closed for {target_year['label']}.", "warning")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Toggle new student enrollment error: {str(e)}")
+        flash("Something went wrong. Please try again.", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("registrar.registrar_enrollments", year_id=year_id))
 
 # ══════════════════════════════════════════
 # TOGGLE RE-ENROLLMENT

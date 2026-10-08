@@ -579,6 +579,11 @@
                 </div>
             </div>
 
+            {% if not school_years %}
+            <div class="flash error" style="margin:16px 24px 0;">
+                New Student Enrollment is currently closed for this branch. Please check back later or contact the registrar.
+            </div>
+            {% else %}
             <form method="post" enctype="multipart/form-data" id="enrollForm" data-branch-id="{{ branch.branch_id }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -605,7 +610,7 @@
                                     <label for="year_id">School Year <span class="req">*</span></label>
                                     <select name="year_id" id="year_id" required>
                                         {% for sy in school_years %}
-                                        <option value="{{ sy.year_id }}" {% if sy.is_active %}selected{% endif %}>
+                                        <option value="{{ sy.year_id }}" {% if sy.year_id==selected_year_id %}selected{% endif %}>
                                             {{ sy.label }} {% if sy.is_active %}(Active){% endif %}
                                         </option>
                                         {% endfor %}
@@ -1076,12 +1081,15 @@
                 </div>
 
             </form>
+            {% endif %}
         </div>
     </div>
 
     <script>
         (function () {
-            var branchId = parseInt(document.getElementById('enrollForm').getAttribute('data-branch-id'), 10);
+            var enrollForm = document.getElementById('enrollForm');
+            if (!enrollForm) return;
+            var branchId = parseInt(enrollForm.getAttribute('data-branch-id'), 10);
             var firstNameEl = document.getElementById('student_first_name');
             var middleNameEl = document.getElementById('student_middle_name');
             var lastNameEl = document.getElementById('student_last_name');
@@ -1222,7 +1230,7 @@
 
             /* ── Submit validation ── */
             var isSubmitting = false;
-            document.getElementById('enrollForm').addEventListener('submit', function (e) {
+            enrollForm.addEventListener('submit', function (e) {
                 if (isSubmitting) { e.preventDefault(); return false; }
                 if (blocked) {
                     alert("⚠️ Existing Student Record Detected!\n\n" + (blockedReason || "A student with similar details is already enrolled.") + "\n\nIf you are a returning student, please use the Continuing Student option instead. If you believe this is an error, please visit the school office directly.");
@@ -1490,7 +1498,17 @@
 
         /* ── SHS Elective Show/Hide Logic ── */
         const electiveOfferings = {{ shs_elective_offerings | tojson | safe if shs_elective_offerings else '[]' }};
+        const electiveOfferingsByYear = {{ shs_elective_offerings_by_year | tojson | safe if shs_elective_offerings_by_year else '[]' }};
         const officialPathways = {{ official_pathways | tojson | safe if official_pathways else '[]' }};
+
+        function currentYearOfferings() {
+            var yearSelect = document.getElementById('year_id');
+            if (!yearSelect || !yearSelect.value) return electiveOfferings;
+            var selectedYear = parseInt(yearSelect.value, 10);
+            return electiveOfferingsByYear.filter(function (o) {
+                return parseInt(o.year_id, 10) === selectedYear;
+            });
+        }
 
         function toggleElectiveField(gradeValue) {
             var wrapper = document.getElementById('elective_field_wrapper');
@@ -1513,25 +1531,24 @@
                 };
 
                 var pathways = [];
+                var filtered = currentYearOfferings().filter(function (o) {
+                    return o.grade_level_name === gradeValue || (o.grade_level_name && gradeValue.indexOf(o.grade_level_name) !== -1);
+                });
 
-                // 1. If official pathways are configured by Admin in catalog, use them
-                if (officialPathways && officialPathways.length > 0) {
-                    officialPathways.forEach(function (p) {
-                        var name = p.pathway_name;
-                        if (pathways.indexOf(name) === -1) {
-                            pathways.push(name);
-                        }
-                    });
-                } else {
-                    // 2. Fallback to offerings list if pathways catalog is empty
-                    var filtered = electiveOfferings.filter(function (o) {
-                        return o.grade_level_name === gradeValue;
-                    });
-
+                // 1. If year-specific offerings exist, they are authoritative for this selected year
+                if (filtered.length > 0) {
                     filtered.forEach(function (o) {
                         var p = o.pathway || 'General';
                         if (pathways.indexOf(p) === -1) {
                             pathways.push(p);
+                        }
+                    });
+                } else if (officialPathways && officialPathways.length > 0) {
+                    // 2. If official pathways are configured by Admin in catalog, use them
+                    officialPathways.forEach(function (p) {
+                        var name = p.pathway_name;
+                        if (pathways.indexOf(name) === -1) {
+                            pathways.push(name);
                         }
                     });
                 }
@@ -1563,6 +1580,16 @@
                 selectEl.required = false;
                 if (reqStar) reqStar.style.display = 'none';
             }
+        }
+
+        var yearSelect = document.getElementById('year_id');
+        if (yearSelect) {
+            yearSelect.addEventListener('change', function () {
+                var gradeSelect = document.getElementById('grade_level_select');
+                var shsSelect = document.getElementById('shs_track_select');
+                if (shsSelect) shsSelect.value = '';
+                if (gradeSelect) toggleElectiveField(gradeSelect.value);
+            });
         }
 
         // Run on page load in case grade is pre-selected

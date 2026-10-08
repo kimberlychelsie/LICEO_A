@@ -733,7 +733,7 @@
                     style="padding: 8px 12px; border-radius: 8px; border: none; background: rgba(255, 255, 255, 0.95); color: #1e293b; font-weight: 700; font-family: inherit; cursor: pointer; outline: none; width: 100%; min-width: 200px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     {% for sy in all_school_years %}
                     <option value="{{ sy.year_id }}" {% if sy.year_id==selected_year_id %}selected{% endif %}>
-                        {{ sy.label }}{% if sy.is_active %} (Active){% endif %}
+                        {{ sy.label }}{% if sy.is_active %} (Active){% endif %} - New: {% if sy.new_student_enrollment_open %}Open{% else %}Closed{% endif %}
                     </option>
                     {% endfor %}
                 </select>
@@ -771,6 +771,42 @@
 
     <!-- ═══ TAB: NEW ENROLLMENTS ═══ -->
     <div class="tab-panel active" id="tab-new">
+
+        {% if selected_school_year %}
+        {% if new_student_enrollment_open %}
+        <div class="toggle-banner open-state">
+            <div class="tg-left">
+                <strong>New Student Enrollment is OPEN</strong>
+                <span>The new student enrollment setting is open for {{ selected_school_year.label }}.</span>
+            </div>
+            <form method="post" action="/registrar/toggle-new-student-enrollment">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="year_id" value="{{ selected_year_id }}">
+                <input type="hidden" name="action" value="close">
+                <button type="submit" class="btn btn-danger btn-sm"
+                    onclick="return confirm('Close New Student Enrollment for {{ selected_school_year.label }}? Existing applications will remain available.')">
+                    Close New Enrollment
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <div class="toggle-banner closed-state">
+            <div class="tg-left">
+                <strong>New Student Enrollment is CLOSED</strong>
+                <span>The new student enrollment setting is closed for {{ selected_school_year.label }}.</span>
+            </div>
+            <form method="post" action="/registrar/toggle-new-student-enrollment">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="year_id" value="{{ selected_year_id }}">
+                <input type="hidden" name="action" value="open">
+                <button type="submit" class="btn btn-warning btn-sm"
+                    onclick="return confirm('Open New Student Enrollment for {{ selected_school_year.label }}?')">
+                    Open New Enrollment
+                </button>
+            </form>
+        </div>
+        {% endif %}
+        {% endif %}
 
         <div class="card"
             style="border-radius: 14px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
