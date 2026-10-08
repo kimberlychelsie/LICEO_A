@@ -191,3 +191,46 @@ def api_faqs():
     finally:
         cur.close()
         db.close()
+
+
+# =========================
+# SECURE EXPIRING & PROTECTED DOCUMENT VIEW ROUTE
+# =========================
+@public_bp.route("/view-secure-document")
+def view_secure_document():
+    from flask import request, session, abort, render_template_string
+    from itsdangerous import SignatureExpired, BadSignature
+    from utils.secure_doc import verify_doc_token
+
+    # 1. Incognito / Unauthenticated Blocking Check
+    if not session.get("user_id") and not session.get("student_account_id") and not session.get("parent_id"):
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html><head><title>Access Denied</title></head>
+        <body style="font-family:sans-serif; text-align:center; padding:50px;">
+            <h2 style="color:#ef4444;">🔒 Access Denied (Bawal sa Incognito)</h2>
+            <p>Hindi ma-o-open ang document na ito kung walang naka-login na account sa Liceo Portal.</p>
+            <p>Mangyaring mag-login muna sa iyong Registrar / Admin / Student Portal.</p>
+        </body></html>
+        """), 403
+
+    token = request.args.get("token")
+    if not token:
+        return "Missing document token", 400
+
+    try:
+        doc_url = verify_doc_token(token)
+        return redirect(doc_url)
+    except SignatureExpired:
+        return render_template_string("""
+        <!DOCTYPE html>
+        <html><head><title>Link Expired</title></head>
+        <body style="font-family:sans-serif; text-align:center; padding:50px;">
+            <h2 style="color:#ef4444;">⏱️ Document Link Expired</h2>
+            <p>Nag-expire na ang 15-minute security token ng document na ito.</p>
+            <p>Mangyaring i-refresh ang iyong portal page upang makakuha ng bagong document link.</p>
+        </body></html>
+        """), 403
+    except BadSignature:
+        return "Invalid or tampered document link", 403
+

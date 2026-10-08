@@ -140,3 +140,42 @@ def upload_announcement_photo(file_storage) -> str:
 def upload_enrollment_document(file_storage) -> str:
     """Upload an enrollment document (PDF/image). Returns public URL."""
     return upload_file(file_storage, folder="liceo_uploads/enrollment_docs")
+
+
+def upload_private_document(file_storage, folder: str = "liceo_uploads/private_docs") -> str:
+    """
+    Uploads a document with 'type="authenticated"' in Cloudinary.
+    Direct public access URLs will return 401/404 HTTP errors in Incognito mode.
+    """
+    if CLOUDINARY_ENABLED:
+        import cloudinary.uploader
+        result = cloudinary.uploader.upload(
+            file_storage,
+            folder=folder,
+            type="authenticated",  # PRIVATE ACCESS ONLY
+            resource_type="auto"
+        )
+        return result.get("public_id")
+    else:
+        return _upload_local(file_storage)
+
+
+def generate_cloudinary_signed_url(public_id: str, expires_in_seconds: int = 900) -> str:
+    """
+    Generates a Cloudinary signed URL that expires after expires_in_seconds.
+    """
+    if not CLOUDINARY_ENABLED or not public_id:
+        return public_id
+
+    import time
+    import cloudinary.utils
+    expires_at = int(time.time()) + expires_in_seconds
+    
+    url, options = cloudinary.utils.cloudinary_url(
+        public_id,
+        type="authenticated",
+        sign_url=True,
+        expires_at=expires_at
+    )
+    return url
+
