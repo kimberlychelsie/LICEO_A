@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, session, redirect, flash, url_for, jsonify
+from flask import Blueprint, render_template, request, session, redirect, flash, url_for, jsonify, abort
 from datetime import datetime, time as dt_time
 import pytz
 import json
@@ -1593,9 +1593,15 @@ def branch_admin_academic_calendar():
 
 @branch_admin_bp.route("/branch-admin/schedules", methods=['GET', 'POST'])
 def list_and_add_schedules():
+    if session.get("role") != "branch_admin":
+        return redirect("/")
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    branch_id = session["branch_id"]
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("No branch assigned.", "error")
+        cursor.close(); db.close()
+        return redirect(url_for("auth.login"))
 
     # Only show combos for SECTIONS in ACTIVE years for THIS branch:
     cursor.execute("""
@@ -1640,6 +1646,10 @@ def list_and_add_schedules():
     if request.method == "POST":
         combo = request.form["combo"]
         combo_parts = combo.split('|')
+        if len(combo_parts) < 3:
+            flash("Invalid class details selected.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("branch_admin.list_and_add_schedules"))
         section_id = combo_parts[0]
         subject_id = combo_parts[1]
         teacher_id = combo_parts[2]
@@ -1888,9 +1898,15 @@ def save_break_times_api():
 
 @branch_admin_bp.route("/branch-admin/schedules/<int:schedule_id>/edit", methods=["GET", "POST"])
 def edit_schedule(schedule_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("No branch assigned.", "error")
+        cursor.close(); db.close()
+        return redirect(url_for("auth.login"))
 
     cursor.execute("""
         SELECT s.*, 
@@ -1913,7 +1929,7 @@ def edit_schedule(schedule_id):
     # Repopulate combinations as in add view
     cursor.execute("""
         SELECT st.section_id, sec.section_name, st.subject_id, subj.name AS subject_name,
-               st.teacher_id, u.full_name AS teacher_name, sec.year_id
+               st.teacher_id, u.full_name AS teacher_name, sec.year_id, st.term_name
         FROM section_teachers st
         JOIN sections sec ON st.section_id = sec.section_id
         JOIN school_years y ON sec.year_id = y.year_id
@@ -1935,11 +1951,17 @@ def edit_schedule(schedule_id):
     active_year = school_years[0] if school_years else None
 
     if request.method == "POST":
+        combo = request.form["combo"]
         combo_parts = combo.split('|')
+        if len(combo_parts) < 3:
+            flash("Invalid class details selected.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("branch_admin.list_and_add_schedules"))
         section_id = combo_parts[0]
         subject_id = combo_parts[1]
         teacher_id = combo_parts[2]
-        term_name = request.form.get("term_name") or (combo_parts[3] if len(combo_parts) > 3 else schedule.get("term_name"))
+        raw_t = combo_parts[3] if len(combo_parts) > 3 else None
+        term_name = request.form.get("term_name") or (raw_t if raw_t and raw_t != 'None' else schedule.get("term_name"))
         day_of_week = request.form["day_of_week"]
         start_time = request.form["start_time"]
         end_time = request.form["end_time"]
@@ -2038,6 +2060,8 @@ def edit_schedule(schedule_id):
 
 @branch_admin_bp.route("/branch-admin/schedules/<int:schedule_id>/move", methods=["POST"])
 def move_schedule_admin(schedule_id):
+    if session.get("role") != "branch_admin":
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     branch_id = session.get("branch_id")
@@ -2098,6 +2122,8 @@ def move_schedule_admin(schedule_id):
 
 @branch_admin_bp.route("/branch-admin/schedules/<int:schedule_id>/archive", methods=["POST"])
 def archive_schedule(schedule_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
     db = get_db_connection()
     cursor = db.cursor()
     branch_id = session.get("branch_id")
@@ -2111,6 +2137,8 @@ def archive_schedule(schedule_id):
 
 @branch_admin_bp.route("/branch-admin/schedules/<int:schedule_id>/unarchive", methods=["POST"])
 def unarchive_schedule(schedule_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
     db = get_db_connection()
     cursor = db.cursor()
     branch_id = session.get("branch_id")

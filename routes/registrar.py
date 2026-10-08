@@ -64,6 +64,64 @@ def is_valid_lrn(val):
     import re
     return bool(re.match(r"^\d{12}$", val))
 
+def _grades_compatible_for_section(student_grade, section_grade):
+    student_grade = str(student_grade or "").strip().lower()
+    section_grade = str(section_grade or "").strip().lower()
+    if not student_grade or not section_grade:
+        return False
+    short_section = section_grade.replace("grade ", "").strip()
+    if "-" in section_grade:
+        return student_grade in (section_grade, short_section)
+    if section_grade.startswith("grade 11") or section_grade.startswith("grade 12") or short_section.startswith("11") or short_section.startswith("12"):
+        return (
+            student_grade in (section_grade, short_section)
+            or student_grade.startswith(f"{section_grade}-")
+            or student_grade.startswith(f"{short_section}-")
+        )
+    return student_grade in (section_grade, short_section)
+
+def _validate_student_section_assignment(cursor, enrollment_id, section_id, branch_id):
+    cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+    row = cursor.fetchone()
+    active_year_id = row["year_id"] if row else None
+    if not active_year_id:
+        return None, None, None, "No active school year found."
+
+    cursor.execute("""
+        SELECT *
+        FROM enrollments
+        WHERE enrollment_id = %s AND branch_id = %s AND year_id = %s
+          AND status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+    """, (enrollment_id, branch_id, active_year_id))
+    enrollment = cursor.fetchone()
+    if not enrollment:
+        return active_year_id, None, None, "Enrollment not found for this branch and active school year."
+
+    if not section_id:
+        return active_year_id, enrollment, None, None
+
+    cursor.execute("""
+        SELECT s.section_id, s.capacity, g.name AS grade_level_name,
+               (SELECT COUNT(*) FROM enrollments e2
+                WHERE e2.section_id = s.section_id
+                  AND e2.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                  AND e2.enrollment_id <> %s) AS current_count
+        FROM sections s
+        JOIN grade_levels g ON s.grade_level_id = g.id
+        JOIN school_years y ON s.year_id = y.year_id
+        WHERE s.section_id = %s AND s.branch_id = %s
+          AND y.year_id = %s AND y.is_active = TRUE
+    """, (enrollment_id, section_id, branch_id, active_year_id))
+    section = cursor.fetchone()
+    if not section:
+        return active_year_id, enrollment, None, "Section not found for this branch and active school year."
+    if not _grades_compatible_for_section(enrollment["grade_level"], section["grade_level_name"]):
+        return active_year_id, enrollment, section, "Section grade does not match the student's grade level."
+    if section["current_count"] >= section["capacity"]:
+        return active_year_id, enrollment, section, "Section is full."
+
+    return active_year_id, enrollment, section, None
+
 def get_safe_redirect(default="/registrar/enrollments"):
     target = request.form.get("redirect_url") or request.args.get("redirect_url") or request.referrer
     if target:
@@ -1792,20 +1850,25 @@ def create_student_account(enrollment_id):
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cursor.execute("""
-            SELECT * FROM enrollments
-            WHERE enrollment_id=%s AND branch_id=%s AND status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-        """, (enrollment_id, branch_id))
-        enrollment = cursor.fetchone()
+        section_raw = request.form.get("section_id", "").strip()
+        try:
+            section_id = int(section_raw) if section_raw else None
+        except (TypeError, ValueError):
+            flash("Invalid section selected.", "error")
+            return redirect("/registrar/enrollments#enrolled")
+
+        active_year_id, enrollment, section, validation_error = _validate_student_section_assignment(
+            cursor, enrollment_id, section_id, branch_id
+        )
+        if validation_error:
+            flash(validation_error, "error")
+            return redirect("/registrar/enrollments#enrolled")
+
         student_name = " ".join(filter(None, [
             enrollment.get("student_first_name"),
             enrollment.get("student_middle_name"),
             enrollment.get("student_last_name")
         ]))
-
-        if not enrollment:
-            flash("Enrollment not found or not approved", "error")
-            return redirect("/registrar/enrollments#enrolled")
 
         student_email = (enrollment.get("email") or "").strip()
         if not student_email:
@@ -1837,36 +1900,17 @@ def create_student_account(enrollment_id):
                   (enrollment_id, branch_id, username, password, is_active, require_password_change, email)
                 VALUES (%s, %s, %s, %s, TRUE, TRUE, %s)
             """, (enrollment_id, enrollment["branch_id"], username, hashed_password, enrollment.get("email")))
-            db.commit()
 
-            section_id = request.form.get("section_id", "").strip()
-            if section_id and section_id.isdigit():
-                try:
-                    cursor.execute("""
-                        SELECT s.section_id FROM sections s
-                        JOIN grade_levels g ON s.grade_level_id = g.id
-                        WHERE s.section_id = %s AND s.branch_id = %s AND g.name ILIKE %s
-                    """, (int(section_id), branch_id, enrollment.get("grade_level", "")))
-                    if cursor.fetchone():
-                        cursor.execute("""
-                            UPDATE enrollments e
-                            SET section_id = s.section_id,
-                                year_id = s.year_id,
-                                status = CASE
-                                    WHEN e.status = 'approved' THEN 'enrolled'
-                                    ELSE e.status
-                                END
-                            FROM sections s
-                            WHERE e.enrollment_id = %s
-                            AND e.branch_id = %s
-                            AND s.section_id = %s
-                            AND s.branch_id = %s
-                        """, (enrollment_id, branch_id, int(section_id), branch_id))
-                        sync_student_elective_membership(cursor, enrollment_id)
-                        db.commit()
-                except Exception as e:
-                    db.rollback()
-                    logger.warning(f"Section assign failed (non-fatal): {str(e)}")
+            if section_id:
+                cursor.execute("""
+                    UPDATE enrollments
+                    SET section_id = %s,
+                        status = CASE WHEN status = 'approved' THEN 'enrolled' ELSE status END
+                    WHERE enrollment_id = %s AND branch_id = %s AND year_id = %s
+                """, (section_id, enrollment_id, branch_id, active_year_id))
+                sync_student_elective_membership(cursor, enrollment_id)
+
+            db.commit()
 
             # ─────── SEND EMAIL WITH CREDENTIALS ───────
             student_email = enrollment.get("email")
@@ -4622,17 +4666,26 @@ def registrar_api_assign_student_section():
     if session.get("role") != "registrar":
         return {"error": "Unauthorized"}, 403
     branch_id = session.get("branch_id")
-    data = request.get_json()
-    enrollment_id = data.get("enrollment_id")
-    section_id = data.get("section_id")
+    data = request.get_json() or {}
+    try:
+        enrollment_id = int(data.get("enrollment_id"))
+    except (TypeError, ValueError):
+        return {"success": False, "message": "Invalid enrollment."}, 400
+    section_raw = data.get("section_id")
+    try:
+        section_id = int(section_raw) if section_raw not in (None, "", "null") else None
+    except (TypeError, ValueError):
+        return {"success": False, "message": "Invalid section."}, 400
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
-        row = cursor.fetchone()
-        active_year_id = row["year_id"] if row else None
-        if not active_year_id: return {"success": False, "message": "No active school year"}, 400
+        active_year_id, enrollment, section, validation_error = _validate_student_section_assignment(
+            cursor, enrollment_id, section_id, branch_id
+        )
+        if validation_error:
+            status_code = 404 if "not found" in validation_error.lower() else 400
+            return {"success": False, "message": validation_error}, status_code
 
         cursor.execute("UPDATE enrollments SET section_id=%s, status = CASE WHEN %s IS NOT NULL AND status = 'approved' THEN 'enrolled' ELSE status END WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s", (section_id, section_id, enrollment_id, branch_id, active_year_id))
         sync_student_elective_membership(cursor, enrollment_id)

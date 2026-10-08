@@ -500,13 +500,24 @@ def enroll(branch_id):
             # Selected school year from form, fallback to active
             selected_sy_id = request.form.get("year_id")
             if selected_sy_id:
-                selected_sy_id = int(selected_sy_id)
+                try:
+                    selected_sy_id = int(selected_sy_id)
+                except (TypeError, ValueError):
+                    flash("Invalid school year selected.", "error")
+                    return redirect(request.url)
             else:
                 selected_sy_id = get_active_school_year_id(cursor, branch_id)
 
             if not selected_sy_id:
                 flash("No active school year found. Please contact admin.", "error")
                 return redirect(url_for("public.homepage"))
+            cursor.execute("""
+                SELECT 1 FROM school_years
+                WHERE year_id = %s AND branch_id = %s
+            """, (selected_sy_id, branch_id))
+            if not cursor.fetchone():
+                flash("Invalid school year selected for this branch.", "error")
+                return redirect(request.url)
             if not is_branch_active(branch_id):
                 flash("This branch is currently deactivated. New enrollments are not allowed.", "error")
                 return redirect(url_for("public.homepage"))
