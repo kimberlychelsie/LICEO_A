@@ -2,14 +2,39 @@ import smtplib
 import threading
 from email.message import EmailMessage
 import os
-from dotenv import load_dotenv
 import time
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv(*args, **kwargs):
+        return False
 
-load_dotenv(override=True)
+load_dotenv()
+
+def _mask_email(email):
+    email = (email or "").strip()
+    if "@" not in email:
+        return "[missing]"
+    name, domain = email.split("@", 1)
+    if not name:
+        masked_name = "*"
+    elif len(name) == 1:
+        masked_name = name[0] + "*"
+    else:
+        masked_name = name[0] + "***" + name[-1]
+    return f"{masked_name}@{domain}"
+
+def _sanitize_email_error(err):
+    err_name = err.__class__.__name__
+    smtp_code = getattr(err, "smtp_code", None)
+    if smtp_code:
+        return f"{err_name} code={smtp_code}"
+    return err_name
 
 def _send_email_core(to_email, subject, body, html_body=None):
-    load_dotenv(override=True)
+    load_dotenv()
     start = time.time()
+    safe_to = _mask_email(to_email)
 
     smtp_user = (os.getenv('MAIL_USERNAME') or os.getenv('SMTP_USER') or os.getenv('MAIL_USER') or '').strip()
     smtp_pass = (os.getenv('MAIL_PASSWORD') or os.getenv('SMTP_PASS') or '').strip().replace(' ', '')
@@ -32,7 +57,7 @@ def _send_email_core(to_email, subject, body, html_body=None):
     from_email = os.getenv('MAIL_DEFAULT_SENDER') or smtp_user or 'noreply@liceo-lms.com'
 
     if not smtp_user or not smtp_pass:
-        print(f"[EMAIL WARNING] Credentials missing (SMTP_USER/MAIL_USERNAME). Email to {to_email} skipped.")
+        print(f"[EMAIL WARNING] Credentials missing (SMTP_USER/MAIL_USERNAME). Email to {safe_to} skipped.")
         return False
 
     try:
@@ -75,12 +100,12 @@ def _send_email_core(to_email, subject, body, html_body=None):
                     sent_ok = True
 
         elapsed = time.time() - start
-        print(f"[EMAIL SUCCESS] Sent to {to_email} in {elapsed:.2f}s")
+        print(f"[EMAIL SUCCESS] SMTP accepted message to {safe_to} in {elapsed:.2f}s")
         return True
 
     except Exception as e:
         elapsed = time.time() - start
-        print(f"[EMAIL ERROR] Failed to send to {to_email} after {elapsed:.2f}s: {str(e)}")
+        print(f"[EMAIL ERROR] SMTP handoff failed for {safe_to} after {elapsed:.2f}s: {_sanitize_email_error(e)}")
         return False
 
 

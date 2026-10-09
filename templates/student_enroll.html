@@ -579,6 +579,17 @@
                 </div>
             </div>
 
+            <div id="possibleDuplicateWarning" class="flash"
+                style="display:none; margin:16px 24px 0; align-items:flex-start; gap:12px; background:#fffbeb; border:2px solid #fcd34d; border-radius:12px; padding:16px 18px;">
+                <span style="font-size:1.6rem; line-height:1;">!</span>
+                <div>
+                    <strong style="display:block; margin-bottom:4px; font-size:0.95rem; color:#92400e;">
+                        Possible duplicate record for Registrar verification
+                    </strong>
+                    <span id="possibleDuplicateDetail" style="font-size:0.85rem; color:#92400e;"></span>
+                </div>
+            </div>
+
             {% if not school_years %}
             <div class="flash error" style="margin:16px 24px 0;">
                 New Student Enrollment is currently closed for this branch. Please check back later or contact the registrar.
@@ -708,6 +719,7 @@
                                         maxlength="12" minlength="12" inputmode="numeric" pattern="\d{12}"
                                         oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                     <small>Numbers only, exactly 12 digits (Optional)</small>
+                                    <small id="lrnFeedback" style="display:none; font-weight:700;"></small>
                                 </div>
                             </div>
 
@@ -1096,12 +1108,17 @@
             var dobEl = document.getElementById('field_dob');
             var lrnEl = document.getElementById('field_lrn');
             var emailEl = document.getElementById('field_email');
+            var lrnFeedback = document.getElementById('lrnFeedback');
             var enrollDateEl = document.getElementById('enroll_date');
             var submitBtn = document.getElementById('submitBtn');
             var topDupWarn = document.getElementById('duplicateWarning');
             var topDupDetail = document.getElementById('duplicateDetail');
+            var possibleDupWarn = document.getElementById('possibleDuplicateWarning');
+            var possibleDupDetail = document.getElementById('possibleDuplicateDetail');
             var blocked = false;
             var blockedReason = '';
+            var duplicateTimer = null;
+            var duplicateSeq = 0;
 
             /* ── Set enrollment date default to today if not set ── */
             (function initEnrollDate() {
@@ -1188,6 +1205,27 @@
                 }
             }
 
+            function setReviewWarning(val, detail) {
+                if (val) {
+                    if (possibleDupWarn) possibleDupWarn.style.display = 'flex';
+                    if (possibleDupDetail) possibleDupDetail.textContent = detail || '';
+                } else {
+                    if (possibleDupWarn) possibleDupWarn.style.display = 'none';
+                }
+            }
+
+            function setLrnFeedback(msg, isError) {
+                if (!lrnFeedback) return;
+                if (!msg) {
+                    lrnFeedback.style.display = 'none';
+                    lrnFeedback.textContent = '';
+                    return;
+                }
+                lrnFeedback.style.display = 'block';
+                lrnFeedback.style.color = isError ? '#b91c1c' : '#92400e';
+                lrnFeedback.textContent = msg;
+            }
+
             function runCheck() {
                 var fn = firstNameEl ? firstNameEl.value.trim() : '';
                 var mn = middleNameEl ? middleNameEl.value.trim() : '';
@@ -1196,8 +1234,16 @@
                 var dob = dobEl ? dobEl.value.trim() : '';
                 var lrn = lrnEl ? lrnEl.value.trim() : '';
                 var email = emailEl ? emailEl.value.trim() : '';
-                if (!name && !lrn && !email) { setBlocked(false); return; }
+                if (lrn && !/^\d{12}$/.test(lrn)) {
+                    setBlocked(false);
+                    setReviewWarning(false);
+                    setLrnFeedback('LRN must contain exactly 12 digits.', true);
+                    return;
+                }
+                setLrnFeedback('', false);
+                if (!lrn && !(name && dob && email)) { setBlocked(false); setReviewWarning(false); return; }
 
+                var seq = duplicateSeq;
                 fetch('/api/check-duplicate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1205,28 +1251,42 @@
                 })
                     .then(function (r) { return r.json(); })
                     .then(function (res) {
+                        if (seq !== duplicateSeq) return;
                         if (res.status === 'blocked') {
-                            var detail = '';
-                            if (res.is_other_branch) {
-                                detail = '⚠️ Active enrollment application for ' + (res.match_name || 'this student') + ' already exists at ' + (res.match_branch || 'another campus') + '. A student cannot apply in multiple campuses simultaneously.';
-                            } else {
-                                var reasons = (res.reasons || []).join(', ');
-                                detail = 'Matched because: ' + reasons + '.';
-                                if (res.match_grade) detail += ' Existing grade: ' + res.match_grade + '.';
-                            }
+                            var detail = res.message || 'An existing active student/application record matches this information. Please contact the Registrar for assistance.';
+                            if (lrn) setLrnFeedback('This LRN is already linked to an active or existing student record.', true);
+                            setReviewWarning(false);
                             setBlocked(true, detail);
+                        } else if (res.status === 'review') {
+                            setLrnFeedback('', false);
+                            setReviewWarning(true, res.message || 'The Registrar will verify this application before approval.');
+                            setBlocked(false);
                         } else {
+                            setLrnFeedback('', false);
+                            setReviewWarning(false);
                             setBlocked(false);
                         }
                     })
-                    .catch(function () { /* network error — fail open */ });
+                    .catch(function () {
+                        if (seq !== duplicateSeq) return;
+                        setBlocked(false);
+                        setReviewWarning(false);
+                        if (lrn) setLrnFeedback('Could not verify this LRN right now. The Registrar will validate it after submission.', true);
+                    });
             }
 
-            if (lrnEl) lrnEl.addEventListener('blur', runCheck);
-            if (emailEl) emailEl.addEventListener('blur', runCheck);
-            if (dobEl) dobEl.addEventListener('change', runCheck);
-            if (firstNameEl) firstNameEl.addEventListener('blur', runCheck);
-            if (lastNameEl) lastNameEl.addEventListener('blur', runCheck);
+            function scheduleCheck() {
+                duplicateSeq++;
+                clearTimeout(duplicateTimer);
+                duplicateTimer = setTimeout(runCheck, 450);
+            }
+
+            if (lrnEl) lrnEl.addEventListener('input', scheduleCheck);
+            if (emailEl) emailEl.addEventListener('input', scheduleCheck);
+            if (dobEl) dobEl.addEventListener('change', scheduleCheck);
+            if (firstNameEl) firstNameEl.addEventListener('input', scheduleCheck);
+            if (middleNameEl) middleNameEl.addEventListener('input', scheduleCheck);
+            if (lastNameEl) lastNameEl.addEventListener('input', scheduleCheck);
 
             /* ── Submit validation ── */
             var isSubmitting = false;

@@ -3,6 +3,7 @@ from werkzeug.utils import secure_filename
 import os
 import uuid
 import re
+import hashlib
 import secrets
 import logging
 from datetime import datetime
@@ -11,9 +12,9 @@ import psycopg2.extras
 from db import get_db_connection, is_branch_active
 from cloudinary_helper import upload_enrollment_document
 from cloudinary_helper import LOCAL_UPLOAD_FOLDER
-from rapidfuzz import fuzz
 from utils.send_email import send_email
 from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, price_for_size, size_price_map
+from utils.student_identity import evaluate_student_identity_match, student_name_from_row, normalize_identity_name, normalize_identity_dob, normalize_identity_lrn, normalize_identity_email
 from extensions import csrf
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,31 @@ def is_valid_lrn(val):
         return True
     import re
     return bool(re.match(r"^\d{12}$", val))
+
+def _student_identity_lock_id(key):
+    raw = int(hashlib.sha256(key.encode("utf-8")).hexdigest()[:16], 16)
+    return raw - (1 << 64) if raw >= (1 << 63) else raw
+
+def acquire_student_identity_locks(cursor, student_name, dob, lrn, email):
+    keys = []
+    norm_lrn = normalize_identity_lrn(lrn)
+    norm_name = normalize_identity_name(student_name)
+    norm_dob = normalize_identity_dob(dob)
+    norm_email = normalize_identity_email(email)
+    if norm_lrn:
+        keys.append(f"student_identity:lrn:{norm_lrn}")
+    if norm_name and norm_dob:
+        keys.append(f"student_identity:name_dob:{norm_name}|{norm_dob}")
+    if norm_name and norm_dob and norm_email:
+        keys.append(f"student_identity:name_dob_email:{norm_name}|{norm_dob}|{norm_email}")
+    for lock_id in sorted({_student_identity_lock_id(key) for key in keys}):
+        cursor.execute("SELECT pg_advisory_xact_lock(%s)", (lock_id,))
+    return keys
+
+def acquire_branch_enrollment_no_lock(cursor, branch_id):
+    lock_id = _student_identity_lock_id(f"branch_enrollment_no:branch:{int(branch_id)}")
+    cursor.execute("SELECT pg_advisory_xact_lock(%s)", (lock_id,))
+    return lock_id
 
 def save_doc_file(cursor, enrollment_id, fileobj, doc_type):
     if fileobj and fileobj.filename:
@@ -393,46 +419,102 @@ def validate_shs_pathway_for_year(shs_track, grade_level, shs_elective_offerings
     }
     return selected in default_allowed
 # =======================
-# DUPLICATE CHECK HELPER
+# STUDENT IDENTITY HELPERS
 # =======================
+def _identity_response(action, message, reasons=None, match=None):
+    return {
+        "action": action,
+        "message": message,
+        "reasons": reasons or [],
+        "matched_enrollment_id": match.get("enrollment_id") if match else None,
+        "match_status": match.get("status") if match else None,
+    }
+
+def _identity_reviews_table_missing(exc):
+    return getattr(exc, "pgcode", None) == "42P01" or "student_identity_reviews" in str(exc)
+
+def record_identity_review(cursor, enrollment_id, branch_id, identity_result):
+    reasons = "; ".join(identity_result.get("reasons") or [])
+    cursor.execute("""
+        INSERT INTO student_identity_reviews
+          (enrollment_id, matched_enrollment_id, branch_id, status, reasons, updated_at)
+        VALUES (%s, %s, %s, 'pending', %s, NOW())
+        ON CONFLICT (enrollment_id) DO UPDATE
+        SET matched_enrollment_id = EXCLUDED.matched_enrollment_id,
+            branch_id = EXCLUDED.branch_id,
+            status = 'pending',
+            reasons = EXCLUDED.reasons,
+            decision_reason = NULL,
+            reviewed_by = NULL,
+            reviewed_at = NULL,
+            updated_at = NOW()
+    """, (enrollment_id, identity_result.get("matched_enrollment_id"), branch_id, reasons))
+
+def validate_student_identity(cursor, student_name, dob, lrn, email=None, exclude_enrollment_id=None):
+    cursor.execute("""
+        SELECT
+            e.enrollment_id,
+            e.student_first_name,
+            e.student_middle_name,
+            e.student_last_name,
+            e.dob,
+            e.lrn,
+            e.grade_level,
+            e.status,
+            e.branch_id,
+            e.year_id,
+            e.email,
+            b.branch_name,
+            b.branch_code,
+            EXISTS (
+                SELECT 1 FROM student_accounts sa
+                WHERE sa.enrollment_id = e.enrollment_id
+            ) AS has_student_account
+        FROM enrollments e
+        JOIN branches b ON e.branch_id = b.branch_id
+        WHERE (
+              e.status NOT IN ('rejected', 'cancelled')
+              OR EXISTS (
+                  SELECT 1 FROM student_accounts sa
+                  WHERE sa.enrollment_id = e.enrollment_id
+              )
+          )
+          AND (%s IS NULL OR e.enrollment_id <> %s)
+    """, (exclude_enrollment_id, exclude_enrollment_id))
+    existing_records = cursor.fetchall() or []
+
+    best_review = None
+    for rec in existing_records:
+        rec["student_name"] = student_name_from_row(rec)
+        result = evaluate_student_identity_match(student_name, dob or "", lrn or "", rec, new_email=email)
+        if result["action"] == "block":
+            return _identity_response(
+                "block",
+                "An active or historical LICEO_A student record already exists for this learner. Existing students should use Continuing Re-Enrollment or contact the Registrar for transfer assistance.",
+                result["reasons"],
+                rec
+            )
+        if result["action"] == "review" and (not best_review or result["confidence"] > best_review["confidence"]):
+            best_review = dict(result)
+            best_review["match"] = rec
+
+    if best_review:
+        return _identity_response(
+            "review",
+            "We found a student record with similar identity details. Please contact the Registrar so the learner's identity can be verified before submitting a new application.",
+            best_review["reasons"],
+            best_review["match"]
+        )
+
+    return _identity_response("ok", "")
+
 def compute_duplicate_score(new_name, new_dob, new_lrn, existing, new_email=None):
-    """
-    Returns (score, reasons) for a single existing enrollment row.
-    Score thresholds: >= 50 → block, 30-49 → (not used currently, reserved)
-    """
-    score = 0
-    reasons = []
-
-    # Student Email exact match — strongest signal
-    if new_email and existing.get("email") and new_email.strip().lower() == str(existing["email"]).strip().lower():
-        score += 60
-        reasons.append("Email address matches an existing record")
-
-    # LRN exact match — strongest signal
-    if new_lrn and existing.get("lrn") and new_lrn.strip() == str(existing["lrn"]).strip():
-        score += 60
-        reasons.append("LRN matches an existing record")
-
-    # Birthday exact match
-    dob_match = False
-    if new_dob and existing.get("dob"):
-        existing_dob = str(existing["dob"]).split(" ")[0]  # strip time if any
-        if new_dob.strip() == existing_dob.strip():
-            dob_match = True
-            score += 20
-            reasons.append("birthday matches")
-
-    # Fuzzy name match
-    if new_name and existing.get("student_name"):
-        similarity = fuzz.token_sort_ratio(new_name.lower(), existing["student_name"].lower())
-        if similarity >= 90:
-            score += 35 if dob_match else 25
-            reasons.append(f"name is {similarity}% similar")
-        elif similarity >= 75:
-            score += 15
-            reasons.append(f"name is {similarity}% similar")
-
-    return score, reasons
+    result = evaluate_student_identity_match(new_name, new_dob, new_lrn, existing, new_email=new_email)
+    if result["action"] == "block":
+        return result["confidence"], result["reasons"]
+    if result["action"] == "review":
+        return min(result["confidence"], 49), result["reasons"]
+    return 0, []
 
 
 # =======================
@@ -459,63 +541,16 @@ def check_duplicate():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        # Fetch existing enrollments from DB across ALL branches (exclude rejected/cancelled)
-        cursor.execute("""
-            SELECT
-                e.student_first_name,
-                e.student_middle_name,
-                e.student_last_name,
-                e.dob,
-                e.lrn,
-                e.email,
-                e.enrollment_id,
-                e.grade_level,
-                e.branch_id,
-                b.branch_name,
-                b.branch_code
-            FROM enrollments e
-            JOIN branches b ON e.branch_id = b.branch_id
-            WHERE e.status NOT IN ('rejected', 'cancelled')
-        """)
-        existing_records = cursor.fetchall()
-
-        best_score = 0
-        best_reasons = []
-        best_match = None
-
-        for rec in existing_records:
-            rec["student_name"] = " ".join(filter(None, [
-                rec["student_first_name"],
-                rec["student_middle_name"],
-                rec["student_last_name"]
-            ]))
-
-            score, reasons = compute_duplicate_score(
-                name,
-                dob or "",
-                lrn or "",
-                rec,
-                new_email=email
-            )
-
-            if score > best_score:
-                best_score = score
-                best_reasons = reasons
-                best_match = rec
-
-        if best_score >= 50 and best_match:
-            is_other_branch = (branch_id is not None) and (best_match["branch_id"] != branch_id)
+        result = validate_student_identity(cursor, name, dob, lrn, email)
+        if result["action"] in ("block", "review"):
             return jsonify({
-                "status": "blocked",
-                "score": best_score,
-                "reasons": best_reasons,
-                "match_name": best_match["student_name"],
-                "match_grade": best_match["grade_level"],
-                "match_branch": best_match["branch_name"],
-                "is_other_branch": is_other_branch
+                "status": "blocked" if result["action"] == "block" else "review",
+                "reasons": result["reasons"],
+                "message": result["message"],
+                "is_other_branch": False
             })
 
-        return jsonify({"status": "ok", "score": best_score})
+        return jsonify({"status": "ok"})
 
     except Exception as e:
         logger.error(f"Duplicate check error: {e}")
@@ -801,66 +836,21 @@ def enroll(branch_id):
                         flash(err, "error")
                         return redirect(request.url)
 
-            # ── SERVER-SIDE DUPLICATE CHECK ──
-            cursor.execute("""
-                SELECT
-                    e.student_first_name,
-                    e.student_middle_name,
-                    e.student_last_name,
-                    e.dob,
-                    e.lrn,
-                    e.email,
-                    e.grade_level,
-                    e.branch_id,
-                    b.branch_name,
-                    b.branch_code
-                FROM enrollments e
-                JOIN branches b ON e.branch_id = b.branch_id
-                WHERE e.status NOT IN ('rejected', 'cancelled')
-            """)
-            existing_records = cursor.fetchall()
-            
-            best_score = 0
-            best_reasons = []
-            best_match = None
+            # Serialize matching public submissions for this learner identity.
+            # Transaction-scoped advisory locks release automatically on commit
+            # or rollback; LRN submissions also lock the composite key so a
+            # simultaneous blank-LRN submission with the same details waits.
+            acquire_student_identity_locks(cursor, student_name, dob, lrn, email)
 
-            for rec in existing_records:
-                rec["student_name"] = " ".join(filter(None, [
-                    rec["student_first_name"],
-                    rec["student_middle_name"],
-                    rec["student_last_name"]
-                ]))
-
-                score, reasons = compute_duplicate_score(
-                    student_name,
-                    dob or "",
-                    lrn or "",
-                    rec,
-                    new_email=email
-                )
-
-                if score > best_score:
-                    best_score = score
-                    best_reasons = reasons
-                    best_match = rec    
-
-            if best_score >= 50 and best_match:
-                if best_match["branch_id"] != branch_id:
-                    reason_text = (
-                        f"An active enrollment application for <strong>{best_match['student_name']}</strong> "
-                        f"already exists at <strong>{best_match['branch_name']}</strong> "
-                        f"({best_match['grade_level']}).<br><br>"
-                        f"A student cannot be enrolled in multiple campuses simultaneously. "
-                        f"If you wish to transfer campuses, please contact school administration."
-                    )
-                else:
-                    reason_text = ", ".join(best_reasons)
-                    reason_text += (
-                        f"<br><br>"
-                        f"Existing record in this campus:<br>"
-                        f"<strong>{best_match['student_name']}</strong>"
-                        f" ({best_match['grade_level']})"
-                    )
+            # ── SERVER-SIDE STUDENT IDENTITY CHECK ──
+            identity_result = validate_student_identity(cursor, student_name, dob, lrn, email)
+            if identity_result["action"] == "block":
+                reason_text = identity_result["message"]
+                if identity_result["reasons"]:
+                    reason_text += "<br><br>" + "<br>".join(identity_result["reasons"])
+                import datetime as _dt
+                today = _dt.date.today()
+                max_dob_date = _dt.date(today.year - 3, today.month, today.day).strftime('%Y-%m-%d')
                 return render_template(
                     "student_enroll.html",
                     branch=branch,
@@ -873,9 +863,13 @@ def enroll(branch_id):
                     message=None,
                     duplicate_blocked=True,
                     duplicate_reason=reason_text,
+                    today_date=today.strftime('%Y-%m-%d'),
+                    max_dob_date=max_dob_date
                 )
+            review_required = identity_result["action"] == "review"
 
             # ── Enrollment number ──
+            acquire_branch_enrollment_no_lock(cursor, branch_id)
             cursor.execute("SELECT COALESCE(MAX(branch_enrollment_no), 0) + 1 AS next_no FROM enrollments WHERE branch_id = %s", (branch_id,))
             next_no = cursor.fetchone()["next_no"]
 
@@ -913,6 +907,18 @@ def enroll(branch_id):
             ))
             enrollment_id = cursor.fetchone()["enrollment_id"]
 
+            if review_required:
+                try:
+                    record_identity_review(cursor, enrollment_id, branch_id, identity_result)
+                except Exception as review_err:
+                    db.rollback()
+                    if _identity_reviews_table_missing(review_err):
+                        flash("Identity review storage is unavailable. Please contact the Registrar before submitting this application.", "error")
+                    else:
+                        logger.error(f"Identity review record error: {review_err}")
+                        flash("We could not queue this application for identity review. Please try again or contact the Registrar.", "error")
+                    return redirect(request.url)
+
             # ── Process & Save Documents ──
             uploaded_doc_urls = []
             for file_field, doc_name in document_fields:
@@ -935,7 +941,10 @@ def enroll(branch_id):
                 # Send the simple numeric branch enrollment number (e.g. 1) as requested
                 trigger_enrollment_email(email, student_name, next_no, branch["branch_name"])
 
-            flash("Enrollment submitted successfully! Please wait for registrar approval.", "success")
+            if review_required:
+                flash("Enrollment submitted successfully and queued for Registrar identity review.", "success")
+            else:
+                flash("Enrollment submitted successfully! Please wait for registrar approval.", "success")
             return redirect(url_for("student.enrollment_success", branch_id=branch_id, enrollment_id=enrollment_id))
 
         # ── GET: Render form ──
@@ -1690,8 +1699,9 @@ def track_enrollment():
                     SELECT e.*, b.branch_name
                     FROM enrollments e
                     JOIN branches b ON e.branch_id = b.branch_id
+                    LEFT JOIN school_years sy ON sy.year_id = e.year_id AND sy.branch_id = e.branch_id
                     WHERE e.branch_enrollment_no = %s AND e.branch_id = %s
-                    ORDER BY e.created_at DESC
+                    ORDER BY COALESCE(sy.is_active, FALSE) DESC, e.year_id DESC NULLS LAST, e.created_at DESC
                     LIMIT 1
                 """, (enrollment_no_int, branch_id_int))
                 enrollment = cursor.fetchone()
@@ -1736,6 +1746,9 @@ def enroll_edit(enrollment_id):
         if not enrollment:
             flash("Enrollment not found.", "error")
             return redirect(url_for("student.track_enrollment"))
+        if enrollment.get("status") != "correction_requested":
+            flash("This application is not currently open for corrections.", "error")
+            return redirect(url_for("student.track_enrollment"))
 
         branch_id = enrollment["branch_id"]
 
@@ -1749,6 +1762,15 @@ def enroll_edit(enrollment_id):
         # Fetch school years
         cursor.execute("SELECT year_id, label FROM school_years WHERE branch_id = %s ORDER BY label DESC", (branch_id,))
         school_years = cursor.fetchall() or []
+        selected_sy_id = enrollment.get("year_id")
+        shs_elective_offerings = get_shs_elective_offerings_for_year(cursor, branch_id, selected_sy_id)
+        cursor.execute("""
+            SELECT pathway_id, track_name, pathway_name
+            FROM shs_pathways
+            WHERE branch_id = %s AND is_active = TRUE
+            ORDER BY track_name, display_order, pathway_name
+        """, (branch_id,))
+        official_pathways = cursor.fetchall() or []
 
         # Fetch existing documents
         cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id = %s", (enrollment_id,))
@@ -1758,19 +1780,37 @@ def enroll_edit(enrollment_id):
             # ── Selective Update Logic ──
             # Only update fields that were actually in the form
             possible_fields = [
-                "student_name", "grade_level", "gender", "dob", "lrn", "address", 
-                "contact_number", "email", "birthplace", "guardian_name", 
-                "guardian_contact", "guardian_email", "father_name", "father_contact", 
-                "father_occupation", "mother_name", "mother_contact", "mother_occupation", 
-                "previous_school", "enroll_type", "remarks", "year_id"
+                "student_first_name", "student_middle_name", "student_last_name",
+                "grade_level", "gender", "dob", "lrn", "address",
+                "contact_number", "email", "birthplace",
+                "guardian_first_name", "guardian_middle_name", "guardian_last_name",
+                "guardian_contact", "guardian_email",
+                "father_first_name", "father_middle_name", "father_last_name",
+                "father_contact", "father_occupation",
+                "mother_first_name", "mother_middle_name", "mother_last_name",
+                "mother_contact", "mother_occupation",
+                "previous_school", "enroll_type", "remarks", "shs_track"
             ]
             
             update_fields = []
             update_values = []
+            valid_grade_names = {g["name"] for g in grade_levels}
+            valid_enroll_types = {"Old", "New", "Transferee"}
+            valid_semesters = {"First Semester", "Second Semester"}
+            valid_genders = {"Male", "Female"}
             
             for field in possible_fields:
                 if field in request.form:
                     val = request.form.get(field, "").strip()
+                    if field == "enroll_type" and val == "Transferee":
+                        enroll_semester = (request.form.get("enroll_semester") or "").strip()
+                        if enroll_semester not in valid_semesters:
+                            flash("Please select a semester (1st or 2nd) for Transferee enrollment.", "error")
+                            return redirect(request.url)
+                        val = f"Transferee - {enroll_semester}"
+                    elif field == "enroll_type" and val not in valid_enroll_types:
+                        flash("Enrollment type is required.", "error")
+                        return redirect(request.url)
                     
                     # ── EMAIL VALIDATION ──
                     if field in ["email", "guardian_email"] and val:
@@ -1780,15 +1820,22 @@ def enroll_edit(enrollment_id):
 
                     # ── CONTACT VALIDATION ──
                     if field in ["contact_number", "guardian_contact", "father_contact", "mother_contact"] and val:
-                        if not is_valid_contact(val):
-                            flash(f"The contact number '{val}' is invalid. Contact numbers must contain digits only.", "error")
+                        if not re.match(r"^09\d{9}$", val):
+                            flash(f"The contact number '{val}' is invalid. Contact numbers must be 11-digit PH mobile numbers (09XXXXXXXXX).", "error")
                             return redirect(request.url)
 
                     # ── NAME VALIDATION ──
                     if field in ["student_first_name", "student_middle_name", "student_last_name", "student_name", "guardian_first_name", "guardian_middle_name", "guardian_last_name", "guardian_name", "father_first_name", "father_middle_name", "father_last_name", "father_name", "mother_first_name", "mother_middle_name", "mother_last_name", "mother_name"] and val:
-                        if not is_valid_name(val):
-                            flash(f"The name '{val}' is invalid. Names must only contain letters, spaces, hyphens, and periods.", "error")
+                        if not re.match(r"^[A-Za-zñÑ\s-]+$", val) or "  " in val or "--" in val:
+                            flash(f"The name '{val}' is invalid. Names must only contain letters, spaces, and hyphens.", "error")
                             return redirect(request.url)
+                    if field in ["student_first_name", "student_last_name"] and len(val) < 2:
+                        flash("Student first name and last name must be at least 2 characters.", "error")
+                        return redirect(request.url)
+
+                    if field == "gender" and val and val not in valid_genders:
+                        flash("Invalid sex selection.", "error")
+                        return redirect(request.url)
 
                     # ── LRN VALIDATION ──
                     if field == "lrn" and val:
@@ -1798,13 +1845,117 @@ def enroll_edit(enrollment_id):
 
                     if field == "grade_level":
                         val = normalize_grade_level(val)
+                        if not val or val not in valid_grade_names:
+                            flash("Grade level/strand is required.", "error")
+                            return redirect(request.url)
+
+                    if field == "dob" and val:
+                        try:
+                            import datetime as _dt
+                            dob_date = _dt.datetime.strptime(val, "%Y-%m-%d").date()
+                            today = _dt.date.today()
+                            min_allowed_date = _dt.date(today.year - 3, today.month, today.day)
+                            if dob_date > today:
+                                flash("Birthday cannot be a future date.", "error")
+                                return redirect(request.url)
+                            if dob_date > min_allowed_date:
+                                flash("Student must be at least 3 years old to enroll.", "error")
+                                return redirect(request.url)
+                        except ValueError:
+                            flash("Birthday must be a valid date.", "error")
+                            return redirect(request.url)
+
+                    if field == "address" and val:
+                        if ".." in val:
+                            flash("Consecutive dots (..) are not allowed in home address.", "error")
+                            return redirect(request.url)
+                        if ",," in val:
+                            flash("Consecutive commas (,,) are not allowed in home address.", "error")
+                            return redirect(request.url)
+                        if "--" in val:
+                            flash("Consecutive hyphens (--) are not allowed in home address.", "error")
+                            return redirect(request.url)
+                        if "//" in val:
+                            flash("Consecutive slashes (//) are not allowed in home address.", "error")
+                            return redirect(request.url)
+                        if re.search(r'[+*$%@!=~^<>?{}\[\];:|\\_]', val):
+                            flash("Special characters (+, *, $, %, etc.) are not allowed in home address.", "error")
+                            return redirect(request.url)
+                        if len(val) < 5:
+                            flash("Home address must be at least 5 characters long.", "error")
+                            return redirect(request.url)
+                        if not re.search(r'[a-zA-Z0-9]', val):
+                            flash("Home address must contain valid street/barangay text or numbers.", "error")
+                            return redirect(request.url)
+
+                    if field == "birthplace" and val:
+                        if len(val) < 3 or not re.match(r"^[A-Za-zñÑ\s,]+$", val) or "  " in val or ",," in val:
+                            flash("Birthplace contains invalid characters.", "error")
+                            return redirect(request.url)
+
+                    if field in ["father_occupation", "mother_occupation"] and val:
+                        if not re.match(r"^[A-Za-z\s.,-]+$", val) or "  " in val or "--" in val or ".." in val or ",," in val:
+                            flash("Occupation contains invalid characters.", "error")
+                            return redirect(request.url)
+
+                    if field == "previous_school" and val:
+                        if not re.match(r"^[A-Za-z\s.,-]+$", val) or "  " in val or "--" in val or ".." in val or ",," in val:
+                            flash("Previous school contains invalid characters.", "error")
+                            return redirect(request.url)
                     
                     update_fields.append(f"{field} = %s")
                     update_values.append(val or None)
+
+            corrected = dict(enrollment)
+            for idx, assignment in enumerate(update_fields):
+                col = assignment.split("=", 1)[0].strip()
+                if col in possible_fields:
+                    corrected[col] = update_values[idx]
+            if corrected.get("grade_level") and "11" not in corrected.get("grade_level") and "12" not in corrected.get("grade_level"):
+                corrected["shs_track"] = None
+                if "shs_track" in request.form:
+                    for idx, assignment in enumerate(update_fields):
+                        if assignment.split("=", 1)[0].strip() == "shs_track":
+                            update_values[idx] = None
+                            break
+
+            corrected_student_name = " ".join(filter(None, [
+                corrected.get("student_first_name"),
+                corrected.get("student_middle_name"),
+                corrected.get("student_last_name")
+            ]))
+            acquire_student_identity_locks(
+                cursor,
+                corrected_student_name,
+                corrected.get("dob"),
+                corrected.get("lrn"),
+                corrected.get("email")
+            )
+            identity_result = validate_student_identity(
+                cursor,
+                corrected_student_name,
+                corrected.get("dob"),
+                corrected.get("lrn"),
+                corrected.get("email"),
+                exclude_enrollment_id=enrollment_id
+            )
+            if identity_result["action"] == "block":
+                flash(identity_result["message"], "error")
+                return redirect(request.url)
+            if not validate_shs_pathway_for_year(
+                corrected.get("shs_track"),
+                corrected.get("grade_level"),
+                shs_elective_offerings,
+                official_pathways
+            ):
+                flash("Selected SHS pathway is not available for this school year and grade level.", "error")
+                return redirect(request.url)
             
             # Always reset status to pending
             update_fields.append("status = %s")
             update_values.append("pending")
+            update_fields.append("rejected_at = NULL")
+            update_fields.append("rejection_reason = NULL")
             
             if update_fields:
                 final_query = f"UPDATE enrollments SET {', '.join(update_fields)} WHERE enrollment_id = %s"
@@ -1844,13 +1995,21 @@ def enroll_edit(enrollment_id):
             flash("Your application has been updated and re-submitted for review.", "success")
             return redirect(url_for("student.track_enrollment"))
 
+        import datetime as _dt
+        today = _dt.date.today()
+        max_dob_date = _dt.date(today.year - 3, today.month, today.day).strftime('%Y-%m-%d')
+
         return render_template(
             "student_enroll_edit.html",
             enrollment=enrollment,
             branch=branch,
             grade_levels=grade_levels,
             school_years=school_years,
-            existing_docs=existing_docs
+            existing_docs=existing_docs,
+            shs_elective_offerings=shs_elective_offerings,
+            official_pathways=official_pathways,
+            today_date=today.strftime('%Y-%m-%d'),
+            max_dob_date=max_dob_date
         )
 
     finally:

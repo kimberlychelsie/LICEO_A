@@ -114,7 +114,9 @@
 
         .c12 { grid-column: span 12; }
         .c8 { grid-column: span 8; }
+        .c7 { grid-column: span 7; }
         .c6 { grid-column: span 6; }
+        .c5 { grid-column: span 5; }
         .c4 { grid-column: span 4; }
         .c3 { grid-column: span 3; }
 
@@ -155,6 +157,43 @@
             border: none;
             padding: 0;
             margin: 0;
+        }
+
+        .section-head {
+            background: var(--soft);
+            border-bottom: 1px solid var(--line);
+            padding: 9px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section-head h3 {
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: var(--primary);
+        }
+
+        .section-head small {
+            font-size: 11px;
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .section-body {
+            padding: 14px;
+        }
+
+        .requirements-section {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .requirements-section .grid {
+            gap: 10px;
         }
 
         .btn-unlock {
@@ -229,6 +268,23 @@
             color: var(--muted);
         }
 
+        input[type="file"] {
+            width: 100%;
+            padding: 7px 10px;
+            border: 1.5px solid var(--line);
+            border-radius: 9px;
+            font-size: 12.5px;
+            background: #fafbff;
+            cursor: pointer;
+            font-family: inherit;
+            transition: border-color .15s;
+        }
+
+        input[type="file"]:focus {
+            border-color: var(--primary-light);
+            outline: none;
+        }
+
         /* ── FOOTER ── */
         .footer {
             padding-top: 20px;
@@ -287,11 +343,27 @@
                             <div class="field">
                                 <label>Type <span style="color:red">*</span></label>
                                 <div class="pill-row">
-                                    {% for type in ['Old', 'New', 'Transferee', 'First Semester', 'Second Semester'] %}
+                                    {% set saved_type = enrollment.enroll_type or '' %}
+                                    {% set base_type = 'Transferee' if saved_type.startswith('Transferee') else saved_type %}
+                                    {% set saved_semester = 'First Semester' if 'First Semester' in saved_type else ('Second Semester' if 'Second Semester' in saved_type else '') %}
+                                    {% for type in ['Old', 'New', 'Transferee'] %}
                                     <label class="pill">
-                                        <input type="radio" name="enroll_type" value="{{ type }}" {% if enrollment.enroll_type == type %}checked{% endif %}> {{ type }}
+                                        <input type="radio" name="enroll_type" value="{{ type }}" {% if base_type == type %}checked{% endif %}> {{ type }}
                                     </label>
                                     {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="c12" id="semRow" style="{% if base_type != 'Transferee' %}display:none;{% endif %}">
+                            <div class="field">
+                                <label>Semester <span style="color:red">*</span></label>
+                                <div class="pill-row">
+                                    <label class="pill">
+                                        <input type="radio" name="enroll_semester" value="First Semester" {% if saved_semester == 'First Semester' %}checked{% endif %}> 1st Semester
+                                    </label>
+                                    <label class="pill">
+                                        <input type="radio" name="enroll_semester" value="Second Semester" {% if saved_semester == 'Second Semester' %}checked{% endif %}> 2nd Semester
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -311,11 +383,25 @@
                         <button type="button" class="btn-unlock" onclick="toggleSection('section-personal')">🔓 Edit Info</button>
                     </div>
                     <div class="grid">
-                        <div class="c8">
+                        <div class="c4">
                             <div class="field">
-                                <label>Full Name</label>
-                                <input type="text" name="student_name" value="{{ enrollment.student_name }}" required readonly maxlength="100"
-                                    oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
+                                <label>First Name</label>
+                                <input type="text" name="student_first_name" value="{{ enrollment.student_first_name or '' }}" required readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>Middle Name</label>
+                                <input type="text" name="student_middle_name" value="{{ enrollment.student_middle_name or '' }}" readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>Last Name</label>
+                                <input type="text" name="student_last_name" value="{{ enrollment.student_last_name or '' }}" required readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
                             </div>
                         </div>
                         <div class="c4">
@@ -328,22 +414,49 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="c4">
+                        <div class="c4" id="elective_field_wrapper" style="{% if '11' not in (enrollment.grade_level or '') and '12' not in (enrollment.grade_level or '') %}display:none;{% endif %}">
                             <div class="field">
-                                <label>LRN</label>
-                                <input type="text" name="lrn" value="{{ enrollment.lrn or '' }}" maxlength="12" readonly>
+                                <label>SHS Pathway</label>
+                                <select name="shs_track" id="shs_track_select" disabled>
+                                    <option value="">-- Select Pathway (Optional) --</option>
+                                    {% set shown_pathways = [] %}
+                                    {% for offering in shs_elective_offerings %}
+                                        {% if offering.pathway and offering.pathway not in shown_pathways %}
+                                            {% set _ = shown_pathways.append(offering.pathway) %}
+                                            <option value="{{ offering.pathway }}" {% if enrollment.shs_track == offering.pathway %}selected{% endif %}>{{ offering.pathway }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% for p in official_pathways %}
+                                        {% if p.pathway_name and p.pathway_name not in shown_pathways %}
+                                            {% set _ = shown_pathways.append(p.pathway_name) %}
+                                            <option value="{{ p.pathway_name }}" {% if enrollment.shs_track == p.pathway_name %}selected{% endif %}>{{ p.pathway_name }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                                <small>Grade 11/12 only; availability is checked for this school year.</small>
+                            </div>
+                        </div>
+                        <div class="c5">
+                            <div class="field">
+                                <label>Learner Reference Number (LRN)</label>
+                                <input type="text" id="field_lrn" name="lrn" value="{{ enrollment.lrn or '' }}" placeholder="12-digit LRN"
+                                    maxlength="12" minlength="12" inputmode="numeric" pattern="\d{12}" readonly
+                                    oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                                <small>Numbers only, exactly 12 digits (Optional)</small>
                             </div>
                         </div>
                         <div class="c4">
                             <div class="field">
-                                <label>Birthday</label>
-                                <input type="date" name="dob" value="{{ enrollment.dob }}" readonly>
+                                <label>Birthday <small style="color:var(--muted); font-size:11px;">(Optional)</small></label>
+                                <input type="date" id="field_dob" name="dob" value="{{ enrollment.dob or '' }}" max="{{ max_dob_date }}" readonly>
+                                <small>Minimum age is 3 years old</small>
+                                <small>Must not be a future date</small>
                             </div>
                         </div>
                         <div class="c4">
                             <div class="field">
                                 <label>Birthplace</label>
-                                <input type="text" name="birthplace" value="{{ enrollment.birthplace or '' }}" required readonly minlength="3" maxlength="100"
+                                <input type="text" name="birthplace" value="{{ enrollment.birthplace or '' }}" readonly minlength="3" maxlength="100"
                                     oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s,]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',')">
                             </div>
                         </div>
@@ -356,16 +469,26 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="c12">
+                        <div class="c8">
                             <div class="field">
                                 <label>Address</label>
-                                <input type="text" name="address" value="{{ enrollment.address }}" required readonly minlength="10" maxlength="255"
-                                    oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',').replace(/--+/g, '-')">
+                                <input type="text" name="address" value="{{ enrollment.address or '' }}" readonly minlength="5" maxlength="255"
+                                    placeholder="House No., Street, Barangay, City, Province"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,.\/-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/\.\.+/g, '.').replace(/,,+/g, ',').replace(/--+/g, '-').replace(/\/\/+/g, '/')">
                             </div>
                         </div>
-                        <div class="c12">
+                        <div class="c4">
                             <div class="field">
-                                <label>Student Email Address <small style="color:var(--muted); font-size:11px;">(Optional)</small></label>
+                                <label>Cellphone No.</label>
+                                <input type="tel" name="contact_number" value="{{ enrollment.contact_number or '' }}" pattern="^09\d{9}$" maxlength="11"
+                                    minlength="11" placeholder="09xxxxxxxxx" inputmode="numeric" readonly
+                                    oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                                <small>Numbers only, must start with 09</small>
+                            </div>
+                        </div>
+                        <div class="c8">
+                            <div class="field">
+                                <label>Email Address <small style="color:var(--muted); font-size:11px;">(Optional)</small></label>
                                 <input type="email" name="email" value="{{ enrollment.email or '' }}" readonly 
                                     placeholder="username@domain.com"
                                     minlength="5" maxlength="60"
@@ -378,74 +501,137 @@
                     </div>
                 </div>
 
-                <!-- ══ FAMILY INFORMATION ══ -->
-                <div class="section" id="section-family">
+                <!-- ══ FATHER'S INFORMATION ══ -->
+                <div class="section" id="section-father">
                     <div class="section-header-row">
-                        <h2 class="section-title">Family Information</h2>
-                        <button type="button" class="btn-unlock" onclick="toggleSection('section-family')">🔓 Edit Info</button>
+                        <h2 class="section-title">Father's Information</h2>
+                        <button type="button" class="btn-unlock" onclick="toggleSection('section-father')">🔓 Edit Info</button>
                     </div>
                     <div class="grid">
-                        <!-- Father -->
+                        <div class="c4">
+                            <div class="field">
+                                <label>Father's First Name</label>
+                                <input type="text" name="father_first_name" value="{{ enrollment.father_first_name or '' }}" readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>Father's Middle Name</label>
+                                <input type="text" name="father_middle_name" value="{{ enrollment.father_middle_name or '' }}" readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>Father's Last Name</label>
+                                <input type="text" name="father_last_name" value="{{ enrollment.father_last_name or '' }}" readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                            </div>
+                        </div>
                         <div class="c6">
                             <div class="field">
-                                <label>Father's Name</label>
-                                <input type="text" name="father_name" value="{{ enrollment.father_name or '' }}" readonly maxlength="100"
-                                    oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
+                                <label>Father's Contact</label>
+                                <input type="tel" name="father_contact" value="{{ enrollment.father_contact or '' }}" pattern="^09\d{9}$" minlength="11"
+                                    maxlength="11" placeholder="09xxxxxxxxx" inputmode="numeric" readonly
+                                    oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                             </div>
                         </div>
-                        <div class="c3">
+                        <div class="c6">
                             <div class="field">
-                                <label>Contact No.</label>
-                                <input type="tel" name="father_contact" value="{{ enrollment.father_contact or '' }}" readonly>
-                            </div>
-                        </div>
-                        <div class="c3">
-                            <div class="field">
-                                <label>Occupation</label>
+                                <label>Father's Occupation</label>
                                 <input type="text" name="father_occupation" value="{{ enrollment.father_occupation or '' }}" readonly maxlength="100"
                                     oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                             </div>
                         </div>
-                        
-                        <!-- Mother -->
+                    </div>
+                </div>
+
+                <!-- ══ MOTHER'S INFORMATION ══ -->
+                <div class="section" id="section-mother">
+                    <div class="section-header-row">
+                        <h2 class="section-title">Mother's Information</h2>
+                        <button type="button" class="btn-unlock" onclick="toggleSection('section-mother')">🔓 Edit Info</button>
+                    </div>
+                    <div class="grid">
+                        <div class="c4">
+                            <div class="field">
+                                <label>Mother's First Name</label>
+                                <input type="text" name="mother_first_name" value="{{ enrollment.mother_first_name or '' }}" readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>Mother's Middle Name</label>
+                                <input type="text" name="mother_middle_name" value="{{ enrollment.mother_middle_name or '' }}" readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>Mother's Last Name (Maiden)</label>
+                                <input type="text" name="mother_last_name" value="{{ enrollment.mother_last_name or '' }}" readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                            </div>
+                        </div>
                         <div class="c6">
                             <div class="field">
-                                <label>Mother's Name (Maiden Name)</label>
-                                <input type="text" name="mother_name" value="{{ enrollment.mother_name or '' }}" placeholder="Last Name (Maiden), First Name, M.I." readonly maxlength="100"
-                                    oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
+                                <label>Mother's Contact</label>
+                                <input type="tel" name="mother_contact" value="{{ enrollment.mother_contact or '' }}" pattern="^09\d{9}$" minlength="11"
+                                    maxlength="11" placeholder="09xxxxxxxxx" inputmode="numeric" readonly
+                                    oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                             </div>
                         </div>
-                        <div class="c3">
+                        <div class="c6">
                             <div class="field">
-                                <label>Contact No.</label>
-                                <input type="tel" name="mother_contact" value="{{ enrollment.mother_contact or '' }}" readonly>
-                            </div>
-                        </div>
-                        <div class="c3">
-                            <div class="field">
-                                <label>Occupation</label>
+                                <label>Mother's Occupation</label>
                                 <input type="text" name="mother_occupation" value="{{ enrollment.mother_occupation or '' }}" readonly maxlength="100"
                                     oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Guardian -->
+                <!-- ══ GUARDIAN'S INFORMATION ══ -->
+                <div class="section" id="section-guardian">
+                    <div class="section-header-row">
+                        <h2 class="section-title">Guardian's Information</h2>
+                        <button type="button" class="btn-unlock" onclick="toggleSection('section-guardian')">🔓 Edit Info</button>
+                    </div>
+                    <div class="grid">
+                        <div class="c4">
+                            <div class="field">
+                                <label>Guardian First Name <small style="color:var(--muted); font-size:11px;">(Optional)</small></label>
+                                <input type="text" name="guardian_first_name" value="{{ enrollment.guardian_first_name or '' }}" readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>Guardian Middle Name</label>
+                                <input type="text" name="guardian_middle_name" value="{{ enrollment.guardian_middle_name or '' }}" readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>Guardian Last Name <small style="color:var(--muted); font-size:11px;">(Optional)</small></label>
+                                <input type="text" name="guardian_last_name" value="{{ enrollment.guardian_last_name or '' }}" readonly maxlength="50"
+                                    oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                            </div>
+                        </div>
                         <div class="c6">
                             <div class="field">
-                                <label>Guardian Name <span style="color:red">*</span></label>
-                                <input type="text" name="guardian_name" value="{{ enrollment.guardian_name }}" required readonly maxlength="100"
-                                    oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
+                                <label>Guardian Contact <small style="color:var(--muted); font-size:11px;">(Optional)</small></label>
+                                <input type="tel" name="guardian_contact" value="{{ enrollment.guardian_contact or '' }}" pattern="^09\d{9}$" maxlength="11"
+                                    minlength="11" placeholder="09xxxxxxxxx" inputmode="numeric" readonly
+                                    oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                             </div>
                         </div>
-                        <div class="c3">
+                        <div class="c6">
                             <div class="field">
-                                <label>Contact <span style="color:red">*</span></label>
-                                <input type="tel" name="guardian_contact" value="{{ enrollment.guardian_contact }}" required readonly>
-                            </div>
-                        </div>
-                        <div class="c3">
-                            <div class="field">
-                                <label>Email <small style="color:var(--muted); font-size:11px;">(Optional)</small></label>
+                                <label>Guardian Email <small style="color:var(--muted); font-size:11px;">(Optional)</small></label>
                                 <input type="email" name="guardian_email" value="{{ enrollment.guardian_email or '' }}" readonly 
                                     placeholder="username@domain.com"
                                     minlength="5" maxlength="60"
@@ -464,17 +650,17 @@
                         <button type="button" class="btn-unlock" onclick="toggleSection('section-school')">🔓 Edit Info</button>
                     </div>
                     <div class="grid">
-                        <div class="c10">
+                        <div class="c8">
                             <div class="field">
-                                <label>Last School Attended</label>
+                                <label>Last School Attended <small style="color:var(--muted); font-size:11px;">(Optional)</small></label>
                                 <input type="text" name="previous_school" value="{{ enrollment.previous_school or '' }}" readonly maxlength="100"
                                     oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                             </div>
                         </div>
-                        <div class="c2">
+                        <div class="c4">
                              <div class="field">
-                                <label>SY</label>
-                                <select name="year_id" disabled>
+                                <label>School Year</label>
+                                <select disabled>
                                     {% for sy in school_years %}
                                     <option value="{{ sy.year_id }}" {% if sy.year_id == enrollment.year_id %}selected{% endif %}>{{ sy.label }}</option>
                                     {% endfor %}
@@ -484,37 +670,40 @@
                     </div>
                 </div>
 
-                <!-- ══ DOCUMENTS ══ -->
-                <div class="section">
-                    <h2 class="section-title">Documents (Update if needed)</h2>
-                    
+                <!-- ══ REQUIREMENTS ══ -->
+                <div class="section requirements-section">
+                    <div class="section-head">
+                        <h3>Requirement/s Submitted</h3>
+                        <small>PDF, JPG, JPEG, PNG accepted (Max 10MB per file)</small>
+                    </div>
+                    <div class="section-body">
+                        <div class="grid">
+
                     {% set doc_types = [
-                        ('psa_birth_cert', 'PSA Birth Certificate'),
-                        ('baptismal_cert', 'Baptismal Certificate'),
-                        ('form_138', 'Form 138'),
-                        ('good_moral', 'Good Moral Certificate'),
-                        ('form_137', 'Form 137')
+                        ('psa_birth_cert', 'PSA Birth Certificate', 'PSA Birth Certificate', 'Photocopy / Original'),
+                        ('baptismal_cert', 'Baptismal Certificate', 'Baptismal Certificate', 'Photocopy / Original'),
+                        ('form_138', 'Card / Form 138', 'Form 138', 'Latest report card'),
+                        ('good_moral', 'Good Moral Certificate', 'Good Moral Certificate', 'Certificate from previous school'),
+                        ('form_137', 'Form 137', 'Form 137', 'Permanent record / cumulative form')
                     ] %}
 
-                    {% for field_id, doc_label in doc_types %}
-                    <div class="doc-item">
-                        <div class="doc-info">
-                            <div class="doc-name">{{ doc_label }}</div>
-                            {% set current_doc = existing_docs | selectattr('doc_type', 'equalto', doc_label) | first %}
-                            {% if current_doc %}
-                            <div class="doc-status">✅ Already uploaded</div>
-                            {% else %}
-                            <div class="doc-status" style="color: #64748b;">Not yet uploaded</div>
-                            {% endif %}
-                        </div>
-                        <div class="file-input-wrapper">
-                            <input type="file" name="{{ field_id }}" accept=".pdf,.jpg,.jpeg,.png">
-                            {% if current_doc %}
-                            <p style="font-size: 11px; color: var(--muted); margin-top: 5px;">Uploading a new file will replace the previous one.</p>
-                            {% endif %}
+                    {% for field_id, doc_label, stored_doc_type, doc_help in doc_types %}
+                            <div class="c6">
+                                <div class="field">
+                                    <label>{{ doc_label }}</label>
+                                    <input type="file" name="{{ field_id }}" accept=".pdf,.jpg,.jpeg,.png" />
+                                    {% set current_doc = existing_docs | selectattr('doc_type', 'equalto', stored_doc_type) | first %}
+                                    {% if current_doc %}
+                                    <small style="color:#16a34a; font-weight:700;">Already uploaded. Uploading a new file will replace the previous one.</small>
+                                    {% else %}
+                                    <small>{{ doc_help }} — Not yet uploaded</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                    {% endfor %}
+
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
 
                 <div class="footer">
@@ -559,22 +748,75 @@
             }
         }
 
+        function updateSemVisibility() {
+            const selected = document.querySelector('input[name="enroll_type"]:checked');
+            const semRow = document.getElementById('semRow');
+            const isTransferee = selected && selected.value === 'Transferee';
+            if (semRow) {
+                semRow.style.display = isTransferee ? '' : 'none';
+                if (!isTransferee) {
+                    document.querySelectorAll('input[name="enroll_semester"]').forEach(function (r) {
+                        r.checked = false;
+                    });
+                }
+            }
+        }
+
+        document.querySelectorAll('input[name="enroll_type"]').forEach(function (r) {
+            r.addEventListener('change', updateSemVisibility);
+        });
+        updateSemVisibility();
+
+        function toggleElectiveField(gradeValue) {
+            const wrap = document.getElementById('elective_field_wrapper');
+            const select = document.getElementById('shs_track_select');
+            const isShs = (gradeValue || '').indexOf('11') !== -1 || (gradeValue || '').indexOf('12') !== -1;
+            if (wrap) wrap.style.display = isShs ? '' : 'none';
+            if (!isShs && select) select.value = '';
+        }
+
+        const gradeSelect = document.querySelector('select[name="grade_level"]');
+        if (gradeSelect) {
+            gradeSelect.addEventListener('change', function () { toggleElectiveField(this.value); });
+            toggleElectiveField(gradeSelect.value);
+        }
+
         document.querySelector('form').addEventListener('submit', function(e) {
             document.querySelectorAll('select[disabled]').forEach(s => s.disabled = false);
 
             var errors = [];
+            var enrollType = document.querySelector('input[name="enroll_type"]:checked');
+            if (!enrollType) {
+                errors.push('Please select enrollment type.');
+            } else if (enrollType.value === 'Transferee') {
+                var semester = document.querySelector('input[name="enroll_semester"]:checked');
+                if (!semester) {
+                    errors.push('Please select a semester (1st or 2nd) for Transferee enrollment.');
+                }
+            }
             var dob = document.querySelector('input[name="dob"]');
             if (dob && dob.value) {
-                var birthDate = new Date(dob.value);
-                var minDate = new Date();
-                minDate.setFullYear(minDate.getFullYear() - 3);
-                if (birthDate > minDate) {
-                    errors.push('Student must be at least 3 years old.');
+                if (isNaN(Date.parse(dob.value))) {
+                    errors.push('Birthday must be a valid date.');
+                } else {
+                    var bdParts = dob.value.split('-');
+                    var bd = new Date(parseInt(bdParts[0], 10), parseInt(bdParts[1], 10) - 1, parseInt(bdParts[2], 10));
+                    bd.setHours(0, 0, 0, 0);
+                    var today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    var minAllowedDate = new Date();
+                    minAllowedDate.setFullYear(minAllowedDate.getFullYear() - 3);
+                    minAllowedDate.setHours(23, 59, 59, 999);
+                    if (bd > today) {
+                        errors.push('Birthday cannot be a future date.');
+                    } else if (bd > minAllowedDate) {
+                        errors.push('Student must be at least 3 years old to enroll.');
+                    }
                 }
             }
 
             var nameInputs = document.querySelectorAll('input[name*="name"], input[name*="occupation"]');
-            var nameValidRegex = /^[A-Za-z\s.,-]*$/;
+            var nameValidRegex = /^[A-Za-zñÑ\s.,-]*$/;
             nameInputs.forEach(function(inp) {
                 if (inp.value.includes('  ')) {
                     errors.push('Double spaces are not allowed in name/occupation fields.');
@@ -587,6 +829,79 @@
                 }
             });
 
+            var firstName = document.querySelector('input[name="student_first_name"]');
+            var lastName = document.querySelector('input[name="student_last_name"]');
+            var gradeLevel = document.querySelector('select[name="grade_level"]');
+            var lrn = document.querySelector('input[name="lrn"]');
+            var studentContact = document.querySelector('input[name="contact_number"]');
+            var guardianContact = document.querySelector('input[name="guardian_contact"]');
+            var fatherContact = document.querySelector('input[name="father_contact"]');
+            var motherContact = document.querySelector('input[name="mother_contact"]');
+            var address = document.querySelector('input[name="address"]');
+            var birthplace = document.querySelector('input[name="birthplace"]');
+            var previousSchool = document.querySelector('input[name="previous_school"]');
+            function isValidPHMobile(num) {
+                return /^09\d{9}$/.test(num) && num.length === 11;
+            }
+            if (!firstName || !firstName.value.trim()) {
+                errors.push('Student first name is required.');
+            } else if (firstName.value.trim().length < 2) {
+                errors.push('Student first name must be at least 2 characters.');
+            }
+            if (!lastName || !lastName.value.trim()) {
+                errors.push('Student last name is required.');
+            } else if (lastName.value.trim().length < 2) {
+                errors.push('Student last name must be at least 2 characters.');
+            }
+            if (gradeLevel && !gradeLevel.value) {
+                errors.push('Grade level/strand is required.');
+            }
+            if (lrn && lrn.value.trim() && !/^\d{12}$/.test(lrn.value.trim())) {
+                errors.push('LRN must be exactly 12 digits (numbers only).');
+            }
+            if (studentContact && studentContact.value.trim() && !isValidPHMobile(studentContact.value.trim())) {
+                errors.push('Student contact must be an 11-digit PH mobile (09XXXXXXXXX).');
+            }
+            if (fatherContact && fatherContact.value.trim() && !isValidPHMobile(fatherContact.value.trim())) {
+                errors.push('Father\'s contact must be an 11-digit PH mobile (09XXXXXXXXX).');
+            }
+            if (motherContact && motherContact.value.trim() && !isValidPHMobile(motherContact.value.trim())) {
+                errors.push('Mother\'s contact must be an 11-digit PH mobile (09XXXXXXXXX).');
+            }
+            if (guardianContact && guardianContact.value.trim() && !isValidPHMobile(guardianContact.value.trim())) {
+                errors.push('Guardian contact must be an 11-digit PH mobile (09XXXXXXXXX).');
+            }
+            if (address && address.value.trim()) {
+                var addr = address.value.trim();
+                if (/\.\./.test(addr)) {
+                    errors.push('Consecutive dots (..) are not allowed in home address.');
+                } else if (/,{2,}/.test(addr)) {
+                    errors.push('Consecutive commas (,,) are not allowed in home address.');
+                } else if (/--/.test(addr)) {
+                    errors.push('Consecutive hyphens (--) are not allowed in home address.');
+                } else if (/\/\//.test(addr)) {
+                    errors.push('Consecutive slashes (//) are not allowed in home address.');
+                } else if (/[+*$%@!=~^<>?{}\[\];:|\\_]/.test(addr)) {
+                    errors.push('Special characters (+, *, $, %, etc.) are not allowed in home address.');
+                } else if (addr.length < 5) {
+                    errors.push('Home address must be at least 5 characters long.');
+                } else if (!/[a-zA-Z0-9]/.test(addr)) {
+                    errors.push('Home address must contain valid street/barangay text or numbers.');
+                }
+            }
+            if (birthplace && birthplace.value.trim()) {
+                var place = birthplace.value.trim();
+                if (place.length < 3 || !/^[A-Za-zñÑ\s,]+$/.test(place) || place.includes('  ') || place.includes(',,')) {
+                    errors.push('Birthplace contains invalid characters.');
+                }
+            }
+            if (previousSchool && previousSchool.value.trim()) {
+                var school = previousSchool.value.trim();
+                if (!/^[A-Za-z\s.,-]+$/.test(school) || school.includes('  ') || school.includes('--') || school.includes('..') || school.includes(',,')) {
+                    errors.push('Previous school contains invalid characters.');
+                }
+            }
+
             /* Email Validation */
             var emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z.]{2,}$/;
             var emailField = document.querySelector('input[name="email"]');
@@ -598,6 +913,21 @@
             if (guardianEmailField && guardianEmailField.value && !emailRegex.test(guardianEmailField.value)) {
                 errors.push('Guardian email is invalid. Please use format name@domain.com and avoid special characters like # % &.');
             }
+
+            var fileInputs = document.querySelectorAll('input[type="file"]');
+            var maxSizeBytes = 10 * 1024 * 1024;
+            fileInputs.forEach(function (input) {
+                if (input.files.length > 0) {
+                    var file = input.files[0];
+                    if (file.size > maxSizeBytes) {
+                        errors.push('File "' + (input.name.replace(/_/g, ' ')) + '" is too large. Maximum size is 10MB.');
+                    }
+                    var allowedTypes = ['application/pdf', 'image/jpeg', 'image/pjpeg', 'image/png'];
+                    if (allowedTypes.indexOf(file.type) === -1 && !file.name.toLowerCase().endsWith('.jpg') && !file.name.toLowerCase().endsWith('.jpeg') && !file.name.toLowerCase().endsWith('.pdf') && !file.name.toLowerCase().endsWith('.png')) {
+                        errors.push('File "' + (input.name.replace(/_/g, ' ')) + '" has an invalid type. Only PDF, JPG, JPEG, and PNG are allowed.');
+                    }
+                }
+            });
 
             if (errors.length > 0) {
                 alert(errors.join('\n'));
@@ -614,12 +944,6 @@
                 submitBtn.style.cursor = 'wait';
             }
         });
-        // Set max date for Birthday (Minimum age: 3 years)
-    document.querySelectorAll('input[name="dob"]').forEach(input => {
-        const today = new Date();
-        const maxDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
-        input.setAttribute('max', maxDate.toISOString().split('T')[0]);
-    });
 </script>
 </body>
 

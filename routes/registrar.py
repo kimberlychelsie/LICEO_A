@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash
 import secrets
 import string
 import logging
+import os
 import psycopg2.extras
 import json
 from utils.send_email import send_email
@@ -79,6 +80,40 @@ def _grades_compatible_for_section(student_grade, section_grade):
             or student_grade.startswith(f"{short_section}-")
         )
     return student_grade in (section_grade, short_section)
+
+def _identity_reviews_table_missing(exc):
+    return getattr(exc, "pgcode", None) == "42P01" or "student_identity_reviews" in str(exc)
+
+def _get_identity_review(cursor, enrollment_id, branch_id):
+    cursor.execute("""
+        SELECT review_id, enrollment_id, matched_enrollment_id, status, reasons,
+               decision_reason, reviewed_by, reviewed_at
+        FROM student_identity_reviews
+        WHERE enrollment_id = %s AND branch_id = %s
+        LIMIT 1
+    """, (enrollment_id, branch_id))
+    return cursor.fetchone()
+
+def _identity_review_allows_distinct(cursor, enrollment_id, branch_id):
+    review = _get_identity_review(cursor, enrollment_id, branch_id)
+    return bool(review and review.get("status") == "distinct_student")
+
+def _save_identity_review_decision(cursor, enrollment_id, branch_id, identity_result, decision, reason, reviewed_by):
+    reasons = "; ".join(identity_result.get("reasons") or [])
+    cursor.execute("""
+        INSERT INTO student_identity_reviews
+          (enrollment_id, matched_enrollment_id, branch_id, status, reasons, decision_reason, reviewed_by, reviewed_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+        ON CONFLICT (enrollment_id) DO UPDATE
+        SET matched_enrollment_id = COALESCE(EXCLUDED.matched_enrollment_id, student_identity_reviews.matched_enrollment_id),
+            branch_id = EXCLUDED.branch_id,
+            status = EXCLUDED.status,
+            reasons = COALESCE(NULLIF(EXCLUDED.reasons, ''), student_identity_reviews.reasons),
+            decision_reason = EXCLUDED.decision_reason,
+            reviewed_by = EXCLUDED.reviewed_by,
+            reviewed_at = NOW(),
+            updated_at = NOW()
+    """, (enrollment_id, identity_result.get("matched_enrollment_id"), branch_id, decision, reasons, reason, reviewed_by))
 
 def _validate_student_section_assignment(cursor, enrollment_id, section_id, branch_id):
     cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
@@ -554,21 +589,96 @@ def registrar_enrollments():
             enrollment_id = request.form.get("enrollment_id")
             action = request.form.get("action")
             rejection_reason = (request.form.get("rejection_reason") or "").strip()
+            identity_review_reason = (request.form.get("identity_review_reason") or "").strip()
+            identity_distinct_confirm = request.form.get("identity_distinct_confirm") == "1"
 
-            if not enrollment_id or action not in ("approved", "rejected"):
+            if not enrollment_id or action not in ("approved", "rejected", "correction_requested"):
                 flash("Invalid action.", "error")
                 return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
 
-            if action == "rejected" and not rejection_reason:
-                flash("Please provide a rejection reason.", "error")
+            if action in ("rejected", "correction_requested") and not rejection_reason:
+                flash("Please provide a reason.", "error")
                 return redirect(f"/registrar/enrollment/{enrollment_id}#reject")
+
+            if action == "approved":
+                try:
+                    cursor.execute("""
+                        SELECT *
+                        FROM enrollments
+                        WHERE enrollment_id = %s
+                          AND branch_id = %s
+                          AND year_id = %s
+                          AND status = 'pending'
+                        FOR UPDATE
+                    """, (enrollment_id, branch_id, active_year_id))
+                    approval_enrollment = cursor.fetchone()
+                    if not approval_enrollment:
+                        flash("Only pending applications in the active school year can be approved.", "error")
+                        return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
+
+                    from routes.student import validate_student_identity
+                    approval_student_name = " ".join(filter(None, [
+                        approval_enrollment.get("student_first_name"),
+                        approval_enrollment.get("student_middle_name"),
+                        approval_enrollment.get("student_last_name")
+                    ]))
+                    identity_result = validate_student_identity(
+                        cursor,
+                        approval_student_name,
+                        approval_enrollment.get("dob"),
+                        approval_enrollment.get("lrn"),
+                        approval_enrollment.get("email"),
+                        exclude_enrollment_id=enrollment_id
+                    )
+                    identity_review = _get_identity_review(cursor, enrollment_id, branch_id)
+                except Exception as review_err:
+                    db.rollback()
+                    if _identity_reviews_table_missing(review_err):
+                        flash("Identity review is not fully configured. Apply the identity-review migration before approving applications.", "error")
+                    else:
+                        logger.error(f"Identity review approval check error: {review_err}")
+                        flash("Could not verify identity review status. Please try again.", "error")
+                    return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
+                if identity_result["action"] == "block":
+                    flash(identity_result["message"], "error")
+                    return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
+                needs_identity_decision = (
+                    identity_result["action"] == "review"
+                    or (identity_review and identity_review.get("status") in ("pending", "existing_student"))
+                )
+                if needs_identity_decision:
+                    if identity_review and identity_review.get("status") == "existing_student":
+                        flash("This application was verified as an existing student and cannot be approved as a new enrollment.", "error")
+                        return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
+                    if not (identity_review and identity_review.get("status") == "distinct_student"):
+                        if not identity_distinct_confirm or not identity_review_reason:
+                            flash("Please confirm this is a distinct student and enter a verification reason before approval.", "error")
+                            return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
+                        _save_identity_review_decision(
+                            cursor,
+                            enrollment_id,
+                            branch_id,
+                            identity_result,
+                            "distinct_student",
+                            identity_review_reason,
+                            session.get("user_id")
+                        )
 
             if action == "rejected":
                 cursor.execute(
                     """
                     UPDATE enrollments
                     SET status=%s, rejection_reason=%s, rejected_at=NOW()
-                    WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s
+                    WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s AND status='pending'
+                    """,
+                    (action, rejection_reason, enrollment_id, branch_id, active_year_id),
+                )
+            elif action == "correction_requested":
+                cursor.execute(
+                    """
+                    UPDATE enrollments
+                    SET status=%s, rejection_reason=%s, rejected_at=NOW()
+                    WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s AND status='pending'
                     """,
                     (action, rejection_reason, enrollment_id, branch_id, active_year_id),
                 )
@@ -577,14 +687,14 @@ def registrar_enrollments():
                     """
                     UPDATE enrollments
                     SET status=%s, rejection_reason=NULL, rejected_at=NULL
-                    WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s
+                    WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s AND status='pending'
                     """,
                     (action, enrollment_id, branch_id, active_year_id),
                 )
 
             if cursor.rowcount == 0:
                 db.rollback()
-                flash("Enrollment not found for your branch.", "error")
+                flash("Only pending applications in your branch's active school year can be modified.", "error")
                 return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
 
             db.commit()
@@ -594,8 +704,9 @@ def registrar_enrollments():
             )
             disp_row = cursor.fetchone()
             display_no = disp_row["display_no"] if disp_row else "???"
-            # ─────── SEND EMAIL ON REJECTION ───────
-            if action == "rejected":
+            # ─────── SEND EMAIL ON CORRECTION REQUEST / FINAL REJECT ───────
+            email_status = None
+            if action in ("correction_requested", "rejected"):
                 try:
                     cursor.execute("""
                         SELECT
@@ -620,57 +731,99 @@ def registrar_enrollments():
                             branch_name = student_data["branch_name"]
                             student_name = student_data["student_name"]
                             display_no = student_data["branch_enrollment_no"]
-                            
-                            subject = f"Enrollment Update - Action Required ({branch_name})"
-                            
-                            body = (
-                                f"Action Required: Enrollment Correction\n\n"
-                                f"Hello {student_name},\n"
-                                f"Your enrollment application for {branch_name} requires correction.\n\n"
-                                f"Reason: {rejection_reason}\n\n"
-                                f"Please visit the tracking page at https://www.liceo-lms.com/track to fix your application."
-                            )
-                            
-                            html_body = f"""
-                            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                                <div style="background-color: #991b1b; padding: 30px; text-align: center; color: white;">
-                                    <h1 style="margin: 0; font-size: 24px; font-weight: 700;">Action Required</h1>
-                                    <p style="margin: 5px 0 0; opacity: 0.9;">Enrollment Application Update</p>
-                                </div>
-                                <div style="padding: 40px; color: #334155; line-height: 1.6;">
-                                    <p style="font-size: 16px;">Hello <strong>{student_name}</strong>,</p>
-                                    <p style="font-size: 16px;">Your enrollment application (ID: <strong>{display_no}</strong>) at <strong>{branch_name}</strong> requires your attention before it can be approved.</p>
-                                    
-                                    <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 25px 0;">
-                                        <p style="margin: 0 0 8px 0; font-size: 14px; color: #991b1b; font-weight: 800; text-transform: uppercase;">Message from Registrar:</p>
-                                        <p style="margin: 0; font-size: 16px; color: #1e293b; font-weight: 500;">{rejection_reason}</p>
-                                    </div>
+                            public_base_url = (os.getenv("PUBLIC_BASE_URL") or "https://www.liceo-lms.com").rstrip("/")
+                            track_url = f"{public_base_url}/track"
 
-                                    <p style="font-size: 16px;">Please log in to the tracking portal to update your information or re-upload the necessary documents.</p>
-                                    
+                            if action == "correction_requested":
+                                subject = f"Enrollment Update - Action Required ({branch_name})"
+                                body = (
+                                    f"Action Required: Enrollment Correction\n\n"
+                                    f"Hello {student_name},\n"
+                                    f"Your enrollment application for {branch_name} requires correction.\n\n"
+                                    f"Reason: {rejection_reason}\n\n"
+                                    f"Please visit the tracking page at {track_url} to fix and re-submit your application."
+                                )
+                                header_title = "Action Required"
+                                header_subtitle = "Enrollment Application Update"
+                                intro = f"Your enrollment application (ID: <strong>{display_no}</strong>) at <strong>{branch_name}</strong> requires your attention before it can be approved."
+                                reason_title = "Message from Registrar:"
+                                followup = "Please log in to the tracking portal to update your information or re-upload the necessary documents."
+                                cta = f"""
                                     <div style="text-align: center; margin-top: 30px;">
-                                        <a href="https://www.liceo-lms.com/track" 
+                                        <a href="{track_url}"
                                            style="display: inline-block; padding: 14px 28px; background-color: #1a2a4e; color: white; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px;">
                                             Fix Application &rarr;
                                         </a>
                                     </div>
+                                """
+                            else:
+                                subject = f"Enrollment Application Result - {branch_name}"
+                                body = (
+                                    f"Enrollment Application Result\n\n"
+                                    f"Hello {student_name},\n"
+                                    f"Your enrollment application for {branch_name} was not approved.\n\n"
+                                    f"Reason: {rejection_reason}\n\n"
+                                    f"If you have questions, please contact the Registrar's Office."
+                                )
+                                header_title = "Application Not Approved"
+                                header_subtitle = "Enrollment Application Result"
+                                intro = f"Your enrollment application (ID: <strong>{display_no}</strong>) at <strong>{branch_name}</strong> was not approved."
+                                reason_title = "Reason:"
+                                followup = "If you have questions about this decision, please contact the Registrar's Office."
+                                cta = ""
+
+                            html_body = f"""
+                            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                                <div style="background-color: #991b1b; padding: 30px; text-align: center; color: white;">
+                                    <h1 style="margin: 0; font-size: 24px; font-weight: 700;">{header_title}</h1>
+                                    <p style="margin: 5px 0 0; opacity: 0.9;">{header_subtitle}</p>
+                                </div>
+                                <div style="padding: 40px; color: #334155; line-height: 1.6;">
+                                    <p style="font-size: 16px;">Hello <strong>{student_name}</strong>,</p>
+                                    <p style="font-size: 16px;">{intro}</p>
+                                    
+                                    <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 25px 0;">
+                                        <p style="margin: 0 0 8px 0; font-size: 14px; color: #991b1b; font-weight: 800; text-transform: uppercase;">{reason_title}</p>
+                                        <p style="margin: 0; font-size: 16px; color: #1e293b; font-weight: 500;">{rejection_reason}</p>
+                                    </div>
+
+                                    <p style="font-size: 16px;">{followup}</p>
+                                    {cta}
                                 </div>
                                 <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
                                     &copy; 2026 LiceoLMS - Liceo de Majayjay System
                                 </div>
                             </div>
                             """
-                            send_email(target_email, subject, body, html_body=html_body)
+                            email_status = "sent" if send_email(target_email, subject, body, html_body=html_body, use_background=False) else "failed"
+                        else:
+                            email_status = "missing"
+                    else:
+                        email_status = "missing"
                 except Exception as email_err:
-                    logger.error(f"Failed to send rejection email: {str(email_err)}")
+                    email_status = "failed"
+                    logger.error(f"Failed to send enrollment decision email: {email_err.__class__.__name__}")
 
-            flash(
-                f"Enrollment #{display_no} {'approved' if action == 'approved' else 'notified for correction'}.",
-                "success" if action == "approved" else "warning"
-            )
+            if action == "approved":
+                flash(f"Enrollment #{display_no} approved.", "success")
+            elif action == "correction_requested":
+                if email_status == "sent":
+                    flash(f"Enrollment #{display_no} marked for correction. Notification was accepted by SMTP.", "warning")
+                elif email_status == "missing":
+                    flash(f"Enrollment #{display_no} marked for correction, but no applicant email is available for notification.", "warning")
+                else:
+                    flash(f"Enrollment #{display_no} marked for correction, but email notification could not be sent. Please contact the applicant manually.", "warning")
+            else:
+                if email_status == "sent":
+                    flash(f"Enrollment #{display_no} rejected. Notification was accepted by SMTP.", "warning")
+                elif email_status == "missing":
+                    flash(f"Enrollment #{display_no} rejected, but no applicant email is available for notification.", "warning")
+                else:
+                    flash(f"Enrollment #{display_no} rejected, but email notification could not be sent. Please contact the applicant manually.", "warning")
+            return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
 
         # --- NEW enrollments list (VIEW selected year) with Pagination ---
-        new_where = "e.branch_id=%s AND e.year_id=%s AND e.status IN ('pending', 'rejected')"
+        new_where = "e.branch_id=%s AND e.year_id=%s AND e.status = 'pending'"
         new_params = [branch_id, selected_year_id]
         if q_new:
             new_where += """
@@ -730,7 +883,49 @@ def registrar_enrollments():
             e = dict(e)
             if isinstance(e["documents"], str):
                 e["documents"] = json.loads(e["documents"])
+            e["identity_review_required"] = False
             new_enrollments.append(e)
+        if new_enrollments:
+            try:
+                review_ids = [e["enrollment_id"] for e in new_enrollments]
+                cursor.execute("""
+                    SELECT enrollment_id, status, reasons, decision_reason, reviewed_at
+                    FROM student_identity_reviews
+                    WHERE branch_id = %s AND enrollment_id = ANY(%s)
+                """, (branch_id, review_ids))
+                review_map = {r["enrollment_id"]: r for r in (cursor.fetchall() or [])}
+                for e in new_enrollments:
+                    review = review_map.get(e["enrollment_id"])
+                    if review:
+                        e["identity_review_status"] = review.get("status")
+                        e["identity_review_reasons"] = review.get("reasons")
+                        e["identity_review_decision_reason"] = review.get("decision_reason")
+                        e["identity_reviewed_at"] = review.get("reviewed_at")
+                        if review.get("status") == "pending":
+                            e["identity_review_required"] = True
+                from routes.student import validate_student_identity
+                for e in new_enrollments:
+                    if e.get("identity_review_status") in ("distinct_student", "existing_student"):
+                        continue
+                    student_name_for_identity = " ".join(filter(None, [
+                        e.get("student_first_name"),
+                        e.get("student_middle_name"),
+                        e.get("student_last_name")
+                    ]))
+                    identity_result = validate_student_identity(
+                        cursor,
+                        student_name_for_identity,
+                        e.get("dob"),
+                        e.get("lrn"),
+                        e.get("email"),
+                        exclude_enrollment_id=e.get("enrollment_id")
+                    )
+                    if identity_result["action"] == "review":
+                        e["identity_review_required"] = True
+            except Exception as review_err:
+                db.rollback()
+                if not _identity_reviews_table_missing(review_err):
+                    logger.error(f"Identity review list load error: {review_err}")
 
         # --- ENROLLED students list (VIEW selected year) with Pagination ---
         enrolled_where = "e.branch_id=%s AND e.year_id=%s AND e.status IN ('enrolled', 'open_for_enrollment', 'approved', 'completed')"
@@ -1408,6 +1603,8 @@ def import_sf1_excel():
                 ))
                 updated_count += 1
             else:
+                from routes.student import acquire_branch_enrollment_no_lock
+                acquire_branch_enrollment_no_lock(cursor, branch_id)
                 cursor.execute("SELECT COALESCE(MAX(branch_enrollment_no), 0) + 1 AS next_no FROM enrollments WHERE branch_id = %s", (branch_id,))
                 next_no = cursor.fetchone()["next_no"]
 
@@ -1945,6 +2142,82 @@ def toggle_reenrollment():
     return redirect("/registrar/enrollments#enrolled")
 
 
+@registrar_bp.route("/registrar/identity-review/<int:enrollment_id>", methods=["POST"])
+def decide_identity_review(enrollment_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("Missing branch in session. Please login again.", "error")
+        return redirect("/logout")
+
+    decision = request.form.get("decision")
+    reason = (request.form.get("reason") or "").strip()
+    if decision not in ("distinct_student", "existing_student"):
+        flash("Invalid identity review decision.", "error")
+        return redirect("/registrar/enrollments")
+    if not reason:
+        flash("Please enter a reason for the identity review decision.", "error")
+        return redirect("/registrar/enrollments")
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT enrollment_id, status FROM enrollments
+            WHERE enrollment_id = %s AND branch_id = %s AND status = 'pending'
+            FOR UPDATE
+        """, (enrollment_id, branch_id))
+        enrollment = cursor.fetchone()
+        if not enrollment:
+            flash("Only pending applications in your branch can receive an identity review decision.", "error")
+            return redirect("/registrar/enrollments")
+
+        cursor.execute("""
+            UPDATE student_identity_reviews
+            SET status = %s,
+                decision_reason = %s,
+                reviewed_by = %s,
+                reviewed_at = NOW(),
+                updated_at = NOW()
+            WHERE enrollment_id = %s AND branch_id = %s
+        """, (decision, reason, session.get("user_id"), enrollment_id, branch_id))
+        if cursor.rowcount == 0:
+            db.rollback()
+            flash("Identity review record not found.", "error")
+            return redirect("/registrar/enrollments")
+        if decision == "existing_student":
+            cursor.execute("""
+                UPDATE enrollments
+                SET status = 'rejected',
+                    rejection_reason = %s,
+                    rejected_at = NOW()
+                WHERE enrollment_id = %s AND branch_id = %s AND status = 'pending'
+            """, (reason, enrollment_id, branch_id))
+            if cursor.rowcount == 0:
+                db.rollback()
+                flash("Only pending applications in your branch can be rejected as existing students.", "error")
+                return redirect("/registrar/enrollments")
+        db.commit()
+        if decision == "distinct_student":
+            flash("Identity review confirmed: distinct student. The application may continue through normal processing.", "success")
+        else:
+            flash("Identity review confirmed: existing student. The application was rejected; use re-enrollment or Registrar-assisted transfer.", "warning")
+    except Exception as e:
+        db.rollback()
+        if _identity_reviews_table_missing(e):
+            flash("Identity review is not fully configured. Apply the identity-review migration first.", "error")
+        else:
+            logger.error(f"Identity review decision error: {str(e)}")
+            flash("Could not save identity review decision. Please try again.", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect("/registrar/enrollments")
+
+
 # ══════════════════════════════════════════
 # CREATE STUDENT ACCOUNT
 # ══════════════════════════════════════════
@@ -1981,6 +2254,47 @@ def create_student_account(enrollment_id):
             enrollment.get("student_middle_name"),
             enrollment.get("student_last_name")
         ]))
+
+        from routes.student import validate_student_identity
+        identity_result = validate_student_identity(
+            cursor,
+            student_name,
+            enrollment.get("dob"),
+            enrollment.get("lrn"),
+            enrollment.get("email"),
+            exclude_enrollment_id=enrollment_id
+        )
+        if identity_result["action"] in ("block", "review"):
+            if identity_result["action"] == "review":
+                try:
+                    if _identity_review_allows_distinct(cursor, enrollment_id, branch_id):
+                        identity_result = {"action": "ok"}
+                    else:
+                        flash("Identity review must be confirmed as Distinct Student before creating this account.", "error")
+                        return redirect("/registrar/enrollments#enrolled")
+                except Exception as review_err:
+                    if _identity_reviews_table_missing(review_err):
+                        flash("Identity review is not fully configured. Apply the identity-review migration before creating this account.", "error")
+                    else:
+                        logger.error(f"Identity review account check error: {review_err}")
+                        flash("Could not verify identity review status. Please try again.", "error")
+                    return redirect("/registrar/enrollments#enrolled")
+            if identity_result["action"] == "block":
+                flash(identity_result["message"], "error")
+                return redirect("/registrar/enrollments#enrolled")
+
+        try:
+            current_identity_review = _get_identity_review(cursor, enrollment_id, branch_id)
+        except Exception as review_err:
+            if _identity_reviews_table_missing(review_err):
+                current_identity_review = None
+            else:
+                logger.error(f"Current identity review account check error: {review_err}")
+                flash("Could not verify identity review status. Please try again.", "error")
+                return redirect("/registrar/enrollments#enrolled")
+        if current_identity_review and current_identity_review.get("status") != "distinct_student":
+            flash("Identity review must be confirmed as Distinct Student before creating this account.", "error")
+            return redirect("/registrar/enrollments#enrolled")
 
         student_email = (enrollment.get("email") or "").strip()
         if not student_email:

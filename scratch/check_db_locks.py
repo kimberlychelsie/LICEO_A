@@ -2,9 +2,12 @@
 Check: any blocking locks or long-running queries on Railway DB?
 """
 import psycopg2
+import os
 from psycopg2.extras import RealDictCursor
 
-DATABASE_URL = "postgresql://postgres:puixywJTqFOFSPxiXAgSZRYiyyUqaXvH@switchyard.proxy.rlwy.net:25993/railway"
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL environment variable is required.")
 
 def run():
     conn = psycopg2.connect(DATABASE_URL)

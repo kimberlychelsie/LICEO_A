@@ -206,8 +206,12 @@ def link_child():
             branch_id_int = int(branch_id)
 
             cursor.execute("""
-                SELECT * FROM enrollments 
-                WHERE branch_enrollment_no=%s AND branch_id=%s
+                SELECT e.*
+                FROM enrollments e
+                LEFT JOIN school_years sy ON sy.year_id = e.year_id AND sy.branch_id = e.branch_id
+                WHERE e.branch_enrollment_no=%s AND e.branch_id=%s
+                ORDER BY COALESCE(sy.is_active, FALSE) DESC, e.year_id DESC NULLS LAST, e.created_at DESC
+                LIMIT 1
             """, (enrollment_no_int, branch_id_int))
             enrollment = cursor.fetchone()
 

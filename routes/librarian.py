@@ -516,9 +516,11 @@ def api_student_grade():
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cur.execute("""
-            SELECT enrollment_id, student_name, branch_id, grade_level
-            FROM enrollments
-            WHERE branch_enrollment_no=%s AND branch_id=%s
+            SELECT e.enrollment_id, e.student_name, e.branch_id, e.grade_level
+            FROM enrollments e
+            LEFT JOIN school_years sy ON sy.year_id = e.year_id AND sy.branch_id = e.branch_id
+            WHERE e.branch_enrollment_no=%s AND e.branch_id=%s
+            ORDER BY COALESCE(sy.is_active, FALSE) DESC, e.year_id DESC NULLS LAST, e.created_at DESC
             LIMIT 1
         """, (int(enrollment_id), int(branch_id)))
         row = cur.fetchone()
@@ -622,9 +624,11 @@ def releases():
                     return redirect(url_for("librarian.releases"))
 
                 cur.execute("""
-                    SELECT enrollment_id, student_name, branch_id, grade_level
-                    FROM enrollments
-                    WHERE branch_enrollment_no=%s AND branch_id=%s
+                    SELECT e.enrollment_id, e.student_name, e.branch_id, e.grade_level
+                    FROM enrollments e
+                    LEFT JOIN school_years sy ON sy.year_id = e.year_id AND sy.branch_id = e.branch_id
+                    WHERE e.branch_enrollment_no=%s AND e.branch_id=%s
+                    ORDER BY COALESCE(sy.is_active, FALSE) DESC, e.year_id DESC NULLS LAST, e.created_at DESC
                     LIMIT 1
                 """, (int(enrollment_id), int(branch_id)))
                 enrollment_row = cur.fetchone()

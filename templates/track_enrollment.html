@@ -513,6 +513,10 @@
             {% set banner_class = 'sb-enrolled' %}
             {% set status_icon = '<path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path>' %}
             {% set status_label = 'Officially Enrolled' %}
+        {% elif enrollment.status == 'correction_requested' %}
+            {% set banner_class = 'sb-rejected' %}
+            {% set status_icon = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' %}
+            {% set status_label = 'Correction Requested' %}
         {% elif enrollment.status == 'rejected' %}
             {% set banner_class = 'sb-rejected' %}
             {% set status_icon = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>' %}
@@ -542,7 +546,24 @@
         </div>
 
         <!-- Conditional Alerts -->
-        {% if enrollment.status == 'rejected' %}
+        {% if enrollment.status == 'correction_requested' %}
+        <div class="alert-box alert-rejected">
+            <div class="alert-header">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                Correction Requested
+            </div>
+            <div class="alert-body">
+                {% if enrollment.rejection_reason %}
+                {{ enrollment.rejection_reason }}
+                {% else %}
+                Please contact the administration for the required correction.
+                {% endif %}
+            </div>
+            <a href="{{ url_for('student.enroll_edit', enrollment_id=enrollment.enrollment_id) }}" class="btn-remedy">
+                Fix & Re-submit Application
+            </a>
+        </div>
+        {% elif enrollment.status == 'rejected' %}
         <div class="alert-box alert-rejected">
             <div class="alert-header">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
@@ -555,9 +576,6 @@
                 No specific reasoning provided. Please contact the administration.
                 {% endif %}
             </div>
-            <a href="{{ url_for('student.enroll_edit', enrollment_id=enrollment.enrollment_id) }}" class="btn-remedy">
-                Fix & Re-submit Application
-            </a>
         </div>
         {% elif enrollment.status == 'approved' %}
         <div class="alert-box alert-approved">

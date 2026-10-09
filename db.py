@@ -8,6 +8,9 @@ logging.basicConfig(level=logging.INFO)
 
 _MIGRATIONS_RUN = False
 
+def _startup_migrations_enabled():
+    return os.getenv("LICEO_RUN_STARTUP_MIGRATIONS", "").strip().lower() in ("1", "true", "yes", "on")
+
 def get_db_connection():
     """
     Returns a new PostgreSQL database connection using environment variables:
@@ -37,6 +40,11 @@ def get_db_connection():
             
         global _MIGRATIONS_RUN
         if not _MIGRATIONS_RUN:
+            if not _startup_migrations_enabled():
+                logger.info("Startup database migrations are disabled. Set LICEO_RUN_STARTUP_MIGRATIONS=true to run legacy startup migrations explicitly.")
+                _MIGRATIONS_RUN = True
+                return conn
+
             cur = conn.cursor()
             
             # Simple migration for exams table
