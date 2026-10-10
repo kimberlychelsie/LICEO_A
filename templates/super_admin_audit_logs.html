@@ -228,6 +228,38 @@
                 </tbody>
             </table>
         </div>
+        
+        <!-- Pagination Controls -->
+        {% if total_pages > 1 %}
+        <div style="padding: 16px 24px; border-top: 1px solid var(--ma-border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; flex-wrap: wrap; gap: 12px;">
+            <div style="font-size: 0.85rem; color: var(--ma-muted); font-weight: 600;">
+                Showing page <strong style="color: var(--ma-text);">{{ page }}</strong> of <strong style="color: var(--ma-text);">{{ total_pages }}</strong> 
+                <span style="color: #94a3b8;">({{ total_logs }} total records)</span>
+            </div>
+            
+            <div style="display: flex; gap: 8px;">
+                {% if page > 1 %}
+                    <a href="{{ url_for('super_admin.super_admin_audit_logs', page=page-1, q=search_query, action=action_filter, start_date=start_date, end_date=end_date) }}" style="padding: 8px 16px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; color: var(--ma-primary); text-decoration: none; font-size: 0.85rem; font-weight: 800; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;">
+                        &laquo; Prev
+                    </a>
+                {% else %}
+                    <span style="padding: 8px 16px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; color: #94a3b8; font-size: 0.85rem; font-weight: 800; cursor: not-allowed; display: inline-flex; align-items: center; gap: 6px;">
+                        &laquo; Prev
+                    </span>
+                {% endif %}
+                
+                {% if page < total_pages %}
+                    <a href="{{ url_for('super_admin.super_admin_audit_logs', page=page+1, q=search_query, action=action_filter, start_date=start_date, end_date=end_date) }}" style="padding: 8px 16px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; color: var(--ma-primary); text-decoration: none; font-size: 0.85rem; font-weight: 800; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;">
+                        Next &raquo;
+                    </a>
+                {% else %}
+                    <span style="padding: 8px 16px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; color: #94a3b8; font-size: 0.85rem; font-weight: 800; cursor: not-allowed; display: inline-flex; align-items: center; gap: 6px;">
+                        Next &raquo;
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

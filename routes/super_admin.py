@@ -1315,38 +1315,52 @@ def super_admin_audit_logs():
     action_filter = request.args.get("action", "").strip()
     start_date = request.args.get("start_date", "").strip()
     end_date = request.args.get("end_date", "").strip()
+    page = request.args.get("page", 1, type=int)
+    per_page = 15
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        query = """
-            SELECT log_id, user_id, user_name, role, branch_id, action, details, ip_address,
-                   created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' AS created_at_ph
-            FROM audit_logs
-            WHERE 1=1
-        """
+        where_clause = ""
         params = []
 
         if action_filter:
-            query += " AND action = %s"
+            where_clause += " AND action = %s"
             params.append(action_filter)
 
         if search_query:
-            query += " AND (user_name ILIKE %s OR details ILIKE %s OR ip_address ILIKE %s)"
+            where_clause += " AND (user_name ILIKE %s OR details ILIKE %s OR ip_address ILIKE %s)"
             search_param = f"%{search_query}%"
             params.extend([search_param, search_param, search_param])
 
         if start_date:
-            query += " AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date >= %s::date"
+            where_clause += " AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date >= %s::date"
             params.append(start_date)
 
         if end_date:
-            query += " AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date <= %s::date"
+            where_clause += " AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date <= %s::date"
             params.append(end_date)
 
-        query += " ORDER BY created_at DESC LIMIT 300"
+        cursor.execute(f"SELECT COUNT(*) AS total FROM audit_logs WHERE 1=1 {where_clause}", params)
+        total_logs = cursor.fetchone()["total"]
+        total_pages = (total_logs + per_page - 1) // per_page
+        
+        if page < 1:
+            page = 1
+        elif page > total_pages and total_pages > 0:
+            page = total_pages
 
-        cursor.execute(query, params)
+        offset = (page - 1) * per_page
+
+        query = f"""
+            SELECT log_id, user_id, user_name, role, branch_id, action, details, ip_address,
+                   created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' AS created_at_ph
+            FROM audit_logs
+            WHERE 1=1 {where_clause}
+            ORDER BY created_at DESC
+            LIMIT %s OFFSET %s
+        """
+        cursor.execute(query, params + [per_page, offset])
         logs = cursor.fetchall() or []
 
         cursor.execute("SELECT DISTINCT action FROM audit_logs ORDER BY action ASC")
@@ -1358,7 +1372,10 @@ def super_admin_audit_logs():
             search_query=search_query,
             action_filter=action_filter,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            page=page,
+            total_pages=total_pages,
+            total_logs=total_logs
         )
     finally:
         cursor.close()
@@ -1634,7 +1651,7 @@ def super_admin_settings():
     try:
         user_id = session.get("user_id")
         cursor.execute("""
-            SELECT user_id, username, full_name, email, contact_number, role, last_login, last_password_change, status, profile_image
+            SELECT user_id, username, full_name, email, contact_number, role, status, profile_image
             FROM users
             WHERE role = 'super_admin' AND (user_id = %s OR username = %s)
             LIMIT 1
@@ -1643,7 +1660,7 @@ def super_admin_settings():
 
         if not admin_user:
             cursor.execute("""
-                SELECT user_id, username, full_name, email, contact_number, role, last_login, last_password_change, status, profile_image
+                SELECT user_id, username, full_name, email, contact_number, role, status, profile_image
                 FROM users
                 WHERE role = 'super_admin'
                 ORDER BY user_id ASC

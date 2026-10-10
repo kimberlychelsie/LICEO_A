@@ -404,6 +404,16 @@
         .form-row-2 {
             grid-template-columns: 1fr;
         }
+
+        .privacy-banner {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .privacy-text {
+            align-items: flex-start;
+        }
     }
 </style>
 
@@ -434,16 +444,7 @@
         </div>
     </div>
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    {% for category, message in messages %}
-    <div class="alert-flash {{ category }}">
-        {{ message }}
-    </div>
-    {% endfor %}
-    {% endif %}
-    {% endwith %}
+
 
     <!-- Tabs Navigation -->
     <div class="settings-tabs">
@@ -475,16 +476,17 @@
                         d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z">
                     </path>
                 </svg>
-                <span><strong>Security Unlocked:</strong> Sensitive details (Username, Email & Contact) are unmasked and
-                    editable. Sudo session active.</span>
+                <span><strong>Security Unlocked:</strong> Sensitive information (Username, Email & Contact) is visible
+                    for you.
+                </span>
                 {% else %}
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
                     </path>
                 </svg>
-                <span><strong>Privacy Protection Active:</strong> Sensitive details (Username, Email & Contact) are
-                    locked and masked with asterisks.</span>
+                <span><strong>Privacy Protection Active:</strong> Sensitive information (Username, Email & Contact) is
+                    hidden for privacy.</span>
                 {% endif %}
             </div>
             {% if not sudo_active %}
@@ -596,7 +598,7 @@
             </svg>
             Security & Session Preferences
         </div>
-        <div class="panel-subtitle">Configure Sudo Mode duration and email notification options.</div>
+        <div class="panel-subtitle">Configure session duration and email notifications</div>
 
         <form action="{{ url_for('super_admin.super_admin_update_preferences') }}" method="POST"
             style="max-width: 650px;">

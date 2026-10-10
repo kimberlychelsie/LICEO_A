@@ -155,10 +155,9 @@
     /* ── Premium Vault Table ── */
     .vault-wrapper {
         border-radius: 20px;
-        overflow: visible;
-        border: 1px solid rgba(226, 232, 240, 0.8);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
         background: #ffffff;
-        box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.05);
         margin-top: 0;
     }
 
@@ -389,6 +388,11 @@
             grid-template-columns: 1fr;
             gap: 16px;
         }
+
+        .vault-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
     }
 
     @media (min-width: 769px) and (max-width: 1024px) {
@@ -425,7 +429,9 @@
                     style="font-size: 0.9rem; padding: 12px 20px; background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 700; border-radius: 12px;">
                     <i class="fas fa-archive text-amber-600"></i> Archived Accounts
                     {% if archived_admins_pool %}
-                    <span style="background: #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: 800;">{{ archived_admins_pool|length }}</span>
+                    <span
+                        style="background: #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: 800;">{{
+                        archived_admins_pool|length }}</span>
                     {% endif %}
                 </button>
                 <button onclick="toggleCreateBranchForm()" class="btn-prem btn-gold"
@@ -451,7 +457,8 @@
                     </div>
                     <div class="form-node">
                         <label>Branch Code</label>
-                        <input type="text" name="branch_code" placeholder="e.g. LDMAJ" style="text-transform: uppercase;" required>
+                        <input type="text" name="branch_code" placeholder="e.g. LDMAJ"
+                            style="text-transform: uppercase;" required>
                     </div>
                     <div class="form-node">
                         <label>Location (Town Name)</label>
@@ -461,7 +468,8 @@
                 <div style="display:flex; justify-content:flex-end; gap: 12px; margin-top: 20px;">
                     <button type="button" onclick="toggleCreateBranchForm()" class="btn-prem"
                         style="background: #f1f5f9; color: #64748b;">Cancel</button>
-                    <button type="submit" class="btn-prem btn-gold"><i class="fas fa-plus-circle"></i> Create Branch</button>
+                    <button type="submit" class="btn-prem btn-gold"><i class="fas fa-plus-circle"></i> Create
+                        Branch</button>
                 </div>
             </form>
         </div>
@@ -558,12 +566,15 @@
                             </div>
                             {% else %}
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <div style="background: #fef3c7; color: #d97706; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; border: 1px solid #fde68a;">
+                                <div
+                                    style="background: #fef3c7; color: #d97706; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; border: 1px solid #fde68a;">
                                     <i class="fas fa-user-slash"></i>
                                 </div>
                                 <div>
-                                    <div style="font-weight: 800; color: #92400e; font-size: 0.85rem;">No Principal Assigned</div>
-                                    <button type="button" onclick="openTransferModal('{{ b.branch_id }}','{{ b.branch_name|e }}')" 
+                                    <div style="font-weight: 800; color: #92400e; font-size: 0.85rem;">No Principal
+                                        Assigned</div>
+                                    <button type="button"
+                                        onclick="openTransferModal('{{ b.branch_id }}','{{ b.branch_name|e }}')"
                                         style="background: none; border: none; padding: 0; color: #2563eb; font-size: 0.78rem; font-weight: 700; cursor: pointer; text-decoration: underline;">
                                         + Assign Principal Now
                                     </button>
@@ -607,7 +618,8 @@
                                         onclick="openTransferModal('{{ b.branch_id }}','{{ b.branch_name|e }}')">
                                         <i class="fas fa-user-plus text-emerald-600"></i> Assign Principal
                                     </button>
-                                    <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/delete" style="display:contents;">
+                                    <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/delete"
+                                        style="display:contents;">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="action-item danger"
                                             onclick="return confirm('Are you sure you want to delete branch {{ b.branch_name|e }}? This will permanently delete this vacant branch.');">
@@ -672,31 +684,38 @@
                 </div>
             </div>
 
-            <div id="editNoAdminNotice" style="display:none; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; padding:14px 16px; margin-top:16px;">
-                <div style="display:flex; align-items:center; gap:10px; color:#64748b; font-size:0.85rem; font-weight:600;">
+            <div id="editNoAdminNotice"
+                style="display:none; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; padding:14px 16px; margin-top:16px;">
+                <div
+                    style="display:flex; align-items:center; gap:10px; color:#64748b; font-size:0.85rem; font-weight:600;">
                     <i class="fas fa-info-circle" style="color:#3b82f6; font-size:1.1rem;"></i>
                     <div>
                         No principal is currently assigned to this branch.
-                        <div style="font-size:0.78rem; color:#94a3b8; font-weight:500;">Use the <strong>Assign Principal</strong> action button to assign an administrator.</div>
+                        <div style="font-size:0.78rem; color:#94a3b8; font-weight:500;">Use the <strong>Assign
+                                Principal</strong> action button to assign an administrator.</div>
                     </div>
                 </div>
             </div>
 
             <div id="editAdminSection">
-                <h4 style="margin-bottom: 12px; margin-top: 20px; color: #475569; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                <h4
+                    style="margin-bottom: 12px; margin-top: 20px; color: #475569; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">
                     Principal Admin Details</h4>
                 <div class="entry-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
                     <div class="form-node">
                         <label>First Name</label>
-                        <input type="text" name="admin_first_name" id="editAdminFirstName" oninput="checkEditBranchChanges()" />
+                        <input type="text" name="admin_first_name" id="editAdminFirstName"
+                            oninput="checkEditBranchChanges()" />
                     </div>
                     <div class="form-node">
                         <label>Last Name</label>
-                        <input type="text" name="admin_last_name" id="editAdminLastName" oninput="checkEditBranchChanges()" />
+                        <input type="text" name="admin_last_name" id="editAdminLastName"
+                            oninput="checkEditBranchChanges()" />
                     </div>
                     <div class="form-node">
                         <label>Middle Name (Optional)</label>
-                        <input type="text" name="admin_middle_name" id="editAdminMiddleName" oninput="checkEditBranchChanges()" />
+                        <input type="text" name="admin_middle_name" id="editAdminMiddleName"
+                            oninput="checkEditBranchChanges()" />
                     </div>
                     <div class="form-node">
                         <label>Admin Email</label>
@@ -720,14 +739,19 @@
     <div class="glass-modal" style="max-width: 620px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <div>
-                <h2 id="transferBranchName" style="font-weight: 900; color: var(--ma-primary); margin: 0 0 4px 0; font-size: 1.3rem;">Assign Branch Principal</h2>
+                <h2 id="transferBranchName"
+                    style="font-weight: 900; color: var(--ma-primary); margin: 0 0 4px 0; font-size: 1.3rem;">Assign
+                    Branch Principal</h2>
                 <p id="transferBranchSub" style="margin:0; font-size:0.82rem; color:#64748b;"></p>
             </div>
-            <button type="button" onclick="closeTransferModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="closeTransferModal()"
+                style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;"><i
+                    class="fas fa-times"></i></button>
         </div>
 
         <!-- Tab Switcher -->
-        <div style="display:flex; gap:0; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; margin-bottom:24px;">
+        <div
+            style="display:flex; gap:0; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; margin-bottom:24px;">
             <button type="button" id="tabPickExisting" onclick="switchAssignTab('existing')"
                 style="flex:1; padding:10px 0; font-size:0.85rem; font-weight:800; border:none; cursor:pointer; transition:all .2s; background:#1a3a8f; color:#fff;">
                 <i class="fas fa-user-clock"></i> Pick Existing
@@ -748,25 +772,32 @@
             <form method="post" id="transferExistingForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="replacement_mode" value="transfer">
-                <div style="max-height:280px; overflow-y:auto; padding-right:6px; display:flex; flex-direction:column; gap:10px;">
+                <div
+                    style="max-height:280px; overflow-y:auto; padding-right:6px; display:flex; flex-direction:column; gap:10px;">
                     {% for ra in pool %}
-                    <label style="display:flex; align-items:center; gap:14px; background:#f8fafc; border:2px solid #e2e8f0; border-radius:14px; padding:14px 16px; cursor:pointer; transition:all .2s;"
+                    <label
+                        style="display:flex; align-items:center; gap:14px; background:#f8fafc; border:2px solid #e2e8f0; border-radius:14px; padding:14px 16px; cursor:pointer; transition:all .2s;"
                         onclick="selectRetiredAdmin(this, '{{ ra.user_id }}')">
-                        <div style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#1a3a8f,#3b82f6); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:1rem; flex-shrink:0;">
+                        <div
+                            style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#1a3a8f,#3b82f6); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:1rem; flex-shrink:0;">
                             {{ ra.full_name[0] | upper }}
                         </div>
                         <div style="flex:1; min-width:0;">
                             <div style="font-weight:800; color:#0f172a; font-size:0.95rem;">{{ ra.full_name }}</div>
-                            <div style="font-size:0.78rem; color:#64748b;">@{{ ra.username }} &nbsp;·&nbsp; {{ ra.email or 'No email' }}</div>
+                            <div style="font-size:0.78rem; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">@{{ ra.username }} &nbsp;·&nbsp; {{ ra.email
+                                or 'No email' }}</div>
                         </div>
-                        <div style="width:20px; height:20px; border-radius:50%; border:2px solid #cbd5e1; flex-shrink:0; display:flex; align-items:center; justify-content:center;" class="ra-radio-dot"></div>
+                        <div style="width:20px; height:20px; border-radius:50%; border:2px solid #cbd5e1; flex-shrink:0; display:flex; align-items:center; justify-content:center;"
+                            class="ra-radio-dot"></div>
                     </label>
                     {% endfor %}
                 </div>
                 <input type="hidden" name="transfer_user_id" id="selectedRetiredAdminId">
                 <div style="display:flex; gap:12px; margin-top:20px; justify-content:flex-end;">
-                    <button type="button" onclick="closeTransferModal()" class="btn-prem" style="background:#f1f5f9; color:#64748b; padding:12px 24px;">Cancel</button>
-                    <button type="submit" id="btnConfirmExisting" class="btn-prem btn-gold" style="padding:12px 32px; min-width:150px; opacity:0.5; cursor:not-allowed;" disabled>
+                    <button type="button" onclick="closeTransferModal()" class="btn-prem"
+                        style="background:#f1f5f9; color:#64748b; padding:12px 24px;">Cancel</button>
+                    <button type="submit" id="btnConfirmExisting" class="btn-prem btn-gold"
+                        style="padding:12px 32px; min-width:150px; opacity:0.5; cursor:not-allowed;" disabled>
                         <i class="fas fa-check"></i> Reassign
                     </button>
                 </div>
@@ -775,10 +806,12 @@
             <div style="text-align:center; padding:40px 0;">
                 <i class="fas fa-user-slash" style="font-size:2.5rem; color:#cbd5e1; margin-bottom:12px;"></i>
                 <div style="font-weight:800; color:#94a3b8; font-size:0.95rem;">No removed principals available.</div>
-                <div style="font-size:0.8rem; color:#cbd5e1; margin-top:6px;">Principals will appear here after being removed from a branch.</div>
+                <div style="font-size:0.8rem; color:#cbd5e1; margin-top:6px;">Principals will appear here after being
+                    removed from a branch.</div>
             </div>
             <div style="margin-top:20px; text-align:right;">
-                <button type="button" onclick="closeTransferModal()" class="btn-prem" style="background:#f1f5f9; color:#64748b;">Close</button>
+                <button type="button" onclick="closeTransferModal()" class="btn-prem"
+                    style="background:#f1f5f9; color:#64748b;">Close</button>
             </div>
             {% endif %}
         </div>
@@ -791,13 +824,17 @@
                 <div class="entry-grid" style="grid-template-columns: 1fr 1fr; gap:16px;">
                     <div class="form-node">
                         <label>First Name</label>
-                        <input type="text" name="new_admin_first_name" id="newAdminFirstName" oninput="checkModalName()" required />
+                        <input type="text" name="new_admin_first_name" id="newAdminFirstName" oninput="checkModalName()"
+                            required />
                     </div>
                     <div class="form-node">
                         <label>Last Name</label>
-                        <input type="text" name="new_admin_last_name" id="newAdminLastName" oninput="checkModalName()" required />
+                        <input type="text" name="new_admin_last_name" id="newAdminLastName" oninput="checkModalName()"
+                            required />
                     </div>
-                    <div id="modalNameWarning" style="grid-column: span 2; display:none; background:#fef3c7; border:1px solid #fde68a; border-radius:12px; padding:10px 14px; font-size:0.82rem; color:#92400e;"></div>
+                    <div id="modalNameWarning"
+                        style="grid-column: span 2; display:none; background:#fef3c7; border:1px solid #fde68a; border-radius:12px; padding:10px 14px; font-size:0.82rem; color:#92400e;">
+                    </div>
                     <div class="form-node">
                         <label>Middle Name (Optional)</label>
                         <input type="text" name="new_admin_middle_name" />
@@ -817,8 +854,10 @@
                     </div>
                 </div>
                 <div style="display:flex; gap:12px; margin-top:24px; justify-content:flex-end;">
-                    <button type="button" onclick="closeTransferModal()" class="btn-prem" style="background:#f1f5f9; color:#64748b; padding:12px 24px;">Cancel</button>
-                    <button type="submit" id="btnConfirmNew" class="btn-prem btn-gold" style="padding:12px 32px; min-width:150px;">
+                    <button type="button" onclick="closeTransferModal()" class="btn-prem"
+                        style="background:#f1f5f9; color:#64748b; padding:12px 24px;">Cancel</button>
+                    <button type="submit" id="btnConfirmNew" class="btn-prem btn-gold"
+                        style="padding:12px 32px; min-width:150px;">
                         <i class="fas fa-user-check"></i> Create & Assign
                     </button>
                 </div>
@@ -830,37 +869,52 @@
 <!-- Archived & Retired Admin Modal -->
 <div id="retiredAdminModal" class="glass-overlay">
     <div class="glass-modal" style="max-width: 540px;">
-        <h2 style="font-weight: 900; color: var(--ma-primary); margin-bottom: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px;">
-            <i class="fas fa-archive text-amber-500"></i> Archived & Retired Accounts
-        </h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h2
+                style="font-weight: 900; color: var(--ma-primary); margin: 0; display: flex; align-items: center; gap: 10px; font-size: 1.3rem;">
+                <i class="fas fa-archive text-amber-500"></i> Archived & Retired Accounts
+            </h2>
+            <button type="button" onclick="closeRetiredAdminModal()"
+                style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;"><i
+                    class="fas fa-times"></i></button>
+        </div>
         <p style="font-size: 0.85rem; color: var(--ma-muted); text-align: center; margin-bottom: 20px;">
             Directory of former branch administrators. Manage archive status or delete unused accounts.
         </p>
         {% if archived_admins_pool %}
         <div style="max-height: 360px; overflow-y: auto; padding-right: 6px;">
             {% for ra in archived_admins_pool %}
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
-                <div>
+            <div
+                style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div style="min-width: 0; flex: 1;">
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                        <span style="font-weight: 800; color: var(--ma-primary); font-size: 0.95rem;">{{ ra.full_name }}</span>
+                        <span style="font-weight: 800; color: var(--ma-primary); font-size: 0.95rem;">{{ ra.full_name
+                            }}</span>
                         {% if ra.is_archived %}
-                        <span style="background: #e2e8f0; color: #475569; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 700;"><i class="fas fa-box-archive"></i> Archived</span>
+                        <span
+                            style="background: #e2e8f0; color: #475569; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 700;"><i
+                                class="fas fa-box-archive"></i> Archived</span>
                         {% else %}
-                        <span style="background: #fef3c7; color: #92400e; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 700;"><i class="fas fa-user-clock"></i> Retired</span>
+                        <span
+                            style="background: #fef3c7; color: #92400e; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: 700;"><i
+                                class="fas fa-user-clock"></i> Retired</span>
                         {% endif %}
                     </div>
-                    <div style="font-size: 0.78rem; color: var(--ma-muted); margin-top: 2px;">
+                    <div style="font-size: 0.78rem; color: var(--ma-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         @{{ ra.username }} {% if ra.email %}• {{ ra.email }}{% endif %}
                     </div>
-                    <div style="font-size: 0.74rem; color: #64748b; margin-top: 2px;">
-                        <i class="fas fa-building" style="font-size: 0.7rem;"></i> Former Branch: <strong>{{ ra.branch_name or 'Unassigned' }}</strong>
+                    <div style="font-size: 0.74rem; color: #64748b; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <i class="fas fa-building" style="font-size: 0.7rem;"></i> Former Branch: <strong>{{
+                            ra.branch_name or 'Unassigned' }}</strong>
                     </div>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center;">
+                <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
                     {% if ra.is_archived %}
-                    <form method="POST" action="/super-admin/retired-admin/{{ ra.user_id }}/unarchive" style="margin: 0;">
+                    <form method="POST" action="/super-admin/retired-admin/{{ ra.user_id }}/unarchive"
+                        style="margin: 0;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn-prem" style="padding: 6px 12px; font-size: 0.78rem; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;"
+                        <button type="submit" class="btn-prem"
+                            style="padding: 6px 12px; font-size: 0.78rem; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; white-space: nowrap;"
                             title="Restore account from archive"
                             onclick="return confirm('Restore {{ ra.full_name|e }} from Archives?');">
                             <i class="fas fa-undo"></i> Restore
@@ -869,7 +923,8 @@
                     {% else %}
                     <form method="POST" action="/super-admin/retired-admin/{{ ra.user_id }}/archive" style="margin: 0;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn-prem" style="padding: 6px 10px; font-size: 0.78rem; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;"
+                        <button type="submit" class="btn-prem"
+                            style="padding: 6px 10px; font-size: 0.78rem; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; white-space: nowrap;"
                             title="Move to Archives"
                             onclick="return confirm('Move {{ ra.full_name|e }} to Archives?');">
                             <i class="fas fa-archive"></i> Archive
@@ -878,7 +933,8 @@
                     {% endif %}
                     <form method="POST" action="/super-admin/retired-admin/{{ ra.user_id }}/delete" style="margin: 0;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn-prem" style="padding: 6px 10px; font-size: 0.78rem; background: #fef2f2; color: #ef4444; border: 1px solid #fecaca;"
+                        <button type="submit" class="btn-prem"
+                            style="padding: 6px 10px; font-size: 0.78rem; background: #fef2f2; color: #ef4444; border: 1px solid #fecaca;"
                             title="Permanently delete account"
                             onclick="return confirm('Permanently delete {{ ra.full_name|e }}? This action cannot be undone.');">
                             <i class="fas fa-trash-alt"></i>
@@ -894,10 +950,7 @@
             <div style="font-weight: 800; color: var(--ma-muted);">No archived or retired accounts found.</div>
         </div>
         {% endif %}
-        <div style="margin-top: 24px;">
-            <button type="button" onclick="closeRetiredAdminModal()" class="btn-prem"
-                style="width: 100%; background: #f1f5f9; color: var(--ma-muted);">Close</button>
-        </div>
+
     </div>
 </div>
 
@@ -947,13 +1000,13 @@
 
         const branches = [
             {% for b in branches %}
-            {
-                name: "{{ b.branch_name|e }}",
-                location: "{{ b.location|lower|e }}",
+    {
+        name: "{{ b.branch_name|e }}",
+            location: "{{ b.location|lower|e }}",
                 admin: "{{ b.admin_full_name|e }}",
-                active: {{ 'true' if b.is_active else 'false' }}
-            },
-            {% endfor %}
+                    active: {{ 'true' if b.is_active else 'false' }}
+    },
+    {% endfor %}
         ];
 
     branches.forEach(b => {
@@ -1070,9 +1123,9 @@
     function openTransferModal(id, name) {
         _currentTransferBranchId = id;
         const nameEl = document.getElementById('transferBranchName');
-        const subEl  = document.getElementById('transferBranchSub');
+        const subEl = document.getElementById('transferBranchSub');
         if (nameEl) nameEl.innerText = 'Assign to ' + name;
-        if (subEl)  subEl.innerText = 'Branch ID: ' + id;
+        if (subEl) subEl.innerText = 'Branch ID: ' + id;
 
         // Auto-select tab: if there are retired admins, show 'existing', else 'new'
         const hasRetiredForm = !!document.getElementById('transferExistingForm');
@@ -1101,9 +1154,9 @@
 
         // Reset email check
         const emailInput = document.getElementById('newAdminEmail');
-        const emailMsg   = document.getElementById('emailDupMsg');
+        const emailMsg = document.getElementById('emailDupMsg');
         if (emailInput) { emailInput.value = ''; emailInput.style.borderColor = ''; }
-        if (emailMsg)   { emailMsg.style.display = 'none'; }
+        if (emailMsg) { emailMsg.style.display = 'none'; }
 
         const modal = document.getElementById('transferAdminModal');
         if (modal) modal.style.display = 'flex';
@@ -1118,18 +1171,18 @@
         const isExisting = tab === 'existing';
         const panelEx = document.getElementById('panelPickExisting');
         const panelNew = document.getElementById('panelCreateNew');
-        if (panelEx)  panelEx.style.display  = isExisting ? '' : 'none';
+        if (panelEx) panelEx.style.display = isExisting ? '' : 'none';
         if (panelNew) panelNew.style.display = isExisting ? 'none' : '';
 
         const tabEx = document.getElementById('tabPickExisting');
         const tabNew = document.getElementById('tabCreateNew');
         if (tabEx) {
             tabEx.style.background = isExisting ? '#1a3a8f' : '#f1f5f9';
-            tabEx.style.color      = isExisting ? '#fff' : '#64748b';
+            tabEx.style.color = isExisting ? '#fff' : '#64748b';
         }
         if (tabNew) {
             tabNew.style.background = isExisting ? '#f1f5f9' : '#1a3a8f';
-            tabNew.style.color      = isExisting ? '#64748b' : '#fff';
+            tabNew.style.color = isExisting ? '#64748b' : '#fff';
         }
     }
 
@@ -1143,9 +1196,9 @@
         });
         // Highlight selected
         labelEl.style.borderColor = '#1a3a8f';
-        labelEl.style.background  = '#eff6ff';
+        labelEl.style.background = '#eff6ff';
         const dot = labelEl.querySelector('.ra-radio-dot');
-        dot.style.background  = '#1a3a8f';
+        dot.style.background = '#1a3a8f';
         dot.style.borderColor = '#1a3a8f';
         const selInput = document.getElementById('selectedRetiredAdminId');
         if (selInput) selInput.value = userId;
@@ -1187,7 +1240,6 @@
     function toggleActionMenu(btn, event) {
         event.stopPropagation();
         const dropdown = btn.nextElementSibling;
-        const container = btn.closest('.vault-wrapper');
         const currentRow = btn.closest('tr');
 
         document.querySelectorAll('.action-dropdown').forEach(d => {
@@ -1210,6 +1262,10 @@
                 currentRow.style.zIndex = '9999';
             }
 
+            // Check if this is the last visible row in the table
+            const visibleRows = Array.from(document.querySelectorAll('.vault-table tbody tr')).filter(r => r.style.display !== 'none');
+            const isLastVisible = visibleRows.length > 0 && visibleRows[visibleRows.length - 1] === currentRow;
+
             const btnRect = btn.getBoundingClientRect();
             const viewportHeight = window.innerHeight;
             const dropdownHeight = dropdown.offsetHeight || 220;
@@ -1217,8 +1273,8 @@
             const spaceBelow = viewportHeight - btnRect.bottom;
             const spaceAbove = btnRect.top;
 
-            // Only flip up if dropping down overflows viewport AND there is enough room above
-            if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+            // Flip up if: last visible row, OR dropdown overflows viewport with enough room above
+            if (isLastVisible || (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight)) {
                 dropdown.classList.add('drop-up');
             }
         } else {
@@ -1321,13 +1377,13 @@
             container.style.display = 'none';
             // Reset email & name check state on close
             const input = document.getElementById('addBranchEmail');
-            const msg   = document.getElementById('addBranchEmailMsg');
-            const btn   = document.getElementById('addBranchSubmitBtn');
-            const warn  = document.getElementById('addAdminNameWarning');
+            const msg = document.getElementById('addBranchEmailMsg');
+            const btn = document.getElementById('addBranchSubmitBtn');
+            const warn = document.getElementById('addAdminNameWarning');
             if (input) { input.value = ''; input.style.borderColor = ''; }
-            if (msg)   { msg.style.display = 'none'; }
-            if (warn)  { warn.style.display = 'none'; }
-            if (btn)   { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
+            if (msg) { msg.style.display = 'none'; }
+            if (warn) { warn.style.display = 'none'; }
+            if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.style.cursor = 'pointer'; }
         }
     }
 
