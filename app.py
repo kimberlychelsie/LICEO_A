@@ -210,7 +210,7 @@ def check_maintenance_and_session_timeout():
         last_act = session.get("last_activity")
         if last_act and (now - last_act > 3600):
             session.clear()
-            flash("Your session expired due to 1 hour of inactivity for security reasons.", "warning")
+            flash("Your session expired due to inactivity for security reasons.", "warning")
             return redirect(url_for("auth.login"))
         session["last_activity"] = now
 

@@ -600,17 +600,17 @@
         </div>
         <div class="panel-subtitle">Configure session duration and email notifications</div>
 
-        <form action="{{ url_for('super_admin.super_admin_update_preferences') }}" method="POST"
+        <form id="preferencesForm" action="{{ url_for('super_admin.super_admin_update_preferences') }}" method="POST"
             style="max-width: 650px;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="form-group">
                 <label class="form-label">Sudo Mode Security Timeout</label>
-                <select name="sudo_timeout" class="form-input">
-                    <option value="300">5 Minutes</option>
-                    <option value="900" selected>15 Minutes (Recommended)</option>
-                    <option value="1800">30 Minutes</option>
-                    <option value="3600">60 Minutes</option>
+                <select name="sudo_timeout" id="inputSudoTimeout" class="form-input">
+                    <option value="300" {% if sudo_timeout == 300 %}selected{% endif %}>5 Minutes</option>
+                    <option value="900" {% if sudo_timeout == 900 or not sudo_timeout %}selected{% endif %}>15 Minutes (Recommended)</option>
+                    <option value="1800" {% if sudo_timeout == 1800 %}selected{% endif %}>30 Minutes</option>
+                    <option value="3600" {% if sudo_timeout == 3600 %}selected{% endif %}>60 Minutes</option>
                 </select>
                 <small style="color: var(--ma-muted); margin-top: 4px; display: block;">Duration before re-verification
                     is required for high-risk actions (e.g. replacing Branch Admin).</small>
@@ -618,7 +618,7 @@
 
             <div class="form-group" style="margin-top: 24px;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                    <input type="checkbox" name="email_alerts" checked
+                    <input type="checkbox" name="email_alerts" id="inputEmailAlerts" {% if email_alerts %}checked{% endif %}
                         style="width: 20px; height: 20px; accent-color: var(--ma-primary);">
                     Enable System Email Alerts & Notifications
                 </label>
@@ -628,7 +628,7 @@
             </div>
 
             <div style="margin-top: 28px;">
-                <button type="submit" class="btn-save">
+                <button type="submit" id="btnSavePreferences" class="btn-save disabled" disabled>
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
@@ -684,6 +684,10 @@
     let initialEmail = "";
     let initialContact = "";
 
+    // Store initial preferences form values
+    let initialSudoTimeout = "";
+    let initialEmailAlerts = false;
+
     document.addEventListener("DOMContentLoaded", function () {
         const inputUsername = document.getElementById("inputUsername");
         const inputFullName = document.getElementById("inputFullName");
@@ -701,7 +705,61 @@
                 input.addEventListener("change", checkProfileChanges);
             });
         }
+
+        // Initialize preferences form change tracking
+        const inputSudoTimeout = document.getElementById("inputSudoTimeout");
+        const inputEmailAlerts = document.getElementById("inputEmailAlerts");
+        const prefForm = document.getElementById("preferencesForm");
+
+        if (inputSudoTimeout && inputEmailAlerts) {
+            initialSudoTimeout = inputSudoTimeout.value;
+            initialEmailAlerts = inputEmailAlerts.checked;
+
+            [inputSudoTimeout, inputEmailAlerts].forEach(input => {
+                input.addEventListener("change", checkPreferencesChanges);
+                input.addEventListener("input", checkPreferencesChanges);
+            });
+        }
+
+        if (prefForm) {
+            prefForm.addEventListener("submit", function (e) {
+                const btnSavePreferences = document.getElementById("btnSavePreferences");
+                if (btnSavePreferences && btnSavePreferences.disabled) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // Activate tab from URL parameter or hash
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetTab = urlParams.get('tab') || (window.location.hash ? window.location.hash.replace('#', '') : null);
+        if (targetTab === 'securityTab') {
+            const secTabBtn = document.querySelectorAll('.tab-btn')[1];
+            if (secTabBtn) switchTab('securityTab', secTabBtn);
+        }
     });
+
+    function checkPreferencesChanges() {
+        const inputSudoTimeout = document.getElementById("inputSudoTimeout");
+        const inputEmailAlerts = document.getElementById("inputEmailAlerts");
+        const btnSavePreferences = document.getElementById("btnSavePreferences");
+
+        if (!inputSudoTimeout || !inputEmailAlerts || !btnSavePreferences) return;
+
+        const currentSudoTimeout = inputSudoTimeout.value;
+        const currentEmailAlerts = inputEmailAlerts.checked;
+
+        const hasChanged = (currentSudoTimeout !== initialSudoTimeout) ||
+            (currentEmailAlerts !== initialEmailAlerts);
+
+        btnSavePreferences.disabled = !hasChanged;
+
+        if (hasChanged) {
+            btnSavePreferences.classList.remove("disabled");
+        } else {
+            btnSavePreferences.classList.add("disabled");
+        }
+    }
 
     function checkProfileChanges() {
         const inputUsername = document.getElementById("inputUsername");

@@ -1,16 +1,92 @@
 {% extends "base.html" %}
-{% block title %}Archived teachers – Registrar{% endblock %}
+{% block title %}Archived Teachers – Branch Admin{% endblock %}
 
 {% block styles %}
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 :root {
-  --p: #1e3a8a; --a: #3b82f6; --bg: #f8fafc; --card: #ffffff;
+  --ma-primary: #1a3a8f;
+  --ma-primary-light: #e0e7ff;
+  --ma-accent: #3b82f6;
+  --ma-bg: #f8fafc;
+  --ma-card: #ffffff;
+  --ma-text: #0f172a;
+  --ma-muted: #64748b;
+  --ma-border: #e2e8f0;
+  --p: #1a3a8f; --a: #3b82f6; --bg: #f8fafc; --card: #ffffff;
   --bd: #e2e8f0; --tx: #0f172a; --mu: #64748b;
   --ok: #10b981; --warn: #f59e0b; --err: #ef4444;
 }
 body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
-.wrap { max-width: 1300px; margin: 0 auto; padding: 40px 28px; }
+.wrap { max-width: 1400px; margin: 0 auto; padding: 40px 28px; }
+
+/* ── Hero Banner (Matching Manage Accounts) ── */
+.hero-banner {
+  background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+  border-radius: 20px;
+  padding: 40px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.hero-content h1 {
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  margin: 0 0 12px 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #fff;
+}
+
+.hero-content h1 span {
+  color: #facc15;
+  text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+}
+
+.hero-content p {
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  max-width: 600px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.btn-hero-action {
+  background: #ffffff;
+  color: var(--ma-primary);
+  border: 1.5px solid var(--ma-border);
+  text-decoration: none;
+  padding: 0 20px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.btn-hero-action:hover {
+  background: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+  color: #0c2461;
+}
 
 /* Stats */
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 32px; }
@@ -89,6 +165,9 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
 }
 
 @media (max-width: 768px) {
+  .wrap { padding: 16px 12px; }
+  .hero-banner { padding: 24px 16px; }
+  .hero-content h1 { font-size: 1.6rem; white-space: normal; word-break: break-word; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
@@ -96,14 +175,22 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
 
 {% block content %}
 <div class="wrap">
-  <!-- Hero -->
-  <header style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
-    <div>
-      <h1 style="font-size: 2.8rem; font-weight: 900; color: #1e40af; letter-spacing: -1.5px; margin: 0; line-height: 1.1;">Archived Teachers</h1>
-      <p style="margin: 8px 0 0; color: var(--mu); font-weight: 600;">Accounts removed from the main list. <strong>Delete</strong> here only if you are sure.</p>
+  <!-- Hero Banner (Standardized with Manage Accounts) -->
+  <div class="hero-banner">
+    <div class="hero-content">
+      <h1>Archived <span>Teachers</span></h1>
+      <p>Manage and review archived faculty accounts for {{ session.get('branch_name', 'Liceo LMS') }}</p>
     </div>
-    <a href="/branch-admin/manage-teachers" class="btn-primary" style="background: #fff; color: var(--p); border: 2px solid var(--bd); box-shadow: none;">← Back to Teachers</a>
-  </header>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      <a href="/branch-admin/manage-teachers" class="btn-hero-action">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Back to Teachers</span>
+      </a>
+    </div>
+  </div>
 
   <!-- Stats -->
   <div class="stats-grid">

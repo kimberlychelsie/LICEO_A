@@ -88,14 +88,26 @@
     /* ── Two Column Layout ── */
     .dashboard-layout {
         display: grid;
-        grid-template-columns: 1.5fr 1fr;
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
         gap: 32px;
         align-items: flex-start;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .col-left,
+    .col-right {
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 
     @media (max-width: 1024px) {
         .dashboard-layout {
-            grid-template-columns: 1fr;
+            grid-template-columns: minmax(0, 1fr);
         }
     }
 
@@ -107,6 +119,10 @@
         padding: 24px;
         box-shadow: var(--ma-shadow);
         margin-bottom: 24px;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
     }
 
     .panel-title {
@@ -124,9 +140,13 @@
     /* ── Left Column: Metrics Grid ── */
     .metrics-row {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 20px;
         margin-bottom: 24px;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
     }
 
     .metric-box {
@@ -141,6 +161,10 @@
         text-align: center;
         gap: 8px;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
     }
 
     .metric-info .val {
@@ -275,37 +299,70 @@
         color: var(--ma-gold);
     }
 
+    .chart-wrapper {
+        position: relative;
+        height: 300px;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow: hidden;
+    }
+
     @media (max-width: 768px) {
         .ma-container {
-            padding: 16px 12px;
+            padding: 16px 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
         }
 
         .hero-banner {
-            padding: 24px 20px;
+            padding: 24px 20px !important;
+            border-radius: 18px !important;
+            margin-bottom: 20px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
         }
 
         .hero-content h1 {
-            font-size: 1.8rem;
+            font-size: 1.8rem !important;
+        }
+
+        .dashboard-layout {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 20px !important;
         }
 
         .metrics-row {
-            grid-template-columns: 1fr;
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 14px !important;
+            margin-bottom: 20px !important;
+        }
+
+        .metric-box {
+            padding: 20px 16px !important;
+            border-radius: 18px !important;
+        }
+
+        .panel-card {
+            padding: 20px 16px !important;
+            border-radius: 18px !important;
+            margin-bottom: 20px !important;
         }
 
         .quick-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr !important;
+        }
+
+        .chart-wrapper {
+            height: 280px !important;
         }
     }
 
     @media (max-width: 480px) {
         .hero-content h1 {
-            font-size: 1.5rem;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .hero-content h1 {
-            font-size: 1.5rem;
+            font-size: 1.5rem !important;
         }
     }
 
@@ -316,13 +373,12 @@
         background: rgba(15, 23, 42, 0.7);
         backdrop-filter: blur(8px);
         display: none;
-        align-items: flex-start;
+        align-items: center;
         justify-content: center;
-        z-index: 1000;
+        z-index: 9999;
         opacity: 0;
         transition: opacity 0.3s ease;
-        overflow-y: auto;
-        padding: 40px 20px;
+        padding: 20px;
     }
 
     .glass-overlay.visible {
@@ -338,22 +394,34 @@
         padding: 32px;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         position: relative;
+        margin: auto;
+        max-height: 90vh;
+        overflow-y: auto;
     }
 
     .modal-close {
         position: absolute;
-        top: 24px;
-        right: 24px;
+        top: 20px;
+        right: 20px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
         border: none;
-        background: none;
-        font-size: 1.5rem;
+        background: #f1f5f9;
         color: var(--ma-muted);
         cursor: pointer;
-        transition: color 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        padding: 0;
+        z-index: 10;
     }
 
     .modal-close:hover {
+        background: #e2e8f0;
         color: var(--ma-primary);
+        transform: scale(1.05);
     }
 </style>
 
@@ -418,8 +486,8 @@
                 <div class="panel-title">
                     Enrollment Application Status
                 </div>
-                <div style="height: 300px; width: 100%;">
-                    <canvas id="statusChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="statusChart" style="max-width: 100%; max-height: 100%;"></canvas>
                 </div>
             </div>
         </div>
@@ -458,8 +526,8 @@
                     <a href="/branch-admin/academic-calendar" class="quick-btn">
                         Academic Calendar
                     </a>
-                    <a href="/branch-admin/manage-accounts?role=teacher" class="quick-btn">
-                        Manage Teachers
+                    <a href="javascript:void(0)" onclick="toggleShsModal()" class="quick-btn">
+                        SHS Management
                     </a>
                     <a href="/branch-admin/schedules" class="quick-btn">
                         Schedules
@@ -482,13 +550,22 @@
 </div>
 
 <!-- Academic Management Modal -->
-<div class="glass-overlay" id="acadModalOverlay">
+<div class="glass-overlay" id="acadModalOverlay" onclick="if(event.target === this) toggleAcadModal()">
     <div class="glass-modal">
-        <button class="modal-close" onclick="toggleAcadModal()"></button>
+        <button class="modal-close" onclick="toggleAcadModal()" aria-label="Close modal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
         <div style="text-align: center; margin-bottom: 24px;">
             <div
                 style="width: 56px; height: 56px; background: rgba(26, 58, 143, 0.1); color: var(--ma-primary); border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px;">
-                </div>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+            </div>
             <h2 style="margin: 0; font-size: 1.5rem; font-weight: 900; color: var(--ma-primary);">Academic Management
             </h2>
             <p style="margin: 8px 0 0; color: var(--ma-muted); font-size: 0.9rem;">Select an action below</p>
@@ -507,9 +584,37 @@
                 style="background: #f8fafc; border: 1px solid var(--ma-border);">
                 Subjects
             </a>
-            <a href="/branch-admin/assign-students" class="quick-btn"
+        </div>
+    </div>
+</div>
+
+<!-- SHS Management Modal -->
+<div class="glass-overlay" id="shsModalOverlay" onclick="if(event.target === this) toggleShsModal()">
+    <div class="glass-modal">
+        <button class="modal-close" onclick="toggleShsModal()" aria-label="Close modal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div
+                style="width: 56px; height: 56px; background: rgba(250, 204, 21, 0.15); color: var(--ma-primary); border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px;">
+                &#127891;
+            </div>
+            <h2 style="margin: 0; font-size: 1.5rem; font-weight: 900; color: var(--ma-primary);">SHS Management
+            </h2>
+            <p style="margin: 8px 0 0; color: var(--ma-muted); font-size: 0.9rem;">Select an action below</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <a href="/branch-admin/shs/pathways" class="quick-btn"
                 style="background: #f8fafc; border: 1px solid var(--ma-border);">
-                Assign Students
+                SHS Pathways
+            </a>
+            <a href="/branch-admin/shs/offerings" class="quick-btn"
+                style="background: #f8fafc; border: 1px solid var(--ma-border);">
+                SHS Offerings
             </a>
         </div>
     </div>
@@ -528,6 +633,26 @@
             setTimeout(() => modal.classList.add('visible'), 10);
         }
     }
+
+    function toggleShsModal() {
+        const modal = document.getElementById('shsModalOverlay');
+        if (modal.classList.contains('visible')) {
+            modal.classList.remove('visible');
+            setTimeout(() => modal.style.display = 'none', 300);
+        } else {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('visible'), 10);
+        }
+    }
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            const acad = document.getElementById('acadModalOverlay');
+            if (acad && acad.classList.contains('visible')) toggleAcadModal();
+            const shs = document.getElementById('shsModalOverlay');
+            if (shs && shs.classList.contains('visible')) toggleShsModal();
+        }
+    });
 
     // Chart.js Configuration
     Chart.register(ChartDataLabels);
@@ -581,11 +706,12 @@
             cutout: '65%',
             plugins: {
                 legend: {
-                    position: 'right',
+                    position: window.innerWidth < 640 ? 'bottom' : 'right',
                     labels: {
                         font: { family: 'Plus Jakarta Sans', weight: '800' },
                         usePointStyle: true,
-                        padding: 20
+                        padding: window.innerWidth < 640 ? 10 : 20,
+                        boxWidth: 10
                     }
                 },
                 tooltip: {

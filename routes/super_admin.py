@@ -49,7 +49,8 @@ def is_valid_username(val):
 
 def check_sudo_required():
     sudo_app = session.get("sudo_approved")
-    if sudo_app and (time.time() - sudo_app < 900):
+    timeout = session.get("sudo_timeout_secs", 900)
+    if sudo_app and (time.time() - sudo_app < timeout):
         return True
     return False
 
@@ -1668,11 +1669,30 @@ def super_admin_settings():
             """)
             admin_user = cursor.fetchone()
 
+        # Load system preferences
+        cursor.execute("""
+            SELECT setting_key, setting_value FROM system_settings 
+            WHERE setting_key IN ('sudo_mode_timeout', 'email_alerts_enabled')
+        """)
+        prefs = {r["setting_key"]: r["setting_value"] for r in cursor.fetchall()}
+
+        raw_timeout = prefs.get("sudo_mode_timeout")
+        sudo_timeout = int(raw_timeout) if (raw_timeout and str(raw_timeout).isdigit()) else session.get("sudo_timeout_secs", 900)
+
+        raw_email = prefs.get("email_alerts_enabled")
+        if raw_email is not None:
+            email_alerts = (raw_email == "on")
+        else:
+            email_alerts = session.get("email_alerts_enabled", True)
+
+        session["sudo_timeout_secs"] = sudo_timeout
+        session["email_alerts_enabled"] = email_alerts
+
         sudo_active = check_sudo_required()
         sudo_remaining = 0
         if sudo_active and session.get("sudo_approved"):
             elapsed = time.time() - session.get("sudo_approved")
-            sudo_remaining = max(0, int(900 - elapsed))
+            sudo_remaining = max(0, int(sudo_timeout - elapsed))
 
         masked_username_val = mask_username(admin_user["username"]) if (admin_user and admin_user.get("username")) else ""
         masked_email_val = mask_email(admin_user["email"]) if (admin_user and admin_user.get("email")) else ""
@@ -1683,6 +1703,8 @@ def super_admin_settings():
         admin_user = None
         sudo_active = False
         sudo_remaining = 0
+        sudo_timeout = 900
+        email_alerts = True
         masked_username_val = ""
         masked_email_val = ""
         masked_contact_val = ""
@@ -1695,6 +1717,8 @@ def super_admin_settings():
         admin_user=admin_user,
         sudo_active=sudo_active,
         sudo_remaining=sudo_remaining,
+        sudo_timeout=sudo_timeout,
+        email_alerts=email_alerts,
         masked_username=masked_username_val,
         masked_email=masked_email_val,
         masked_contact=masked_contact_val
@@ -1868,17 +1892,44 @@ def super_admin_update_preferences():
         return redirect(url_for("auth.login"))
 
     sudo_timeout = request.form.get("sudo_timeout", "900")
-    email_alerts = request.form.get("email_alerts") == "on"
+    # Checkbox: if unchecked, it's missing from POST request.form
+    email_alerts_val = "on" if request.form.get("email_alerts") else "off"
+    email_alerts_bool = (email_alerts_val == "on")
 
+    db = get_db_connection()
+    cursor = db.cursor()
     try:
+        cursor.execute("""
+            INSERT INTO system_settings (setting_key, setting_value, updated_at)
+            VALUES ('sudo_mode_timeout', %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (setting_key) DO UPDATE
+            SET setting_value = EXCLUDED.setting_value,
+                updated_at = CURRENT_TIMESTAMP
+        """, (str(sudo_timeout),))
+
+        cursor.execute("""
+            INSERT INTO system_settings (setting_key, setting_value, updated_at)
+            VALUES ('email_alerts_enabled', %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (setting_key) DO UPDATE
+            SET setting_value = EXCLUDED.setting_value,
+                updated_at = CURRENT_TIMESTAMP
+        """, (email_alerts_val,))
+
+        db.commit()
+
         session["sudo_timeout_secs"] = int(sudo_timeout)
-        session["email_alerts_enabled"] = email_alerts
+        session["email_alerts_enabled"] = email_alerts_bool
 
-        flash("✅ Preferences updated successfully.", "success")
+        flash("✅ Preferences updated successfully! Your security timeout and notification settings have been saved.", "success")
     except Exception as e:
+        db.rollback()
+        logger.error(f"Error saving preferences: {e}")
         flash(f"❌ Error saving preferences: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
 
-    return redirect(url_for("super_admin.super_admin_settings"))
+    return redirect(url_for("super_admin.super_admin_settings", tab="securityTab"))
 
 
 @super_admin_bp.after_request
