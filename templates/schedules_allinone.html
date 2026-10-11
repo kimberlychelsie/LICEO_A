@@ -261,14 +261,37 @@
         align-items: center;
     }
 
+    #listViewContainer {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 #f1f5f9;
+    }
+    #listViewContainer::-webkit-scrollbar {
+        height: 8px;
+    }
+    #listViewContainer::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+    #listViewContainer::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    #listViewContainer::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
     .premium-table {
         width: 100%;
+        min-width: 980px;
         border-collapse: collapse;
     }
 
     .premium-table th {
         text-align: left;
-        padding: 16px 24px;
+        padding: 16px 20px;
         background: #f8fafc;
         color: var(--sch-text-muted);
         font-size: 0.74rem;
@@ -276,12 +299,15 @@
         text-transform: uppercase;
         letter-spacing: 0.06em;
         border-bottom: 1px solid var(--sch-border);
+        white-space: nowrap;
     }
 
     .premium-table td {
-        padding: 16px 24px;
+        padding: 16px 20px;
         border-bottom: 1px solid #f1f5f9;
         font-size: 0.88rem;
+        vertical-align: middle;
+        white-space: nowrap;
     }
 
     .schedule-row:hover {
@@ -291,6 +317,8 @@
     .class-info {
         display: flex;
         flex-direction: column;
+        white-space: normal;
+        min-width: 150px;
     }
     .class-main {
         font-weight: 800;
@@ -302,15 +330,35 @@
         font-weight: 600;
     }
 
+    .grade-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--sch-blue-light);
+        color: var(--sch-blue);
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-weight: 800;
+        font-size: 0.82rem;
+        border: 1px solid #bfdbfe;
+        white-space: nowrap;
+        line-height: 1.25;
+        box-sizing: border-box;
+    }
+
     .time-slot {
         font-weight: 800;
         color: var(--sch-blue);
         background: var(--sch-blue-light);
         padding: 5px 12px;
         border-radius: 10px;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
         font-size: 0.82rem;
         border: 1px solid #bfdbfe;
+        white-space: nowrap;
+        line-height: 1.25;
+        box-sizing: border-box;
     }
 
     .room-badge {
@@ -321,6 +369,12 @@
         border-radius: 10px;
         font-size: 0.8rem;
         border: 1px solid #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+        line-height: 1.25;
+        box-sizing: border-box;
     }
 
     .btn-action {
@@ -862,7 +916,7 @@
                     {% for sched in schedules %}
                     <tr class="schedule-row" data-grade="{{ sched.grade_name }}" data-section-id="{{ sched.section_id }}" data-term-name="{{ sched.term_name or '' }}">
                         <td><span style="color: var(--sch-blue); font-weight: 800;">{{sched.year_label}}</span></td>
-                        <td><span style="background: var(--sch-blue-light); color: var(--sch-blue); padding: 4px 10px; border-radius: 8px; font-weight: 800; font-size: 0.8rem; border: 1px solid #bfdbfe;">{{sched.grade_name}}</span></td>
+                        <td><span class="grade-badge">{{sched.grade_name}}</span></td>
                         <td>
                             <div class="class-info">
                                 <span class="class-main">{{sched.section_name}}</span>

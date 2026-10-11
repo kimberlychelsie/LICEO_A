@@ -37,3 +37,7 @@ CREATE TABLE IF NOT EXISTS public.new_student_enrollment_settings (
         REFERENCES public.school_years(branch_id, year_id)
         ON DELETE CASCADE
 );
+
+GRANT ALL PRIVILEGES ON TABLE public.new_student_enrollment_settings TO PUBLIC;
+GRANT ALL PRIVILEGES ON SEQUENCE public.new_student_enrollment_settings_setting_id_seq TO PUBLIC;
+

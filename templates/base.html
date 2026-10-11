@@ -66,6 +66,11 @@
       padding: 0;
     }
 
+    html {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
     body {
       font-family: 'Inter', Arial, sans-serif;
       background: var(--bg);
@@ -73,6 +78,9 @@
       font-size: 14px;
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
+      max-width: 100%;
+      overflow-x: hidden;
+      position: relative;
     }
 
     /* ══════════════════════════════════════════
@@ -626,6 +634,10 @@
       margin-left: 0;
       margin-top: var(--topbar-h);
       min-height: calc(100vh - var(--topbar-h));
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+      box-sizing: border-box;
       /* Trans transitions for side push */
       transition: margin-left 0.35s cubic-bezier(.4, 0, .2, 1);
     }
@@ -640,6 +652,11 @@
       box-sizing: border-box;
     }
 
+    /* Prevent canvas, images, and embedded media from breaking mobile bounds */
+    canvas, img, svg {
+      max-width: 100%;
+    }
+
     /* Fix table overflow on mobile */
     .table-wrap,
     .card>div {
@@ -648,8 +665,13 @@
     }
 
     @media (max-width: 768px) {
+      .main-wrap {
+        margin-left: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
       .page-content {
-        padding: 16px 16px 48px;
+        padding: 16px 14px 48px;
       }
     }
 
@@ -669,6 +691,8 @@
 
       .main-wrap {
         margin-left: var(--sidebar-w);
+        width: calc(100% - var(--sidebar-w));
+        max-width: calc(100% - var(--sidebar-w));
       }
 
       /* Collapsed State */
@@ -691,6 +715,8 @@
 
       body.sidebar-collapsed .main-wrap {
         margin-left: 70px;
+        width: calc(100% - 70px);
+        max-width: calc(100% - 70px);
       }
 
       /* Collapsed UI Adjustments */
@@ -2959,8 +2985,18 @@
       }
     }
 
-    // On resize, re-evaluate layout
-    window.addEventListener('resize', applyState);
+    // On resize, re-evaluate layout and ensure charts adapt dynamically
+    window.addEventListener('resize', function () {
+      applyState();
+      if (window.innerWidth < 768 && document.body.classList.contains('sidebar-collapsed')) {
+        document.body.classList.remove('sidebar-collapsed');
+      }
+      if (window.Chart && typeof window.Chart.instances === 'object') {
+        Object.values(window.Chart.instances).forEach(function (chart) {
+          try { chart.resize(); } catch (e) {}
+        });
+      }
+    });
 
     // Sidebar is hidden by CSS default (no .open class) — no applyState() needed on load
 
