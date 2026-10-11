@@ -590,72 +590,7 @@
     .btn-preset-full { background: #ecfdf5; border-color: #10b981; color: #047857; }
     .btn-preset-full:hover { background: #d1fae5; }
 
-    @media print {
-        @page {
-            size: 80mm auto;
-            margin: 0;
-        }
-        /* Hide all global theme components */
-        .sidebar, .topbar, header, .chatbot-widget, #chatbotBtn, .chatbot-container, #universalPreviewModal {
-            display: none !important;
-        }
-        /* Hide everything inside page-content except the receipt modal overlay */
-        .page-content > *:not(#receiptModal) {
-            display: none !important;
-        }
-        /* Reset wrappers to allow full width 80mm printing of modal */
-        html, body, .main-wrap, .page-content {
-            background: #fff !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 80mm !important;
-            height: auto !important;
-            min-height: unset !important;
-            box-shadow: none !important;
-            border: none !important;
-        }
-        #receiptModal {
-            display: block !important;
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 80mm !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            box-shadow: none !important;
-            background: transparent !important;
-            backdrop-filter: none !important;
-            overflow: visible !important;
-        }
-        .receipt-modal-box {
-            width: 80mm !important;
-            max-width: 80mm !important;
-            box-shadow: none !important;
-            border-radius: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            display: block !important;
-            overflow: visible !important;
-        }
-        .receipt-modal-actions {
-            display: none !important;
-        }
-        .thermal-receipt {
-            width: 80mm !important;
-            max-width: 80mm !important;
-            padding: 6mm 4mm !important;
-            box-sizing: border-box !important;
-            font-size: 9pt !important;
-            display: block !important;
-            overflow: visible !important;
-        }
-        .th-amount-box {
-            background: #000 !important;
-            color: #fff !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-    }
+    /* No @media print needed — printing is done via isolated iframe */
 </style>
 {% endblock %}
 
@@ -1082,7 +1017,164 @@ function closeReceiptModal() {
     }
 }
 function printReceipt() {
-    window.print();
+    // Get the receipt HTML content
+    var receiptContent = document.getElementById('thermalReceiptContent').innerHTML;
+
+    // Create a hidden iframe
+    var iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+
+    // Write clean receipt HTML into the iframe
+    var doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Official Receipt</title>
+<style>
+  @page {
+    size: 80mm auto;
+    margin: 4mm 3mm;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 9pt;
+    color: #000;
+    background: #fff;
+    width: 80mm;
+  }
+  .th-center { text-align: center; margin-bottom: 4px; }
+  .th-logo {
+    font-family: Georgia, serif;
+    font-size: 13pt;
+    font-weight: bold;
+    color: #1e3a8a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .th-sub { font-size: 7.5pt; color: #444; margin-top: 1px; }
+  .th-or { font-size: 10pt; font-weight: bold; color: #1e3a8a; margin-top: 4px; }
+  .th-divider-solid {
+    border: none;
+    border-top: 1.5px solid #000;
+    margin: 6px 0;
+  }
+  .th-divider {
+    border: none;
+    border-top: 1px dashed #999;
+    margin: 5px 0;
+  }
+  .th-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 2px 0;
+    font-size: 8.5pt;
+  }
+  .th-label { color: #555; }
+  .th-val { font-weight: 700; text-align: right; }
+  .th-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 4px 0;
+    font-size: 8.5pt;
+  }
+  .th-table thead tr {
+    background: #1e3a8a;
+    color: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .th-table th { padding: 4px 5px; font-size: 7.5pt; letter-spacing: 0.5px; }
+  .th-table td { padding: 4px 5px; border-bottom: 1px dashed #ccc; }
+  .th-table tfoot tr th { border-top: 1px solid #000; padding: 4px 5px; }
+  .th-sig-container { display: flex; gap: 6px; margin: 8px 0 4px; }
+  .th-sig-box { flex: 1; text-align: center; }
+  .th-sig-name {
+    font-weight: 700;
+    font-size: 8pt;
+    padding-bottom: 2px;
+    border-bottom: 1px solid #000;
+    margin-bottom: 2px;
+  }
+  .th-sig-role { font-size: 6.5pt; text-transform: uppercase; letter-spacing: 0.5px; color: #555; }
+  .th-thank { text-align: center; font-size: 7.5pt; color: #555; margin-top: 8px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="th-center">
+  <div class="th-logo" id="p-branch"></div>
+  <div class="th-sub">Official Electronic Receipt</div>
+</div>
+<hr class="th-divider-solid">
+<div class="th-center">
+  <div class="th-or" id="p-or"></div>
+  <div class="th-sub" id="p-date"></div>
+</div>
+<hr class="th-divider">
+<div class="th-row"><span class="th-label">Name:</span><span class="th-val" id="p-student"></span></div>
+<div class="th-row"><span class="th-label">Grade:</span><span class="th-val" id="p-grade"></span></div>
+<hr class="th-divider">
+<table class="th-table">
+  <thead><tr><th style="text-align:left">DESCRIPTION</th><th style="text-align:right;width:80px">AMOUNT</th></tr></thead>
+  <tbody id="p-items"></tbody>
+  <tfoot><tr><th style="text-align:left">TOTAL PAID</th><th style="text-align:right" id="p-total-paid"></th></tr></tfoot>
+</table>
+<hr class="th-divider">
+<div class="th-row"><span class="th-label">Total Bill:</span><span class="th-val" id="p-total"></span></div>
+<div class="th-row"><span class="th-label">Total Paid:</span><span class="th-val" id="p-paid"></span></div>
+<div class="th-row" style="font-weight:900;color:#1e3a8a"><span class="th-label">Balance:</span><span class="th-val" id="p-balance"></span></div>
+<hr class="th-divider-solid">
+<div class="th-sig-container">
+  <div class="th-sig-box"><div class="th-sig-name" id="p-cashier"></div><div class="th-sig-role">Authorized Cashier</div></div>
+  <div class="th-sig-box"><div class="th-sig-name" id="p-admin"></div><div class="th-sig-role">School Principal</div></div>
+</div>
+<div class="th-thank">Thank you for your payment.<br>This is your official receipt.</div>
+</body>
+</html>`);
+    doc.close();
+
+    // Copy data from the visible receipt into the iframe receipt
+    function copyText(srcId, destId) {
+        var src = document.getElementById(srcId);
+        var dest = doc.getElementById(destId);
+        if (src && dest) dest.textContent = src.textContent;
+    }
+    copyText('rc-branch',     'p-branch');
+    copyText('rc-or',         'p-or');
+    copyText('rc-date',       'p-date');
+    copyText('rc-student',    'p-student');
+    copyText('rc-grade',      'p-grade');
+    copyText('rc-total-paid', 'p-total-paid');
+    copyText('rc-total',      'p-total');
+    copyText('rc-paid',       'p-paid');
+    copyText('rc-balance',    'p-balance');
+    copyText('rc-cashier',    'p-cashier');
+    copyText('rc-admin',      'p-admin');
+
+    // Copy table rows
+    var srcRows = document.getElementById('rc-items-body').cloneNode(true);
+    doc.getElementById('p-items').innerHTML = srcRows.innerHTML;
+
+    // Print after a short delay to let the iframe render
+    setTimeout(function() {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        // Remove iframe after print dialog closes
+        setTimeout(function() {
+            document.body.removeChild(iframe);
+        }, 1000);
+    }, 300);
 }
 document.getElementById('receiptModal').addEventListener('click', function(e) {
     if (e.target === this) closeReceiptModal();

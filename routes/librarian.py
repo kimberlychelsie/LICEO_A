@@ -864,10 +864,36 @@ def releases_all():
 
     grade_filter  = (request.args.get("grade")  or "").strip()
     search_filter = (request.args.get("search") or "").strip()
+    per_page      = 50
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
 
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        # ── Fetch only grade levels that actually have releases (real-time) ──
+        # Sorted in canonical school order (Nursery → Kinder → Grade 1..10)
+        cur.execute("""
+            SELECT DISTINCT COALESCE(e.grade_level, '') AS grade_level
+            FROM book_releases br
+            LEFT JOIN enrollments e ON e.enrollment_id = br.enrollment_id
+            WHERE br.branch_id = %s
+              AND COALESCE(e.grade_level, '') <> ''
+            ORDER BY
+                CASE COALESCE(e.grade_level,'')
+                    WHEN 'Nursery'  THEN 0  WHEN 'Kinder'   THEN 1
+                    WHEN 'Grade 1'  THEN 2  WHEN 'Grade 2'  THEN 3
+                    WHEN 'Grade 3'  THEN 4  WHEN 'Grade 4'  THEN 5
+                    WHEN 'Grade 5'  THEN 6  WHEN 'Grade 6'  THEN 7
+                    WHEN 'Grade 7'  THEN 8  WHEN 'Grade 8'  THEN 9
+                    WHEN 'Grade 9'  THEN 10 WHEN 'Grade 10' THEN 11
+                    WHEN 'Grade 11' THEN 12 WHEN 'Grade 12' THEN 13
+                    ELSE 99 END
+        """, (branch_id,))
+        available_grades = [row["grade_level"] for row in (cur.fetchall() or [])]
+
         where  = ["br.branch_id = %s"]
         params = [branch_id]
 
@@ -885,6 +911,22 @@ def releases_all():
             params.extend([like, like, like])
 
         where_sql = " AND ".join(where)
+
+        # Count total filtered rows
+        count_sql = f"""
+            SELECT COUNT(*) AS total
+            FROM book_releases br
+            JOIN book_release_items bri ON bri.release_id = br.release_id
+            JOIN inventory_items ii     ON ii.item_id = bri.item_id
+            LEFT JOIN enrollments e     ON e.enrollment_id = br.enrollment_id
+            WHERE {where_sql}
+        """
+        cur.execute(count_sql, params)
+        total_filtered = int((cur.fetchone() or {}).get("total", 0))
+        import math
+        total_pages = max(1, math.ceil(total_filtered / per_page))
+        page = min(page, total_pages)
+        offset = (page - 1) * per_page
 
         cur.execute(f"""
             SELECT
@@ -904,16 +946,18 @@ def releases_all():
             WHERE {where_sql}
             ORDER BY
                 CASE COALESCE(e.grade_level,'')
-                    WHEN 'Nursery'  THEN 0 WHEN 'Kinder'  THEN 1
-                    WHEN 'Grade 1'  THEN 2 WHEN 'Grade 2'  THEN 3
-                    WHEN 'Grade 3'  THEN 4 WHEN 'Grade 4'  THEN 5
-                    WHEN 'Grade 5'  THEN 6 WHEN 'Grade 6'  THEN 7
-                    WHEN 'Grade 7'  THEN 8 WHEN 'Grade 8'  THEN 9
+                    WHEN 'Nursery'  THEN 0  WHEN 'Kinder'  THEN 1
+                    WHEN 'Grade 1'  THEN 2  WHEN 'Grade 2'  THEN 3
+                    WHEN 'Grade 3'  THEN 4  WHEN 'Grade 4'  THEN 5
+                    WHEN 'Grade 5'  THEN 6  WHEN 'Grade 6'  THEN 7
+                    WHEN 'Grade 7'  THEN 8  WHEN 'Grade 8'  THEN 9
                     WHEN 'Grade 9'  THEN 10 WHEN 'Grade 10' THEN 11
+                    WHEN 'Grade 11' THEN 12 WHEN 'Grade 12' THEN 13
                     ELSE 99 END,
                 LOWER(COALESCE(br.student_name,'')),
                 br.created_at DESC
-        """, params)
+            LIMIT %s OFFSET %s
+        """, params + [per_page, offset])
         releases_rows = cur.fetchall() or []
         for rr in releases_rows:
             if rr.get("created_at"):
@@ -927,6 +971,10 @@ def releases_all():
         print(f"[librarian.releases_all] error: {e}")
         releases_rows = []
         total_releases = 0
+        total_filtered = 0
+        total_pages = 1
+        offset = 0
+        available_grades = []
     finally:
         cur.close()
         db.close()
@@ -934,11 +982,16 @@ def releases_all():
     return render_template(
         "librarian_releases_all.html",
         releases=releases_rows,
-        grades=GRADES,
+        grades=available_grades,
         grade_filter=grade_filter,
         search_filter=search_filter,
         total_releases=total_releases,
+        total_filtered=total_filtered,
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages,
     )
+
 
 
 @librarian_bp.route("/librarian/books/<int:item_id>/delete", methods=["POST"])
