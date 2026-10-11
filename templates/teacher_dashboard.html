@@ -722,6 +722,42 @@
         </div>
     </div>
 
+    {% if admin_announcements %}
+    <div class="section-container" style="margin-bottom: 24px;">
+        <div class="section-header">
+            <div class="section-header-wrapper">
+                <div class="section-header-icon icon-bg-blue">
+                    <i class="fas fa-bullhorn"></i>
+                </div>
+                <h2 class="section-title">Admin Announcements</h2>
+            </div>
+        </div>
+        <div class="activity-list">
+            {% for a in admin_announcements %}
+            <div class="activity-card-item">
+                <div class="activity-avatar-badge avatar-announcement">
+                    <i class="fas fa-bullhorn"></i>
+                </div>
+                <div class="activity-content-box">
+                    <div class="activity-title-text">{{ a.title }}</div>
+                    {% if a.message %}
+                    <div class="activity-sub-info">
+                        <span>{{ a.message }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="activity-sub-info">
+                        <span class="activity-date"><i class="far fa-clock"></i> {{ a.created_at_local.strftime('%b %d, %Y • %I:%M %p') if a.created_at_local else '' }}</span>
+                    </div>
+                </div>
+                {% if a.image_url %}
+                <img src="{{ a.image_url }}" alt="{{ a.title }}" style="width: 56px; height: 56px; object-fit: cover; border-radius: 12px;">
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Main Content Grid -->
     <div class="content-grid">
         

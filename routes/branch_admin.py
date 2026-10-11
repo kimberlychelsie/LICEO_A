@@ -336,7 +336,10 @@ def branch_admin_broadcast_station():
                         VALUES (%s, %s, TRUE, %s, %s, %s)
                     """, (title, message, image_url, branch_id, audience))
                     db.commit()
-                    flash("Announcement added to homepage!", "success")
+                    if audience == "teacher":
+                        flash("Announcement added to Teacher Dashboard!", "success")
+                    else:
+                        flash("Announcement added to homepage!", "success")
                 else:
                     flash("Announcement title is required.", "error")
                 return redirect(url_for("branch_admin.branch_admin_broadcast_station"))

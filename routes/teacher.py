@@ -488,7 +488,7 @@ def teacher_dashboard():
             FROM announcements
             WHERE is_active = TRUE
               AND branch_id = %s
-              AND audience IN ('all','teacher')
+              AND audience = 'teacher'
             ORDER BY created_at DESC
             LIMIT 20
         """, (branch_id,))
@@ -8348,4 +8348,3 @@ def teacher_swafo_conference_detail(conf_id):
     finally:
         cur.close()
         db.close()
-
