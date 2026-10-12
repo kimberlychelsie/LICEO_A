@@ -437,6 +437,24 @@
             padding: 0 !important;
         }
     }
+
+    .btn-delete-enrollment:hover {
+        background: #fee2e2 !important;
+        border-color: #dc2626 !important;
+        color: #dc2626 !important;
+        transform: translateY(-1px);
+    }
+
+    @keyframes fadeInModal {
+        from {
+            opacity: 0;
+            transform: scale(0.96) translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
 </style>
 {% endblock %}
 
@@ -592,10 +610,26 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="details-inner">
                                 <div style="grid-column: 1 / -1; margin-bottom: -16px;">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--reg-border);">
-                                        <div>
-                                            <span style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--reg-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Account Username</span>
-                                            <span style="font-size: 0.9rem; font-weight: 700; color: var(--reg-primary);">{{ s.account_username or 'No Account' }}</span>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--reg-border); flex-wrap: wrap; gap: 12px;">
+                                        <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
+                                            <div>
+                                                <span style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--reg-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Student Account</span>
+                                                <span style="font-size: 0.9rem; font-weight: 700; color: var(--reg-primary);">{{ s.account_username or 'No Account' }}</span>
+                                            </div>
+                                            {% if s.parent_username %}
+                                            <div>
+                                                <span style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--reg-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Linked Parent Account</span>
+                                                <span style="font-size: 0.9rem; font-weight: 700; color: #0284c7; display: flex; align-items: center; gap: 6px;">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                                    {{ s.parent_username }}
+                                                    {% if s.parent_other_children_count and s.parent_other_children_count > 0 %}
+                                                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: #e0f2fe; color: #0369a1;">+{{ s.parent_other_children_count }} sibling{{ 's' if s.parent_other_children_count > 1 else '' }}</span>
+                                                    {% else %}
+                                                    <span style="font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: #fef3c7; color: #92400e;">Only Child</span>
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+                                            {% endif %}
                                         </div>
                                         {% if s.account_username %}
                                         <button type="button" class="btn btn-outline" onclick="resetPassword('{{ s.enrollment_id }}', '{{ s.student_name }}')" style="padding: 6px 12px; font-size: 0.7rem; background: #fff; border-color: var(--reg-danger); color: var(--reg-danger);">
@@ -909,10 +943,19 @@
                                 </div>
 
 </div>
-                                <div style="grid-column: 1 / -1; margin-top: 10px;">
+                                <div style="grid-column: 1 / -1; margin-top: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                                     {% if not is_history_mode %}
                                     <button type="submit" id="save-btn-{{ s.enrollment_id }}" class="btn-save-row"
                                         disabled>Save Changes</button>
+                                    <button type="button" class="btn-delete-enrollment" onclick="openDeleteModal('{{ s.enrollment_id }}', '{{ s.student_name | escape }}', '{{ s.grade_level | escape }}', '{{ s.section_name or 'Unplaced' }}', '{{ s.parent_username or '' }}', {{ s.parent_other_children_count or 0 }})" style="padding: 10px 18px; font-size: 0.8rem; font-weight: 700; background: #fff; border: 1.5px solid #ef4444; color: #ef4444; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                                        </svg>
+                                        Delete Enrollment
+                                    </button>
                                     {% endif %}
                                 </div>
                             </div>
@@ -938,6 +981,56 @@
         {% endif %}
     </div>
 
+</div>
+
+<!-- DELETE ENROLLMENT CONFIRMATION MODAL -->
+<div id="deleteEnrollmentModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 16px;">
+    <div style="background: #ffffff; border-radius: 20px; max-width: 520px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid var(--reg-border); overflow: hidden; animation: fadeInModal 0.2s ease-out;">
+        <div style="padding: 22px 28px 18px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+            </div>
+            <div>
+                <h3 style="margin: 0; font-size: 1.18rem; font-weight: 800; color: #0f172a;">Delete Student Enrollment</h3>
+                <p style="margin: 3px 0 0; font-size: 0.8rem; color: #64748b; font-weight: 500;">Permanently remove this student record from registry</p>
+            </div>
+        </div>
+
+        <form method="POST" id="deleteEnrollmentForm" action="" style="padding: 22px 28px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div style="background: #f8fafc; border-radius: 12px; padding: 14px 16px; border: 1px solid #e2e8f0; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Student Name:</span>
+                    <span id="delModalStudentName" style="font-size: 0.88rem; font-weight: 800; color: #1e3a8a;"></span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Grade & Section:</span>
+                    <span id="delModalGradeSection" style="font-size: 0.82rem; font-weight: 700; color: #334155;"></span>
+                </div>
+            </div>
+
+            <!-- Dynamic Parent Account Info Box -->
+            <div id="delModalParentBox" style="display: none; margin-bottom: 16px; padding: 14px 16px; border-radius: 12px;"></div>
+
+            <div style="padding: 12px 14px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; margin-bottom: 22px; display: flex; gap: 10px; align-items: flex-start;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <div style="font-size: 0.78rem; color: #9f1239; line-height: 1.4; font-weight: 600;">
+                    <strong>Notice:</strong> This action cannot be undone. This will permanently delete the student's enrollment record and all related database dependencies.
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-outline" onclick="closeDeleteModal()" style="padding: 10px 18px; font-size: 0.85rem; font-weight: 700; border-radius: 10px;">Cancel</button>
+                <button type="submit" class="btn" style="padding: 10px 20px; font-size: 0.85rem; font-weight: 800; border-radius: 10px; background: #dc2626; color: #ffffff; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">Confirm Delete</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}
 
@@ -1405,5 +1498,63 @@
             input.value = '';
         }
     }
+
+    // ===== DELETE ENROLLMENT MODAL HANDLERS =====
+    function openDeleteModal(enrollmentId, studentName, gradeLevel, sectionName, parentUsername, parentOtherChildrenCount) {
+        const modal = document.getElementById('deleteEnrollmentModal');
+        const form = document.getElementById('deleteEnrollmentForm');
+        form.action = `/registrar/students-by-grade/delete/${enrollmentId}`;
+
+        document.getElementById('delModalStudentName').textContent = studentName;
+        document.getElementById('delModalGradeSection').textContent = `${gradeLevel} - ${sectionName}`;
+
+        const parentBox = document.getElementById('delModalParentBox');
+        if (parentUsername && parentUsername.trim() !== '') {
+            parentBox.style.display = 'block';
+            if (parentOtherChildrenCount > 0) {
+                parentBox.style.background = '#f0fdf4';
+                parentBox.style.border = '1px solid #bbf7d0';
+                parentBox.innerHTML = `
+                    <div style="font-size: 0.78rem; font-weight: 800; color: #166534; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
+                        <span>👨‍👩‍👧 Linked Parent Account:</span>
+                        <strong style="color: #15803d;">${parentUsername}</strong>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #15803d; line-height: 1.45;">
+                        This parent has <strong>${parentOtherChildrenCount} other enrolled child(ren)</strong>. Deleting this enrollment will simply unlink this student. The parent account will stay safe and active.
+                    </div>
+                `;
+            } else {
+                parentBox.style.background = '#fffbeb';
+                parentBox.style.border = '1px solid #fde68a';
+                parentBox.innerHTML = `
+                    <div style="font-size: 0.78rem; font-weight: 800; color: #92400e; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
+                        <span>👨‍👩‍👧 Linked Parent Account:</span>
+                        <strong style="color: #b45309;">${parentUsername}</strong>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #78350f; line-height: 1.45; margin-bottom: 10px;">
+                        This student is currently the <strong>only child</strong> connected to this parent account.
+                    </div>
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.78rem; font-weight: 700; color: #92400e; cursor: pointer; background: #fef3c7; padding: 8px 12px; border-radius: 8px; border: 1px solid #fcd34d;">
+                        <input type="checkbox" name="delete_parent_account" value="1" checked style="width: 16px; height: 16px; accent-color: #d97706; cursor: pointer;">
+                        Also delete/deactivate the orphaned Parent Account (${parentUsername})
+                    </label>
+                `;
+            }
+        } else {
+            parentBox.style.display = 'none';
+            parentBox.innerHTML = '';
+        }
+
+        modal.style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        const modal = document.getElementById('deleteEnrollmentModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    document.getElementById('deleteEnrollmentModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeDeleteModal();
+    });
 </script>
 {% endblock %}

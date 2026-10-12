@@ -3004,6 +3004,11 @@ def registrar_students_by_grade():
 
         query = """
             SELECT e.*, s.section_name, sa.username AS account_username,
+                   (SELECT u.username FROM parent_student ps JOIN users u ON u.user_id = ps.parent_id WHERE ps.student_id = e.enrollment_id LIMIT 1) AS parent_username,
+                   (SELECT u.user_id FROM parent_student ps JOIN users u ON u.user_id = ps.parent_id WHERE ps.student_id = e.enrollment_id LIMIT 1) AS parent_user_id,
+                   (SELECT COUNT(*) FROM parent_student ps2 
+                    WHERE ps2.parent_id IN (SELECT ps3.parent_id FROM parent_student ps3 WHERE ps3.student_id = e.enrollment_id)
+                      AND ps2.student_id != e.enrollment_id) AS parent_other_children_count,
                    COALESCE(
                        json_agg(
                            json_build_object(
@@ -3051,6 +3056,8 @@ def registrar_students_by_grade():
                 e.get("student_middle_name"),
                 e.get("student_last_name"),
             ]))
+            e["parent_username"] = e.get("parent_username") or ""
+            e["parent_other_children_count"] = e.get("parent_other_children_count") or 0
             if isinstance(e["documents"], str):
                 e["documents"] = json.loads(e["documents"])
             students.append(e)
@@ -3217,6 +3224,167 @@ def registrar_students_by_grade_update(enrollment_id):
         cursor.close()
         db.close()
         
+    return redirect(request.referrer or "/registrar/students-by-grade")
+
+
+def _safe_delete_user_record(cursor, user_id, branch_id):
+    """Safely delete a user from the users table by unlinking/deleting child records that lack ON DELETE CASCADE."""
+    updates_to_null = [
+        ("schedules", "teacher_id"),
+        ("sections", "teacher_id"),
+        ("enrollments", "user_id"),
+        ("grade_submission_requests", "submitted_by"),
+        ("grade_submission_requests", "registrar_approved_by"),
+        ("grade_submission_requests", "admin_approved_by"),
+        ("grade_submission_requests", "rejected_by"),
+        ("reservations", "reserved_by_user_id"),
+        ("uniform_orders", "created_by_user_id"),
+        ("uniform_orders", "claimed_by_user_id"),
+        ("uniform_orders", "student_user_id"),
+        ("shs_student_elective_requests", "reviewed_by"),
+    ]
+    for tbl, col in updates_to_null:
+        try:
+            cursor.execute(f"SAVEPOINT sp_upd_{tbl}_{col}")
+            cursor.execute(f"UPDATE {tbl} SET {col} = NULL WHERE {col} = %s", (user_id,))
+            cursor.execute(f"RELEASE SAVEPOINT sp_upd_{tbl}_{col}")
+        except Exception:
+            cursor.execute(f"ROLLBACK TO SAVEPOINT sp_upd_{tbl}_{col}")
+
+    deletes_for_user = [
+        ("reservations", "student_user_id"),
+        ("parent_student", "parent_id"),
+        ("shs_student_elective_requests", "student_user_id"),
+        ("shs_student_elective_memberships", "student_user_id"),
+    ]
+    for tbl, col in deletes_for_user:
+        try:
+            cursor.execute(f"SAVEPOINT sp_del_{tbl}")
+            cursor.execute(f"DELETE FROM {tbl} WHERE {col} = %s", (user_id,))
+            cursor.execute(f"RELEASE SAVEPOINT sp_del_{tbl}")
+        except Exception:
+            cursor.execute(f"ROLLBACK TO SAVEPOINT sp_del_{tbl}")
+
+    cursor.execute("DELETE FROM users WHERE user_id = %s AND branch_id = %s", (user_id, branch_id))
+
+
+@registrar_bp.route("/registrar/students-by-grade/delete/<int:enrollment_id>", methods=["POST"])
+def registrar_delete_student_enrollment(enrollment_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("Missing branch in session.", "error")
+        return redirect("/logout")
+
+    delete_parent_account = request.form.get("delete_parent_account") == "1"
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT e.enrollment_id, e.branch_id, e.year_id, e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level
+            FROM enrollments e
+            WHERE e.enrollment_id = %s AND e.branch_id = %s
+        """, (enrollment_id, branch_id))
+        student = cursor.fetchone()
+
+        if not student:
+            flash("Student enrollment not found or does not belong to your branch.", "error")
+            return redirect(request.referrer or "/registrar/students-by-grade")
+
+        student_name = " ".join(filter(None, [
+            student.get("student_first_name"),
+            student.get("student_middle_name"),
+            student.get("student_last_name")
+        ])) or f"Enrollment #{enrollment_id}"
+
+        # 1. Fetch linked parent(s) before removing links
+        cursor.execute("""
+            SELECT ps.parent_id, u.username, u.role, u.user_roles
+            FROM parent_student ps
+            JOIN users u ON u.user_id = ps.parent_id
+            WHERE ps.student_id = %s
+        """, (enrollment_id,))
+        linked_parents = cursor.fetchall() or []
+
+        parent_feedback = []
+        for p in linked_parents:
+            pid = p["parent_id"]
+            p_user = p["username"]
+
+            # Count if this parent has other children enrolled
+            cursor.execute("""
+                SELECT COUNT(*) AS cnt FROM parent_student
+                WHERE parent_id = %s AND student_id != %s
+            """, (pid, enrollment_id))
+            cnt_row = cursor.fetchone()
+            other_cnt = cnt_row["cnt"] if cnt_row else 0
+
+            # Delete the specific parent-student link
+            cursor.execute("DELETE FROM parent_student WHERE parent_id = %s AND student_id = %s", (pid, enrollment_id))
+
+            if other_cnt == 0:
+                if delete_parent_account and p.get("role") == "parent":
+                    _safe_delete_user_record(cursor, pid, branch_id)
+                    parent_feedback.append(f"Orphaned parent account '{p_user}' was deleted.")
+                else:
+                    sync_user_parent_links(db, cursor, pid)
+                    parent_feedback.append(f"Parent account '{p_user}' unlinked (no active students remaining).")
+            else:
+                sync_user_parent_links(db, cursor, pid)
+                parent_feedback.append(f"Parent account '{p_user}' preserved ({other_cnt} other child enrolled).")
+
+        # 2. Clear all child/dependent records referencing enrollment_id
+        tables_to_clear = [
+            'attendance_scores', 'book_releases', 'payments', 'individual_extensions', 
+            'billing', 'daily_participation', 'finalized_grades', 'daily_attendance', 
+            'exam_student_permissions', 'exam_results', 'participation_scores', 
+            'activity_submissions', 'enrollment_books', 'enrollment_documents', 
+            'enrollment_uniforms', 'enrollment_history', 'posted_grades', 'extensions', 
+            'reservations', 'grade_overrides', 'parent_notifications',
+            'shs_student_elective_memberships', 'shs_student_elective_requests',
+            'swafo_discipline_log', 'swafo_parent_conferences', 'swafo_records',
+            'uniform_orders'
+        ]
+        for t in tables_to_clear:
+            try:
+                cursor.execute(f"SAVEPOINT del_{t}")
+                cursor.execute(f"DELETE FROM {t} WHERE enrollment_id=%s", (enrollment_id,))
+                cursor.execute(f"RELEASE SAVEPOINT del_{t}")
+            except Exception:
+                cursor.execute(f"ROLLBACK TO SAVEPOINT del_{t}")
+
+        # Clear identity review records if present
+        try:
+            cursor.execute("SAVEPOINT del_id_rev")
+            cursor.execute("DELETE FROM student_identity_reviews WHERE enrollment_id=%s OR matched_enrollment_id=%s", (enrollment_id, enrollment_id))
+            cursor.execute("RELEASE SAVEPOINT del_id_rev")
+        except Exception:
+            cursor.execute(f"ROLLBACK TO SAVEPOINT del_id_rev")
+
+        # Delete student_accounts record if any exists
+        cursor.execute("DELETE FROM student_accounts WHERE enrollment_id=%s", (enrollment_id,))
+
+        # 3. Permanently delete the enrollment record
+        cursor.execute("DELETE FROM enrollments WHERE enrollment_id=%s AND branch_id=%s", (enrollment_id, branch_id))
+
+        db.commit()
+
+        success_msg = f"Student enrollment for '{student_name}' has been permanently deleted."
+        if parent_feedback:
+            success_msg += " " + " ".join(parent_feedback)
+        flash(success_msg, "success")
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting enrollment (Enrollment ID: {enrollment_id}): {str(e)}")
+        flash(f"Failed to delete student enrollment: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
     return redirect(request.referrer or "/registrar/students-by-grade")
 
 
