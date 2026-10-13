@@ -347,6 +347,35 @@
         letter-spacing: 0.05em;
     }
 
+    a.sort-th {
+        color: inherit;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    a.sort-th:hover { color: var(--ma-primary); }
+    .sort-arrows {
+        display: inline-flex;
+        flex-direction: column;
+        font-size: 0.55rem;
+        line-height: 0.7;
+        color: #94a3b8;
+    }
+    .sort-arrows .on { color: var(--ma-primary); }
+    .name-sort-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 6px;
+        text-transform: none;
+        letter-spacing: 0;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
     .modern-table td {
         padding: 20px 24px;
         border-bottom: 1px solid var(--ma-border);
@@ -820,11 +849,29 @@
 {% endblock %}
 
 {% block content %}
-{% macro render_account_table(user_list, role_filter, is_branch_active_status, show_archived=False) %}
+{% macro render_account_table(user_list, role_filter, is_branch_active_status, show_archived=False, sort_by='', sort_order='', name_sort_qs='') %}
 <table class="modern-table">
     <thead>
         <tr>
-            <th>User Details</th>
+            <th>
+                User Details
+                <div class="name-sort-links">
+                    <a class="sort-th" href="?{{ name_sort_qs }}&sort=first_name&order={{ 'desc' if sort_by=='first_name' and sort_order=='asc' else 'asc' }}" title="Sort first name A–Z / Z–A">
+                        First Name
+                        <span class="sort-arrows">
+                            <span class="{% if sort_by=='first_name' and sort_order=='asc' %}on{% endif %}">▲</span>
+                            <span class="{% if sort_by=='first_name' and sort_order=='desc' %}on{% endif %}">▼</span>
+                        </span>
+                    </a>
+                    <a class="sort-th" href="?{{ name_sort_qs }}&sort=last_name&order={{ 'desc' if sort_by=='last_name' and sort_order=='asc' else 'asc' }}" title="Sort last name A–Z / Z–A">
+                        Last Name
+                        <span class="sort-arrows">
+                            <span class="{% if sort_by=='last_name' and sort_order=='asc' %}on{% endif %}">▲</span>
+                            <span class="{% if sort_by=='last_name' and sort_order=='desc' %}on{% endif %}">▼</span>
+                        </span>
+                    </a>
+                </div>
+            </th>
             <th>Username</th>
             <th style="text-align: right;">Actions</th>
         </tr>
@@ -1121,8 +1168,11 @@
             <!-- Controls Wrapper: Navigation & Search -->
             <div class="controls-wrapper" style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; align-items: flex-end; margin: 0; padding: 24px; border: none; background: transparent; border-bottom: 1px solid var(--ma-border); border-radius: 0;">
 
+            {% set name_sort_qs = 'role=' ~ role_filter ~ '&search=' ~ (filter_search or '') ~ '&grade=' ~ (filter_grade or '') ~ '&section=' ~ (filter_section or '') ~ ('&view=grouped' if view_mode == 'grouped' else '') ~ ('&show_archived=true' if show_archived else '') %}
             <form method="get" class="search-registry-bar" id="filter-form" style="flex: 1; min-width: 300px; display: flex; gap: 16px; align-items: flex-end; margin: 0; background: transparent; padding: 0; border: none; box-shadow: none;">
                 <input type="hidden" name="role" value="{{ role_filter }}">
+                <input type="hidden" name="sort" value="{{ sort_by or '' }}">
+                <input type="hidden" name="order" value="{{ sort_order or 'asc' }}">
                 {% if view_mode == 'grouped' %}
                 <input type="hidden" name="view" value="grouped">
                 {% endif %}
@@ -1147,21 +1197,19 @@
                 </div>
 
                 <div class="form-group" style="margin: 0;">
-                    <label style="font-weight: 700; font-size: 0.85rem; color: var(--ma-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;">First Name</label>
-                    <select name="fn" class="form-control" onchange="this.form.submit()" style="height: 46px; padding: 0 16px; min-width: 90px;">
-                        <option value="">All</option>
-                        {% for l in alphabet_letters %}
-                        <option value="{{ l }}" {% if filter_fn==l %}selected{% endif %}>{{ l }}</option>
-                        {% endfor %}
+                    <label style="font-weight: 700; font-size: 0.85rem; color: var(--ma-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;">Sort First Name</label>
+                    <select class="form-control" onchange="submitNameSort(this.form, 'first_name', this.value)" style="height: 46px; padding: 0 16px; min-width: 110px;">
+                        <option value="">Default</option>
+                        <option value="asc" {% if sort_by=='first_name' and sort_order=='asc' %}selected{% endif %}>A–Z</option>
+                        <option value="desc" {% if sort_by=='first_name' and sort_order=='desc' %}selected{% endif %}>Z–A</option>
                     </select>
                 </div>
                 <div class="form-group" style="margin: 0;">
-                    <label style="font-weight: 700; font-size: 0.85rem; color: var(--ma-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;">Last Name</label>
-                    <select name="ln" class="form-control" onchange="this.form.submit()" style="height: 46px; padding: 0 16px; min-width: 90px;">
-                        <option value="">All</option>
-                        {% for l in alphabet_letters %}
-                        <option value="{{ l }}" {% if filter_ln==l %}selected{% endif %}>{{ l }}</option>
-                        {% endfor %}
+                    <label style="font-weight: 700; font-size: 0.85rem; color: var(--ma-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;">Sort Last Name</label>
+                    <select class="form-control" onchange="submitNameSort(this.form, 'last_name', this.value)" style="height: 46px; padding: 0 16px; min-width: 110px;">
+                        <option value="">Default</option>
+                        <option value="asc" {% if sort_by=='last_name' and sort_order=='asc' %}selected{% endif %}>A–Z</option>
+                        <option value="desc" {% if sort_by=='last_name' and sort_order=='desc' %}selected{% endif %}>Z–A</option>
                     </select>
                 </div>
 
@@ -1199,11 +1247,11 @@
 
                 <div class="form-group" style="margin: 0; display: flex; align-items: flex-end;">
                     {% if view_mode == 'grouped' %}
-                    <a href="?role={{ role_filter }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&fn={{ filter_fn }}&ln={{ filter_ln }}{% if show_archived %}&show_archived=true{% endif %}" class="btn-elegant"
+                    <a href="?role={{ role_filter }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&sort={{ sort_by }}&order={{ sort_order }}{% if show_archived %}&show_archived=true{% endif %}" class="btn-elegant"
                         style="background: #ffffff; border: 1.5px solid var(--ma-border); color: var(--ma-muted); text-decoration: none; padding: 0 20px; height: 46px; display: flex; align-items: center; justify-content: center;">Default
                         View</a>
                     {% else %}
-                    <a href="?role={{ role_filter }}&view=grouped&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&fn={{ filter_fn }}&ln={{ filter_ln }}{% if show_archived %}&show_archived=true{% endif %}" class="btn-elegant"
+                    <a href="?role={{ role_filter }}&view=grouped&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&sort={{ sort_by }}&order={{ sort_order }}{% if show_archived %}&show_archived=true{% endif %}" class="btn-elegant"
                         style="background: #f1f5f9; color: var(--ma-primary); text-decoration: none; padding: 0 20px; height: 46px; display: flex; align-items: center; justify-content: center;">Group
                         View</a>
                     {% endif %}
@@ -1251,19 +1299,19 @@
             <div class="group-header">
                 {{ grade or 'Unassigned Grade' }} <span>{{ students|length }} Students</span>
             </div>
-            {{ render_account_table(students, role_filter, is_branch_active_status) }}
+            {{ render_account_table(students, role_filter, is_branch_active_status, false, sort_by, sort_order, name_sort_qs) }}
             {% endfor %}
             {% elif role_filter == 'teacher' %}
             {% for section, teachers in accounts|groupby('section_name') %}
             <div class="group-header">
                 {{ section or 'Unassigned Section' }} <span>{{ teachers|length }} Teachers</span>
             </div>
-            {{ render_account_table(teachers, role_filter, is_branch_active_status) }}
+            {{ render_account_table(teachers, role_filter, is_branch_active_status, false, sort_by, sort_order, name_sort_qs) }}
             {% endfor %}
             {% endif %}
             {% else %}
             {# --- FLAT VIEW --- #}
-            {{ render_account_table(accounts, role_filter, is_branch_active_status) }}
+            {{ render_account_table(accounts, role_filter, is_branch_active_status, false, sort_by, sort_order, name_sort_qs) }}
             {% endif %}
         </div>
         {% if view_mode != 'grouped' and total_pages > 1 %}
@@ -1273,21 +1321,21 @@
             </div>
             <div class="ma-pagination-controls">
                 {% if page > 1 %}
-                <a class="ma-page-btn" href="?role={{ role_filter }}&page={{ page - 1 }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&fn={{ filter_fn }}&ln={{ filter_ln }}">← Prev</a>
+                <a class="ma-page-btn" href="?role={{ role_filter }}&page={{ page - 1 }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&sort={{ sort_by }}&order={{ sort_order }}">← Prev</a>
                 {% endif %}
 
                 {% for p in range(1, total_pages + 1) %}
                     {% if p == page %}
                     <span class="ma-page-btn is-active">{{ p }}</span>
                     {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
-                    <a class="ma-page-btn" href="?role={{ role_filter }}&page={{ p }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&fn={{ filter_fn }}&ln={{ filter_ln }}">{{ p }}</a>
+                    <a class="ma-page-btn" href="?role={{ role_filter }}&page={{ p }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&sort={{ sort_by }}&order={{ sort_order }}">{{ p }}</a>
                     {% elif p == page - 3 or p == page + 3 %}
                     <span class="ma-page-ellipsis">…</span>
                     {% endif %}
                 {% endfor %}
 
                 {% if page < total_pages %}
-                <a class="ma-page-btn" href="?role={{ role_filter }}&page={{ page + 1 }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&fn={{ filter_fn }}&ln={{ filter_ln }}">Next →</a>
+                <a class="ma-page-btn" href="?role={{ role_filter }}&page={{ page + 1 }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&sort={{ sort_by }}&order={{ sort_order }}">Next →</a>
                 {% endif %}
             </div>
         </div>
@@ -1323,6 +1371,15 @@
 </div>
 
 <script>
+    // ── Name Sort: used by Sort First Name / Sort Last Name dropdowns ──
+    function submitNameSort(form, column, order) {
+        const sortInput  = form.querySelector('input[name="sort"]');
+        const orderInput = form.querySelector('input[name="order"]');
+        if (sortInput)  sortInput.value  = order ? column : '';
+        if (orderInput) orderInput.value = order || 'asc';
+        form.submit();
+    }
+
     function openEditModal(e, url) {
         e.preventDefault();
         const overlay = document.getElementById('editModalOverlay');

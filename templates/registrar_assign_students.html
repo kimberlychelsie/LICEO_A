@@ -278,8 +278,8 @@
     }
 
     .filter-field.letter {
-        flex: 0 0 118px;
-        width: 118px;
+        flex: 0 0 130px;
+        width: 130px;
     }
 
     .letter-select {
@@ -307,6 +307,28 @@
         box-shadow: 0 0 0 3px rgba(26, 58, 143, 0.1);
         outline: none;
     }
+
+    /* Sort column header arrows */
+    a.sort-th {
+        color: inherit;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        white-space: nowrap;
+        font-weight: 800;
+    }
+    a.sort-th:hover { color: var(--ma-primary); }
+    .sort-arrows {
+        display: inline-flex;
+        flex-direction: column;
+        font-size: 0.5rem;
+        line-height: 0.65;
+        color: #94a3b8;
+        gap: 1px;
+    }
+    .sort-arrows .on { color: var(--ma-primary); font-size: 0.65rem; }
 
     .filter-actions {
         display: flex;
@@ -704,14 +726,19 @@
     <div class="main-layout-grid">
         <!-- Main Column: Table -->
         <div class="table-column">
-            <div class="filter-section">
+            <form id="sort-form" method="get" action="">
+            <input type="hidden" name="grade" value="{{ grade_filter }}">
+            <input type="hidden" name="sort" id="sort-input" value="{{ sort_by or '' }}">
+            <input type="hidden" name="order" id="order-input" value="{{ sort_order or 'asc' }}">
+        </form>
+        <div class="filter-section">
                 <div class="filter-row">
                     <div class="filter-field grade">
                         <label for="gradeDropdownSelect">Grade</label>
                         <div class="grade-select-wrapper">
                             <i class="fas fa-graduation-cap grade-select-icon"></i>
                             <select id="gradeDropdownSelect" class="grade-dropdown-select"
-                                onchange="window.location.href='?grade=' + this.value">
+                                onchange="window.location.href='?grade=' + this.value + '&sort={{ sort_by }}&order={{ sort_order }}'">
                                 {% for g in grade_options %}
                                 <option value="{{ g.id }}" {% if grade_filter==g.id|string %}selected{% endif %}>{{ g.name }}
                                 </option>
@@ -730,21 +757,19 @@
                 </div>
                 <div class="filter-row">
                     <div class="filter-field letter">
-                        <label for="fnFilter">First Name</label>
-                        <select id="fnFilter" class="letter-select" onchange="applyFilters()">
-                            <option value="">All</option>
-                            {% for l in alphabet_letters %}
-                            <option value="{{ l }}">{{ l }}</option>
-                            {% endfor %}
+                        <label for="fnSortSelect">First Name</label>
+                        <select id="fnSortSelect" class="letter-select" onchange="submitNameSort(this, 'first_name', this.value)">
+                            <option value="">Default</option>
+                            <option value="asc" {% if sort_by=='first_name' and sort_order=='asc' %}selected{% endif %}>A &#x2192; Z</option>
+                            <option value="desc" {% if sort_by=='first_name' and sort_order=='desc' %}selected{% endif %}>Z &#x2192; A</option>
                         </select>
                     </div>
                     <div class="filter-field letter">
-                        <label for="lnFilter">Last Name</label>
-                        <select id="lnFilter" class="letter-select" onchange="applyFilters()">
-                            <option value="">All</option>
-                            {% for l in alphabet_letters %}
-                            <option value="{{ l }}">{{ l }}</option>
-                            {% endfor %}
+                        <label for="lnSortSelect">Last Name</label>
+                        <select id="lnSortSelect" class="letter-select" onchange="submitNameSort(this, 'last_name', this.value)">
+                            <option value="">Default</option>
+                            <option value="asc" {% if sort_by=='last_name' and sort_order=='asc' %}selected{% endif %}>A &#x2192; Z</option>
+                            <option value="desc" {% if sort_by=='last_name' and sort_order=='desc' %}selected{% endif %}>Z &#x2192; A</option>
                         </select>
                     </div>
                     <div class="filter-actions">
@@ -764,7 +789,24 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Student Name</th>
+                                <th>
+                                    {% set base_qs = 'grade=' ~ grade_filter %}
+                                    <a class="sort-th" href="?{{ base_qs }}&sort=first_name&order={{ 'desc' if sort_by=='first_name' and sort_order=='asc' else 'asc' }}" title="Sort by First Name">
+                                        First Name
+                                        <span class="sort-arrows">
+                                            <span class="{% if sort_by=='first_name' and sort_order=='asc' %}on{% endif %}">&#x25B2;</span>
+                                            <span class="{% if sort_by=='first_name' and sort_order=='desc' %}on{% endif %}">&#x25BC;</span>
+                                        </span>
+                                    </a>
+                                    &nbsp;/&nbsp;
+                                    <a class="sort-th" href="?{{ base_qs }}&sort=last_name&order={{ 'desc' if sort_by=='last_name' and sort_order=='asc' else 'asc' }}" title="Sort by Last Name">
+                                        Last Name
+                                        <span class="sort-arrows">
+                                            <span class="{% if sort_by=='last_name' and sort_order=='asc' %}on{% endif %}">&#x25B2;</span>
+                                            <span class="{% if sort_by=='last_name' and sort_order=='desc' %}on{% endif %}">&#x25BC;</span>
+                                        </span>
+                                    </a>
+                                </th>
                                 <th>Current</th>
                                 {% if is_branch_active_status %}
                                 <th style="min-width: 180px;">Assign Section</th>
@@ -873,6 +915,14 @@
 <script>
     let showPendingOnly = false;
 
+    // ── Ascending / Descending Sort ──
+    function submitNameSort(selectEl, column, order) {
+        const sortInput  = document.getElementById('sort-input');
+        const orderInput = document.getElementById('order-input');
+        if (sortInput)  sortInput.value  = order ? column : '';
+        if (orderInput) orderInput.value = order || 'asc';
+        document.getElementById('sort-form').submit();
+    }
 
     function applyFilters() {
         const search = document.getElementById('searchInput').value.toLowerCase();

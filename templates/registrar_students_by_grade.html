@@ -202,6 +202,25 @@
         border-bottom: 1px solid var(--reg-border);
     }
 
+    a.sort-th {
+        color: inherit;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    a.sort-th:hover { color: var(--reg-primary); }
+    .sort-arrows {
+        display: inline-flex;
+        flex-direction: column;
+        font-size: 0.55rem;
+        line-height: 0.7;
+        color: #94a3b8;
+    }
+    .sort-arrows .on { color: var(--reg-primary); }
+
     .modern-table td {
         padding: 16px 24px;
         font-size: 0.9rem;
@@ -539,22 +558,22 @@
                     </select>
                 </div>
 
+                <input type="hidden" name="sort" value="{{ sort_by or '' }}">
+                <input type="hidden" name="order" value="{{ sort_order or 'asc' }}">
                 <div class="filter-item-wrap" style="display: flex; align-items: center; gap: 8px;">
-                    <label style="font-size: 0.8rem; color: #64748b; margin: 0;">First Name:</label>
-                    <select name="fn" onchange="this.form.submit()" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; min-width: 80px;">
-                        <option value="">All</option>
-                        {% for l in alphabet_letters %}
-                        <option value="{{ l }}" {% if filter_fn==l %}selected{% endif %}>{{ l }}</option>
-                        {% endfor %}
+                    <label style="font-size: 0.8rem; color: #64748b; margin: 0;">Sort First Name:</label>
+                    <select onchange="submitNameSort(this.form, 'first_name', this.value)" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; min-width: 90px;">
+                        <option value="">Default</option>
+                        <option value="asc" {% if sort_by=='first_name' and sort_order=='asc' %}selected{% endif %}>A–Z</option>
+                        <option value="desc" {% if sort_by=='first_name' and sort_order=='desc' %}selected{% endif %}>Z–A</option>
                     </select>
                 </div>
                 <div class="filter-item-wrap" style="display: flex; align-items: center; gap: 8px;">
-                    <label style="font-size: 0.8rem; color: #64748b; margin: 0;">Last Name:</label>
-                    <select name="ln" onchange="this.form.submit()" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; min-width: 80px;">
-                        <option value="">All</option>
-                        {% for l in alphabet_letters %}
-                        <option value="{{ l }}" {% if filter_ln==l %}selected{% endif %}>{{ l }}</option>
-                        {% endfor %}
+                    <label style="font-size: 0.8rem; color: #64748b; margin: 0;">Sort Last Name:</label>
+                    <select onchange="submitNameSort(this.form, 'last_name', this.value)" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; min-width: 90px;">
+                        <option value="">Default</option>
+                        <option value="asc" {% if sort_by=='last_name' and sort_order=='asc' %}selected{% endif %}>A–Z</option>
+                        <option value="desc" {% if sort_by=='last_name' and sort_order=='desc' %}selected{% endif %}>Z–A</option>
                     </select>
                 </div>
                 
@@ -592,7 +611,25 @@
             <thead>
                 <tr>
                     <th>Student ID</th>
-                    <th>Student Name</th>
+                    {% set name_sort_qs = 'year_id=' ~ year_filter ~ '&grade=' ~ grade_filter ~ '&section_id=' ~ section_filter %}
+                    <th>
+                        <a class="sort-th" href="?{{ name_sort_qs }}&sort=first_name&order={{ 'desc' if sort_by=='first_name' and sort_order=='asc' else 'asc' }}" title="Sort first name A–Z / Z–A">
+                            First Name
+                            <span class="sort-arrows">
+                                <span class="{% if sort_by=='first_name' and sort_order=='asc' %}on{% endif %}">▲</span>
+                                <span class="{% if sort_by=='first_name' and sort_order=='desc' %}on{% endif %}">▼</span>
+                            </span>
+                        </a>
+                    </th>
+                    <th>
+                        <a class="sort-th" href="?{{ name_sort_qs }}&sort=last_name&order={{ 'desc' if sort_by=='last_name' and sort_order=='asc' else 'asc' }}" title="Sort last name A–Z / Z–A">
+                            Last Name
+                            <span class="sort-arrows">
+                                <span class="{% if sort_by=='last_name' and sort_order=='asc' %}on{% endif %}">▲</span>
+                                <span class="{% if sort_by=='last_name' and sort_order=='desc' %}on{% endif %}">▼</span>
+                            </span>
+                        </a>
+                    </th>
                     <th>Grade</th>
                     <th>Section</th>
                     <th style="text-align: right;">Registry Ops</th>
@@ -603,7 +640,8 @@
                 <tr class="row-main" onclick="toggleRow('details-{{ s.enrollment_id }}', this)">
                     <td><span style="font-weight: 700; color: var(--reg-muted);">{{ s.account_username or 'No Account'
                             }}</span></td>
-                    <td><strong style="color: var(--reg-primary);">{{ s.student_name }}</strong></td>
+                    <td><strong style="color: var(--reg-primary);">{{ s.student_first_name or '' }}{% if s.student_middle_name %} {{ s.student_middle_name }}{% endif %}</strong></td>
+                    <td><strong style="color: var(--reg-primary);">{{ s.student_last_name or '' }}</strong></td>
                     <td><span style="font-weight: 600;">{{ s.grade_level }}</span></td>
                     <td>
                         {% if s.section_name %}
@@ -624,7 +662,7 @@
                 </tr>
 
                 <tr id="details-{{ s.enrollment_id }}" class="details-row">
-                    <td colspan="5" style="padding: 0;">
+                    <td colspan="6" style="padding: 0;">
                         <form method="POST" action="/registrar/students-by-grade/update/{{ s.enrollment_id }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="details-inner">
@@ -1117,6 +1155,14 @@
             if (match) checkChanges(match[1]);
         }
     });
+
+    function submitNameSort(form, column, order) {
+        const sortInput = form.querySelector('input[name="sort"]');
+        const orderInput = form.querySelector('input[name="order"]');
+        if (sortInput) sortInput.value = order ? column : '';
+        if (orderInput) orderInput.value = order || 'asc';
+        form.submit();
+    }
 
     let currentPage = 1;
     const rowsPerPage = 10;

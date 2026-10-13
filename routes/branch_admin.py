@@ -27,27 +27,23 @@ def generate_password(length: int = 8) -> str:
     return "".join(secrets.choice(characters) for _ in range(length))
 
 
-ALPHABET_LETTERS = [chr(c) for c in range(ord("A"), ord("Z") + 1)] + ["Ñ"]
+def _sanitize_name_sort(sort_by, order):
+    """Allow sorting by first or last name, ascending (A–Z) or descending (Z–A)."""
+    column = (sort_by or "").strip().lower()
+    if column not in ("first_name", "last_name"):
+        return "", "asc"
+    direction = (order or "asc").strip().lower()
+    if direction not in ("asc", "desc"):
+        direction = "asc"
+    return column, direction
 
 
-def _sanitize_letter_filter(raw):
-    letter = (raw or "").strip().upper()
-    if letter == "Ñ" or (len(letter) == 1 and "A" <= letter <= "Z"):
-        return letter
-    return ""
-
-
-def _row_matches_name_letters(row, fn_letter, ln_letter):
-    """Match optional first-name and last-name letter filters independently."""
-    if fn_letter:
-        first_name = row.get("first_name") or row.get("student_first_name") or ""
-        if not str(first_name).strip().upper().startswith(fn_letter):
-            return False
-    if ln_letter:
-        last_name = row.get("last_name") or row.get("student_last_name") or ""
-        if not str(last_name).strip().upper().startswith(ln_letter):
-            return False
-    return True
+def _name_sort_key(item, sort_by):
+    first = (item.get("first_name") or item.get("student_first_name") or "").strip().casefold()
+    last = (item.get("last_name") or item.get("student_last_name") or "").strip().casefold()
+    if sort_by == "first_name":
+        return (first, last)
+    return (last, first)
 
 # =======================
 # GRADE RANGE MAPPINGS (for inventory grade filter / display)
@@ -609,8 +605,8 @@ def branch_admin_manage_accounts():
     filter_grade = request.args.get("grade", "")
     filter_section = request.args.get("section", "")
     filter_search = request.args.get("search", "").strip()
-    filter_fn = _sanitize_letter_filter(request.args.get("fn", ""))
-    filter_ln = _sanitize_letter_filter(request.args.get("ln", ""))
+    show_archived = request.args.get("show_archived") == "true"
+    sort_by, sort_order = _sanitize_name_sort(request.args.get("sort", ""), request.args.get("order", ""))
     per_page = 10
     try:
         page = max(1, int(request.args.get("page", 1)))
@@ -856,28 +852,29 @@ def branch_admin_manage_accounts():
             cursor.execute(query, tuple(params))
 
         accounts = cursor.fetchall() or []
-        if filter_fn or filter_ln:
-            accounts = [a for a in accounts if _row_matches_name_letters(a, filter_fn, filter_ln)]
 
-        # --- ADVANCED ACADEMIC SORTING (PYTHON BASED) ---
-        import re
-        def academic_sort_key(item):
-            # Extract grade string safely from various possible keys
-            grade_str = (item.get('grade_level') or item.get('teacher_grade') or item.get('section_grade') or '').lower().strip()
-            
-            # 1. Nursery/Kinder priority
-            if 'nursery' in grade_str: return (1, (item.get('full_name') or '').lower())
-            if 'kinder' in grade_str: return (2, (item.get('full_name') or '').lower())
-            
-            # 2. Sequential Grades (extracting number from "Grade 1", "Grade 11 – STEM", etc)
-            nums = re.findall(r'\d+', grade_str)
-            if nums:
-                return (int(nums[0]) + 10, (item.get('full_name') or '').lower())
-            
-            # 3. Fallback (Alphabetical for others)
-            return (999, (item.get('full_name') or '').lower())
+        if sort_by:
+            accounts.sort(key=lambda item: _name_sort_key(item, sort_by), reverse=(sort_order == "desc"))
+        else:
+            # --- ADVANCED ACADEMIC SORTING (PYTHON BASED) ---
+            import re
+            def academic_sort_key(item):
+                # Extract grade string safely from various possible keys
+                grade_str = (item.get('grade_level') or item.get('teacher_grade') or item.get('section_grade') or '').lower().strip()
+                
+                # 1. Nursery/Kinder priority
+                if 'nursery' in grade_str: return (1, (item.get('full_name') or '').lower())
+                if 'kinder' in grade_str: return (2, (item.get('full_name') or '').lower())
+                
+                # 2. Sequential Grades (extracting number from "Grade 1", "Grade 11 – STEM", etc)
+                nums = re.findall(r'\d+', grade_str)
+                if nums:
+                    return (int(nums[0]) + 10, (item.get('full_name') or '').lower())
+                
+                # 3. Fallback (Alphabetical for others)
+                return (999, (item.get('full_name') or '').lower())
 
-        accounts.sort(key=academic_sort_key)
+            accounts.sort(key=academic_sort_key)
 
         # ── pagination (flat view only; grouped view shows all) ──
         total_count = len(accounts)
@@ -907,9 +904,9 @@ def branch_admin_manage_accounts():
         filter_grade=filter_grade,
         filter_section=filter_section,
         filter_search=filter_search,
-        filter_fn=filter_fn,
-        filter_ln=filter_ln,
-        alphabet_letters=ALPHABET_LETTERS,
+        show_archived=show_archived,
+        sort_by=sort_by,
+        sort_order=sort_order,
         page=page,
         per_page=per_page,
         total_pages=total_pages,
@@ -3224,8 +3221,7 @@ def branch_admin_manage_teachers():
     branch_id     = session.get("branch_id")
     created_user  = None
     filter_search = request.args.get("search", "").strip()
-    filter_fn = _sanitize_letter_filter(request.args.get("fn", ""))
-    filter_ln = _sanitize_letter_filter(request.args.get("ln", ""))
+    sort_by, sort_order = _sanitize_name_sort(request.args.get("sort", ""), request.args.get("order", ""))
 
     db     = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -3406,11 +3402,14 @@ Please log in and change your password immediately.
             query += " AND (u.full_name ILIKE %s OR u.username ILIKE %s)"
             params.extend([f"%{filter_search}%", f"%{filter_search}%"])
         
-        query += " ORDER BY u.full_name"
+        name_order = ""
+        if sort_by == "first_name":
+            name_order = f"LOWER(u.first_name) {'DESC' if sort_order == 'desc' else 'ASC'} NULLS LAST, LOWER(u.last_name) ASC NULLS LAST"
+        elif sort_by == "last_name":
+            name_order = f"LOWER(u.last_name) {'DESC' if sort_order == 'desc' else 'ASC'} NULLS LAST, LOWER(u.first_name) ASC NULLS LAST"
+        query += f" ORDER BY {name_order}" if name_order else " ORDER BY u.full_name"
         cursor.execute(query, params)
         teachers = cursor.fetchall() or []
-        if filter_fn or filter_ln:
-            teachers = [t for t in teachers if _row_matches_name_letters(t, filter_fn, filter_ln)]
 
         cursor.execute("""
             SELECT
@@ -3447,9 +3446,8 @@ Please log in and change your password immediately.
         grades=grades,
         stats=stats,
         filter_search=filter_search,
-        filter_fn=filter_fn,
-        filter_ln=filter_ln,
-        alphabet_letters=ALPHABET_LETTERS,
+        sort_by=sort_by,
+        sort_order=sort_order,
         created_user=created_user,
         is_branch_active_status=is_branch_active_status,
     )

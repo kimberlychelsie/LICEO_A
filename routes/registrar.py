@@ -38,27 +38,24 @@ def generate_password(length=8):
     return ''.join(secrets.choice(characters) for _ in range(length))
 
 
-ALPHABET_LETTERS = [chr(c) for c in range(ord("A"), ord("Z") + 1)] + ["Ñ"]
+def _sanitize_name_sort(sort_by, order):
+    """Allow sorting by first or last name, ascending (A–Z) or descending (Z–A)."""
+    column = (sort_by or "").strip().lower()
+    if column not in ("first_name", "last_name"):
+        return "", "asc"
+    direction = (order or "asc").strip().lower()
+    if direction not in ("asc", "desc"):
+        direction = "asc"
+    return column, direction
 
 
-def _sanitize_letter_filter(raw):
-    letter = (raw or "").strip().upper()
-    if letter == "Ñ" or (len(letter) == 1 and "A" <= letter <= "Z"):
-        return letter
+def _sql_name_order(first_col, last_col, sort_by, sort_order):
+    direction = "DESC" if sort_order == "desc" else "ASC"
+    if sort_by == "first_name":
+        return f"LOWER({first_col}) {direction} NULLS LAST, LOWER({last_col}) ASC NULLS LAST"
+    if sort_by == "last_name":
+        return f"LOWER({last_col}) {direction} NULLS LAST, LOWER({first_col}) ASC NULLS LAST"
     return ""
-
-
-def _row_matches_name_letters(row, fn_letter, ln_letter):
-    """Match optional first-name and last-name letter filters independently."""
-    if fn_letter:
-        first_name = row.get("first_name") or row.get("student_first_name") or ""
-        if not str(first_name).strip().upper().startswith(fn_letter):
-            return False
-    if ln_letter:
-        last_name = row.get("last_name") or row.get("student_last_name") or ""
-        if not str(last_name).strip().upper().startswith(ln_letter):
-            return False
-    return True
 
 def is_valid_email(email):
     # Strict email validation: username@domain.com
@@ -2980,8 +2977,7 @@ def registrar_students_by_grade():
         grade_filter = request.args.get("grade", "")
         section_filter = request.args.get("section_id", "")
         year_filter = request.args.get("year_id", "")
-        filter_fn = _sanitize_letter_filter(request.args.get("fn", ""))
-        filter_ln = _sanitize_letter_filter(request.args.get("ln", ""))
+        sort_by, sort_order = _sanitize_name_sort(request.args.get("sort", ""), request.args.get("order", ""))
 
         # Fetch school years for the dropdown
         cursor.execute("SELECT year_id, label, is_active FROM school_years WHERE branch_id = %s ORDER BY label DESC", (branch_id,))
@@ -3063,11 +3059,18 @@ def registrar_students_by_grade():
                 query += " AND e.section_id = %s"
                 params.append(section_filter)
 
-        query += """
-            GROUP BY e.enrollment_id, s.section_name, sa.username
-            ORDER BY (SELECT MIN(id) FROM grade_levels WHERE name = e.grade_level) ASC, s.section_name ASC NULLS LAST, e.student_last_name ASC,
+        name_order = _sql_name_order(
+            "e.student_first_name", "e.student_last_name", sort_by, sort_order
+        )
+        if name_order:
+            order_sql = f"{name_order}, (SELECT MIN(id) FROM grade_levels WHERE name = e.grade_level) ASC, s.section_name ASC NULLS LAST"
+        else:
+            order_sql = """(SELECT MIN(id) FROM grade_levels WHERE name = e.grade_level) ASC, s.section_name ASC NULLS LAST, e.student_last_name ASC,
     e.student_first_name ASC,
-    e.student_middle_name ASC
+    e.student_middle_name ASC"""
+        query += f"""
+            GROUP BY e.enrollment_id, s.section_name, sa.username
+            ORDER BY {order_sql}
         """
 
         cursor.execute(query, tuple(params))
@@ -3086,9 +3089,6 @@ def registrar_students_by_grade():
             if isinstance(e["documents"], str):
                 e["documents"] = json.loads(e["documents"])
             students.append(e)
-
-        if filter_fn or filter_ln:
-            students = [s for s in students if _row_matches_name_letters(s, filter_fn, filter_ln)]
 
         # Fetch active SHS elective offerings
         shs_elective_offerings = []
@@ -3125,9 +3125,8 @@ def registrar_students_by_grade():
             section_filter=section_filter,
             school_years=school_years,
             year_filter=str(year_filter) if year_filter else "",
-            filter_fn=filter_fn,
-            filter_ln=filter_ln,
-            alphabet_letters=ALPHABET_LETTERS,
+            sort_by=sort_by,
+            sort_order=sort_order,
             shs_elective_offerings=shs_elective_offerings,
             branch=branch
         )
@@ -5188,6 +5187,7 @@ def registrar_assign_students():
 
     branch_id = session.get("branch_id")
     grade_filter = (request.args.get("grade") or "").strip()
+    sort_by, sort_order = _sanitize_name_sort(request.args.get("sort", ""), request.args.get("order", ""))
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -5257,6 +5257,11 @@ def registrar_assign_students():
             query_where = "(LOWER(TRIM(e.grade_level)) = LOWER(%s) OR LOWER(TRIM(e.grade_level)) = LOWER(%s))"
             query_params = [branch_id, active_year_id, grade_name, short_grade]
 
+        name_order = _sql_name_order(
+            "e.student_first_name", "e.student_last_name", sort_by, sort_order
+        )
+        if not name_order:
+            name_order = "e.student_last_name, e.student_first_name, e.student_middle_name"
         sql = f"""
             SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
                    e.grade_level, e.branch_enrollment_no, e.section_id, s.section_name
@@ -5264,7 +5269,7 @@ def registrar_assign_students():
             WHERE e.branch_id = %s AND e.year_id = %s 
               AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed') 
               AND {query_where}
-            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
+            ORDER BY {name_order}
         """
         cursor.execute(sql, query_params)
         students = cursor.fetchall() or []
@@ -5288,7 +5293,8 @@ def registrar_assign_students():
         sections=filtered_sections,
         students=students,
         grade_filter=grade_filter,
-        alphabet_letters=ALPHABET_LETTERS,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
 @registrar_bp.route("/registrar/api/assign-student-section", methods=["POST"])
