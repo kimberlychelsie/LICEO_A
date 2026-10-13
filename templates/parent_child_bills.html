@@ -28,8 +28,13 @@
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
     }
 
     /* ── Header (Matching Portal Standard) ── */
@@ -116,7 +121,7 @@
         padding: 24px;
         border-radius: var(--bill-radius);
         border: 1px solid var(--bill-border);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
     }
 
     .stat-label {
@@ -151,15 +156,20 @@
     }
 
     @media (max-width: 1200px) {
-        .billing-grid { grid-template-columns: 1fr; }
-        .stat-grid { grid-template-columns: 1fr; }
+        .billing-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stat-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     .glass-card {
         background: white;
         border-radius: var(--bill-radius);
         border: 1px solid var(--bill-border);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
         overflow: hidden;
         width: 100%;
         max-width: 100%;
@@ -183,7 +193,9 @@
         margin: 0;
     }
 
-    .card-body { padding: 24px; }
+    .card-body {
+        padding: 24px;
+    }
 
     /* ── Breakdown Table ── */
     .card-body-table-wrap,
@@ -340,8 +352,16 @@
         font-weight: 800;
         text-transform: uppercase;
     }
-    .status-paid { background: #dcfce7; color: #166534; }
-    .status-unpaid { background: #fee2e2; color: #991b1b; }
+
+    .status-paid {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-unpaid {
+        background: #fee2e2;
+        color: #991b1b;
+    }
 
     /* ── Pagination Bar ── */
     .pagination-bar {
@@ -533,15 +553,19 @@
 <div class="bill-container">
     <header class="dashboard-header">
         <div class="header-main">
-            <h1 style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">Payment <span style="color: #facc15;">History</span></h1>
+            <h1
+                style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                Payment <span style="color: #facc15;">History</span></h1>
             <div class="header-sub">Viewing statement for <strong>{{ child.student_name }}</strong></div>
-            
+
             {% if parent_global_children and parent_global_children|length > 1 %}
-            <div class="child-switcher-pills" style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center;">
-                <span style="font-size: 0.82rem; font-weight: 700; color: rgba(255,255,255,0.75);">Switch Child Statement:</span>
+            <div class="child-switcher-pills"
+                style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center;">
+                <span style="font-size: 0.82rem; font-weight: 700; color: rgba(255,255,255,0.75);">Switch Child
+                    Statement:</span>
                 {% for c in parent_global_children %}
-                <a href="/parent/child/{{ c.enrollment_id }}/bills" 
-                   style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 800; text-decoration: none; transition: all 0.2s; 
+                <a href="/parent/child/{{ c.enrollment_id }}/bills"
+                    style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 800; text-decoration: none; transition: all 0.2s; 
                           {% if c.enrollment_id == child.enrollment_id %}background: #facc15; color: #1e3a8a; box-shadow: 0 2px 8px rgba(0,0,0,0.15);{% else %}background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25);{% endif %}">
                     {{ c.student_name }}
                 </a>
@@ -559,11 +583,14 @@
         </div>
         <div class="stat-card" style="border-left: 4px solid #16a34a;">
             <div class="stat-label">Amount Paid</div>
-            <div class="stat-value" style="color: #16a34a;">₱{{ "{:,.2f}".format(amount_paid_total|default(bill.amount_paid)|float) }}</div>
+            <div class="stat-value" style="color: #16a34a;">₱{{
+                "{:,.2f}".format(amount_paid_total|default(bill.amount_paid)|float) }}</div>
         </div>
-        <div class="stat-card" style="border-left: 4px solid {% if (remaining_balance|default(bill.balance)|float) > 0 %}#dc2626{% else %}#10b981{% endif %};">
+        <div class="stat-card"
+            style="border-left: 4px solid {% if (remaining_balance|default(bill.balance)|float) > 0 %}#dc2626{% else %}#10b981{% endif %};">
             <div class="stat-label">Remaining Balance</div>
-            <div class="stat-value" style="color: {% if (remaining_balance|default(bill.balance)|float) > 0 %}#dc2626{% else %}#10b981{% endif %};">
+            <div class="stat-value"
+                style="color: {% if (remaining_balance|default(bill.balance)|float) > 0 %}#dc2626{% else %}#10b981{% endif %};">
                 ₱{{ "{:,.2f}".format(remaining_balance|default(bill.balance)|float) }}
             </div>
         </div>
@@ -573,10 +600,13 @@
     {% if tuition_fee > 0 %}
     <div class="tuition-card">
         <div class="tuition-card-left">
-            <div class="tuition-icon-box {% if tuition_status == 'PAID' %}icon-paid{% elif tuition_status == 'PARTIAL' %}icon-partial{% else %}icon-unpaid{% endif %}">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+            <div
+                class="tuition-icon-box {% if tuition_status == 'PAID' %}icon-paid{% elif tuition_status == 'PARTIAL' %}icon-partial{% else %}icon-unpaid{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24"
+                    height="24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422A12.083 12.083 0 0121 13c0 4.97-3.582 9.116-8.32 9.926A12.083 12.083 0 013 13c0-.78.076-1.543.223-2.283L12 14z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 14l6.16-3.422A12.083 12.083 0 0121 13c0 4.97-3.582 9.116-8.32 9.926A12.083 12.083 0 013 13c0-.78.076-1.543.223-2.283L12 14z" />
                 </svg>
             </div>
             <div>
@@ -595,9 +625,11 @@
             </div>
             <div class="tuition-stat">
                 <div class="tuition-stat-label">REMAINING</div>
-                <div class="tuition-stat-val {% if tuition_remaining == 0 %}val-zero{% else %}val-rem{% endif %}">₱{{ "{:,.2f}".format(tuition_remaining) }}</div>
+                <div class="tuition-stat-val {% if tuition_remaining == 0 %}val-zero{% else %}val-rem{% endif %}">₱{{
+                    "{:,.2f}".format(tuition_remaining) }}</div>
             </div>
-            <span class="tuition-badge {% if tuition_status == 'PAID' %}badge-paid{% elif tuition_status == 'PARTIAL' %}badge-partial{% else %}badge-unpaid{% endif %}">
+            <span
+                class="tuition-badge {% if tuition_status == 'PAID' %}badge-paid{% elif tuition_status == 'PARTIAL' %}badge-partial{% else %}badge-unpaid{% endif %}">
                 {{ tuition_status }}
             </span>
         </div>
@@ -628,30 +660,43 @@
                             <tr class="payment-row">
                                 <td>{{ p.payment_date.strftime('%b %d, %Y') }}</td>
                                 <td style="font-weight: 800; color: #16a34a;">₱{{ "{:,.2f}".format(p.amount) }}</td>
-                                <td><span style="background: #f1f5f9; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 0.75rem;">{{ p.payment_method }}</span></td>
+                                <td><span
+                                        style="background: #f1f5f9; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 0.75rem;">{{
+                                        p.payment_method }}</span></td>
                                 <td>
                                     {% if p.breakdown_items and p.breakdown_items|length > 1 %}
-                                        <div style="display: inline-flex; align-items: center; gap: 6px;">
-                                            <span style="background: rgba(37, 99, 235, 0.1); color: #2563eb; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Tuition & Fees</span>
-                                            <a href="javascript:void(0)" onclick="togglePaymentBreakdown({{ p.payment_id }})" style="font-size: 0.75rem; color: #2563eb; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-                                                Details <i id="p-chev-{{ p.payment_id }}" class="fas fa-chevron-down" style="transition: transform 0.2s;"></i>
-                                            </a>
+                                    <div style="display: inline-flex; align-items: center; gap: 6px;">
+                                        <span
+                                            style="background: rgba(37, 99, 235, 0.1); color: #2563eb; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Tuition
+                                            & Fees</span>
+                                        <a href="javascript:void(0)"
+                                            onclick="togglePaymentBreakdown({{ p.payment_id }})"
+                                            style="font-size: 0.75rem; color: #2563eb; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                            Details <i id="p-chev-{{ p.payment_id }}" class="fas fa-chevron-down"
+                                                style="transition: transform 0.2s;"></i>
+                                        </a>
+                                    </div>
+                                    <div id="p-breakdown-{{ p.payment_id }}"
+                                        style="display: none; margin-top: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                                        {% for item in p.breakdown_items %}
+                                        <div
+                                            style="display: flex; justify-content: space-between; font-size: 0.75rem; padding: 4px 0; border-bottom: 1px dashed #f1f5f9;">
+                                            <span style="color: #64748b; font-weight: 600;">{{ item.desc }}</span>
+                                            <span style="font-weight: 800; color: #334155;">₱{{
+                                                "{:,.2f}".format(item.amount) }}</span>
                                         </div>
-                                        <div id="p-breakdown-{{ p.payment_id }}" style="display: none; margin-top: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                                            {% for item in p.breakdown_items %}
-                                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; padding: 4px 0; border-bottom: 1px dashed #f1f5f9;">
-                                                <span style="color: #64748b; font-weight: 600;">{{ item.desc }}</span>
-                                                <span style="font-weight: 800; color: #334155;">₱{{ "{:,.2f}".format(item.amount) }}</span>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
+                                        {% endfor %}
+                                    </div>
                                     {% elif p.breakdown_items and p.breakdown_items|length == 1 %}
-                                        {% set item = p.breakdown_items[0] %}
-                                        <span style="background: {% if 'Tuition' in item.desc %}rgba(16, 185, 129, 0.1){% elif 'Uniform' in item.desc %}rgba(99, 102, 241, 0.1){% elif 'Book' in item.desc %}rgba(245, 158, 11, 0.1){% else %}rgba(100, 116, 139, 0.1){% endif %}; color: {% if 'Tuition' in item.desc %}#059669{% elif 'Uniform' in item.desc %}#4f46e5{% elif 'Book' in item.desc %}#d97706{% else %}#475569{% endif %}; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
-                                            {{ item.desc }}
-                                        </span>
+                                    {% set item = p.breakdown_items[0] %}
+                                    <span
+                                        style="background: {% if 'Tuition' in item.desc %}rgba(16, 185, 129, 0.1){% elif 'Uniform' in item.desc %}rgba(99, 102, 241, 0.1){% elif 'Book' in item.desc %}rgba(245, 158, 11, 0.1){% else %}rgba(100, 116, 139, 0.1){% endif %}; color: {% if 'Tuition' in item.desc %}#059669{% elif 'Uniform' in item.desc %}#4f46e5{% elif 'Book' in item.desc %}#d97706{% else %}#475569{% endif %}; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
+                                        {{ item.desc }}
+                                    </span>
                                     {% else %}
-                                        <span style="background: rgba(16, 185, 129, 0.1); color: #059669; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Tuition Fee</span>
+                                    <span
+                                        style="background: rgba(16, 185, 129, 0.1); color: #059669; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Tuition
+                                        Fee</span>
                                     {% endif %}
                                 </td>
                                 <td style="font-family: monospace; color: #64748b;">{{ p.reference_number or '-' }}</td>
@@ -675,232 +720,261 @@
             </div>
         </div>
 
-            <!-- Fee Breakdown Card (Matching Student Account Version) -->
-            <div class="glass-card">
-                <div class="card-header" onclick="toggleFeeBreakdown()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                    <h2 style="display: flex; align-items: center; gap: 8px; font-size: 1.05rem; font-weight: 800; color: var(--bill-primary);">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Fee Breakdown
-                    </h2>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        {% if remaining_balance == 0 %}
-                        <span class="breakdown-badge-green">ALL SETTLED</span>
-                        {% else %}
-                        <span class="breakdown-badge-gold">BALANCE DUE</span>
-                        {% endif %}
-                        <svg id="fee-toggle-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20" style="transition: transform 0.3s ease; transform: rotate(180deg); color: #64748b;">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </div>
-                </div>
-
-                <div id="fee-breakdown-panel" style="padding: 0; overflow: hidden; transition: max-height 0.4s ease; max-height: 2000px;">
-                    <div class="breakdown-table-wrap">
-                        <table class="breakdown-table">
-                            <thead>
-                                <tr>
-                                    <th>ITEM / RESOURCE</th>
-                                    <th style="text-align: right;">ORIGINAL COST</th>
-                                    <th style="text-align: right;">AMOUNT PAID</th>
-                                    <th style="text-align: right;">REMAINING</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Tuition row (if unpaid/partial) -->
-                                {% if tuition_fee > 0 and tuition_status != 'PAID' %}
-                                <tr style="background: #fefce8;">
-                                    <td>
-                                        <div style="font-weight: 800; color: #0f172a;">Tuition Fee</div>
-                                        <div style="font-size: 0.72rem; color: #64748b;">Academic tuition</div>
-                                    </td>
-                                    <td style="text-align: right; font-weight: 800; color: #0f172a;">₱{{ "{:,.2f}".format(tuition_fee) }}</td>
-                                    <td style="text-align: right; color: #16a34a; font-weight: 800;">₱{{ "{:,.2f}".format(tuition_paid) }}</td>
-                                    <td style="text-align: right;">
-                                        <div style="color: #ef4444; font-weight: 800;">₱{{ "{:,.2f}".format(tuition_remaining) }}</div>
-                                        <div class="sub-status-unpaid">{{ tuition_status }}</div>
-                                    </td>
-                                </tr>
-                                {% endif %}
-
-                                <!-- Unpaid / Partial Book Reservations -->
-                                {% for res in reservations %}
-                                <tr>
-                                    <td>
-                                        <div style="font-weight: 800; color: #0f172a;">{{ res.item_names or 'Reserved Items' }}</div>
-                                        <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">
-                                            RES-{{ "%04d"|format(res.reservation_id) }} · {{ res.created_at.strftime('%b %d, %Y') if res.created_at else '' }}
-                                            <span style="background: #e0e7ff; color: #3730a3; border-radius: 4px; padding: 1px 6px; font-weight: 800; font-size: 0.68rem; margin-left: 4px;">{{ res.status }}</span>
-                                        </div>
-                                    </td>
-                                    <td style="text-align: right; font-weight: 800; color: #0f172a;">₱{{ "{:,.2f}".format(res.total_amount) }}</td>
-                                    <td style="text-align: right; color: #16a34a; font-weight: 800;">₱{{ "{:,.2f}".format(res.amount_paid) }}</td>
-                                    <td style="text-align: right;">
-                                        <div style="color: #ef4444; font-weight: 800;">₱{{ "{:,.2f}".format(res.remaining) }}</div>
-                                        <div class="sub-status-unpaid">{% if res.amount_paid > 0 %}PARTIAL{% else %}UNPAID{% endif %}</div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-
-                                <!-- Unpaid / Partial Uniform Orders -->
-                                {% for uo in uniform_orders %}
-                                <tr>
-                                    <td>
-                                        <div style="font-weight: 800; color: #0f172a;">{{ uo.item_names or 'Uniform Order' }}</div>
-                                        <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">
-                                            {{ uo.order_number }}
-                                            <span style="background: #ffedd5; color: #c2410c; border-radius: 4px; padding: 1px 6px; font-weight: 800; font-size: 0.68rem; margin-left: 4px;">{{ uo.order_status }}</span>
-                                        </div>
-                                    </td>
-                                    <td style="text-align: right; font-weight: 800; color: #0f172a;">₱{{ "{:,.2f}".format(uo.total_amount) }}</td>
-                                    <td style="text-align: right; color: #16a34a; font-weight: 800;">₱{{ "{:,.2f}".format(uo.amount_paid) }}</td>
-                                    <td style="text-align: right;">
-                                        <div style="color: #ef4444; font-weight: 800;">₱{{ "{:,.2f}".format(uo.remaining) }}</div>
-                                        <div class="sub-status-unpaid">{% if uo.amount_paid > 0 %}PARTIAL{% else %}UNPAID{% endif %}</div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-
-                                {% if remaining_balance == 0 and not reservations and not uniform_orders and (tuition_fee == 0 or tuition_status == 'PAID') %}
-                                <tr>
-                                    <td colspan="4" style="text-align: center; padding: 36px 16px; color: #64748b;">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#10b981" width="32" height="32" style="display: block; margin: 0 auto 6px;">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        All items are fully settled!
-                                    </td>
-                                </tr>
-                                {% endif %}
-
-                                <!-- Totals row -->
-                                <tr style="background: #f8fafc; border-top: 2px solid var(--bill-border);">
-                                    <td>
-                                        <div style="font-weight: 900; font-size: 0.92rem; color: var(--bill-primary);">Total Payment</div>
-                                        <div style="font-size: 0.68rem; color: #64748b; font-style: italic;">( school resource + tuition )</div>
-                                    </td>
-                                    <td style="text-align: right; font-weight: 900; color: var(--bill-primary); font-size: 0.95rem; vertical-align: middle;">
-                                        ₱{{ "{:,.2f}".format(total_assessment) }}
-                                    </td>
-                                    <td style="text-align: right; font-weight: 900; color: #16a34a; font-size: 0.95rem; vertical-align: middle;">
-                                        ₱{{ "{:,.2f}".format(amount_paid_total) }}
-                                    </td>
-                                    <td style="text-align: right; font-weight: 900; color: {% if remaining_balance == 0 %}#16a34a{% else %}#ef4444{% endif %}; font-size: 0.95rem; vertical-align: middle;">
-                                        ₱{{ "{:,.2f}".format(remaining_balance) }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+        <!-- Fee Breakdown Card (Matching Student Account Version) -->
+        <div class="glass-card">
+            <div class="card-header" onclick="toggleFeeBreakdown()"
+                style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                <h2
+                    style="display: flex; align-items: center; gap: 8px; font-size: 1.05rem; font-weight: 800; color: var(--bill-primary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        width="20" height="20">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Fee Breakdown
+                </h2>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    {% if remaining_balance == 0 %}
+                    <span class="breakdown-badge-green">ALL SETTLED</span>
+                    {% else %}
+                    <span class="breakdown-badge-gold">BALANCE DUE</span>
+                    {% endif %}
+                    <svg id="fee-toggle-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" width="20" height="20"
+                        style="transition: transform 0.3s ease; transform: rotate(180deg); color: #64748b;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
                 </div>
             </div>
 
-            {% if remaining_balance > 0 %}
-            <div style="margin-top: 24px; padding: 20px; background: #fffbeb; border-radius: 16px; border: 1px solid #fef08a; display: flex; gap: 12px;">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20" style="color: #a16207; flex-shrink: 0; margin-top: 2px;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p style="margin: 0; font-size: 0.8rem; color: #92400e; font-weight: 600; line-height: 1.5;">
-                    Please visit the branch cashier to settle the remaining balance.
-                </p>
+            <div id="fee-breakdown-panel"
+                style="padding: 0; overflow: hidden; transition: max-height 0.4s ease; max-height: 2000px;">
+                <div class="breakdown-table-wrap">
+                    <table class="breakdown-table">
+                        <thead>
+                            <tr>
+                                <th>ITEM / RESOURCE</th>
+                                <th style="text-align: right;">ORIGINAL COST</th>
+                                <th style="text-align: right;">AMOUNT PAID</th>
+                                <th style="text-align: right;">REMAINING</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Tuition row (if unpaid/partial) -->
+                            {% if tuition_fee > 0 and tuition_status != 'PAID' %}
+                            <tr style="background: #fefce8;">
+                                <td>
+                                    <div style="font-weight: 800; color: #0f172a;">Tuition Fee</div>
+                                    <div style="font-size: 0.72rem; color: #64748b;">Academic tuition</div>
+                                </td>
+                                <td style="text-align: right; font-weight: 800; color: #0f172a;">₱{{
+                                    "{:,.2f}".format(tuition_fee) }}</td>
+                                <td style="text-align: right; color: #16a34a; font-weight: 800;">₱{{
+                                    "{:,.2f}".format(tuition_paid) }}</td>
+                                <td style="text-align: right;">
+                                    <div style="color: #ef4444; font-weight: 800;">₱{{
+                                        "{:,.2f}".format(tuition_remaining) }}</div>
+                                    <div class="sub-status-unpaid">{{ tuition_status }}</div>
+                                </td>
+                            </tr>
+                            {% endif %}
+
+                            <!-- Unpaid / Partial Book Reservations -->
+                            {% for res in reservations %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 800; color: #0f172a;">{{ res.item_names or 'Reserved Items'
+                                        }}</div>
+                                    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">
+                                        RES-{{ "%04d"|format(res.reservation_id) }} · {{ res.created_at.strftime('%b %d,
+                                        %Y') if res.created_at else '' }}
+                                        <span
+                                            style="background: #e0e7ff; color: #3730a3; border-radius: 4px; padding: 1px 6px; font-weight: 800; font-size: 0.68rem; margin-left: 4px;">{{
+                                            res.status }}</span>
+                                    </div>
+                                </td>
+                                <td style="text-align: right; font-weight: 800; color: #0f172a;">₱{{
+                                    "{:,.2f}".format(res.total_amount) }}</td>
+                                <td style="text-align: right; color: #16a34a; font-weight: 800;">₱{{
+                                    "{:,.2f}".format(res.amount_paid) }}</td>
+                                <td style="text-align: right;">
+                                    <div style="color: #ef4444; font-weight: 800;">₱{{ "{:,.2f}".format(res.remaining)
+                                        }}</div>
+                                    <div class="sub-status-unpaid">{% if res.amount_paid > 0 %}PARTIAL{% else %}UNPAID{%
+                                        endif %}</div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            <!-- Unpaid / Partial Uniform Orders -->
+                            {% for uo in uniform_orders %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 800; color: #0f172a;">{{ uo.item_names or 'Uniform Order'
+                                        }}</div>
+                                    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">
+                                        {{ uo.order_number }}
+                                        <span
+                                            style="background: #ffedd5; color: #c2410c; border-radius: 4px; padding: 1px 6px; font-weight: 800; font-size: 0.68rem; margin-left: 4px;">{{
+                                            uo.order_status }}</span>
+                                    </div>
+                                </td>
+                                <td style="text-align: right; font-weight: 800; color: #0f172a;">₱{{
+                                    "{:,.2f}".format(uo.total_amount) }}</td>
+                                <td style="text-align: right; color: #16a34a; font-weight: 800;">₱{{
+                                    "{:,.2f}".format(uo.amount_paid) }}</td>
+                                <td style="text-align: right;">
+                                    <div style="color: #ef4444; font-weight: 800;">₱{{ "{:,.2f}".format(uo.remaining) }}
+                                    </div>
+                                    <div class="sub-status-unpaid">{% if uo.amount_paid > 0 %}PARTIAL{% else %}UNPAID{%
+                                        endif %}</div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+
+                            {% if remaining_balance == 0 and not reservations and not uniform_orders and (tuition_fee ==
+                            0 or tuition_status == 'PAID') %}
+                            <tr>
+                                <td colspan="4" style="text-align: center; padding: 36px 16px; color: #64748b;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke="#10b981" width="32" height="32"
+                                        style="display: block; margin: 0 auto 6px;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    All items are fully settled!
+                                </td>
+                            </tr>
+                            {% endif %}
+
+                            <!-- Totals row -->
+                            <tr style="background: #f8fafc; border-top: 2px solid var(--bill-border);">
+                                <td>
+                                    <div style="font-weight: 900; font-size: 0.92rem; color: var(--bill-primary);">Total
+                                        Payment</div>
+                                    <div style="font-size: 0.68rem; color: #64748b; font-style: italic;">( school
+                                        resource + tuition )</div>
+                                </td>
+                                <td
+                                    style="text-align: right; font-weight: 900; color: var(--bill-primary); font-size: 0.95rem; vertical-align: middle;">
+                                    ₱{{ "{:,.2f}".format(total_assessment) }}
+                                </td>
+                                <td
+                                    style="text-align: right; font-weight: 900; color: #16a34a; font-size: 0.95rem; vertical-align: middle;">
+                                    ₱{{ "{:,.2f}".format(amount_paid_total) }}
+                                </td>
+                                <td
+                                    style="text-align: right; font-weight: 900; color: {% if remaining_balance == 0 %}#16a34a{% else %}#ef4444{% endif %}; font-size: 0.95rem; vertical-align: middle;">
+                                    ₱{{ "{:,.2f}".format(remaining_balance) }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            {% endif %}
+        </div>
+
+        {% if remaining_balance > 0 %}
+
+        {% endif %}
         </aside>
     </div>
 
     <script>
-    function toggleFeeBreakdown() {
-        const panel = document.getElementById('fee-breakdown-panel');
-        const icon = document.getElementById('fee-toggle-icon');
-        if (panel.style.maxHeight && panel.style.maxHeight !== '0px') {
-            panel.style.maxHeight = '0px';
-            icon.style.transform = 'rotate(0deg)';
-        } else {
-            panel.style.maxHeight = panel.scrollHeight + 'px';
-            icon.style.transform = 'rotate(180deg)';
+        function toggleFeeBreakdown() {
+            const panel = document.getElementById('fee-breakdown-panel');
+            const icon = document.getElementById('fee-toggle-icon');
+            if (panel.style.maxHeight && panel.style.maxHeight !== '0px') {
+                panel.style.maxHeight = '0px';
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                panel.style.maxHeight = panel.scrollHeight + 'px';
+                icon.style.transform = 'rotate(180deg)';
+            }
         }
-    }
-    function togglePaymentBreakdown(pid) {
-        const block = document.getElementById('p-breakdown-' + pid);
-        const chev = document.getElementById('p-chev-' + pid);
-        if (block.style.display === 'none') {
-            block.style.display = 'block';
-            if (chev) chev.style.transform = 'rotate(180deg)';
-        } else {
-            block.style.display = 'none';
-            if (chev) chev.style.transform = 'rotate(0deg)';
+        function togglePaymentBreakdown(pid) {
+            const block = document.getElementById('p-breakdown-' + pid);
+            const chev = document.getElementById('p-chev-' + pid);
+            if (block.style.display === 'none') {
+                block.style.display = 'block';
+                if (chev) chev.style.transform = 'rotate(180deg)';
+            } else {
+                block.style.display = 'none';
+                if (chev) chev.style.transform = 'rotate(0deg)';
+            }
         }
-    }
 
-    /* ── Payment History Pagination ── */
-    var currentPaymentPage = 1;
-    var paymentRowsPerPage = 5;
+        /* ── Payment History Pagination ── */
+        var currentPaymentPage = 1;
+        var paymentRowsPerPage = 5;
 
-    function initPaymentPagination() {
-        var rows = document.querySelectorAll('.payment-row');
-        var totalRows = rows.length;
-        var paginationBar = document.getElementById('paymentPaginationBar');
-        var paginationInfo = document.getElementById('paymentPaginationInfo');
-        var paginationControls = document.getElementById('paymentPaginationControls');
+        function initPaymentPagination() {
+            var rows = document.querySelectorAll('.payment-row');
+            var totalRows = rows.length;
+            var paginationBar = document.getElementById('paymentPaginationBar');
+            var paginationInfo = document.getElementById('paymentPaginationInfo');
+            var paginationControls = document.getElementById('paymentPaginationControls');
 
-        if (!paginationBar || totalRows === 0) return;
+            if (!paginationBar || totalRows === 0) return;
 
-        var totalPages = Math.ceil(totalRows / paymentRowsPerPage);
+            var totalPages = Math.ceil(totalRows / paymentRowsPerPage);
 
-        function renderPage(page) {
-            currentPaymentPage = page;
-            var start = (page - 1) * paymentRowsPerPage;
-            var end = Math.min(start + paymentRowsPerPage, totalRows);
+            function renderPage(page) {
+                currentPaymentPage = page;
+                var start = (page - 1) * paymentRowsPerPage;
+                var end = Math.min(start + paymentRowsPerPage, totalRows);
 
-            rows.forEach(function(r, idx) {
-                if (idx >= start && idx < end) {
-                    r.style.display = '';
-                } else {
-                    r.style.display = 'none';
+                rows.forEach(function (r, idx) {
+                    if (idx >= start && idx < end) {
+                        r.style.display = '';
+                    } else {
+                        r.style.display = 'none';
+                    }
+                });
+
+                paginationInfo.innerHTML = 'Showing <strong>' + (start + 1) + '</strong>-<strong>' + end + '</strong> of <strong>' + totalRows + '</strong> payments';
+
+                var html = '';
+
+                // Prev button
+                html += '<button type="button" class="btn-page" ' + (page === 1 ? 'disabled' : '') + ' onclick="window.goToPaymentPage(' + (page - 1) + ')" aria-label="Previous Page">';
+                html += '<i class="fas fa-chevron-left" style="font-size: 0.7rem;"></i></button>';
+
+                // Page buttons
+                for (var i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= page - 1 && i <= page + 1)) {
+                        html += '<button type="button" class="btn-page ' + (i === page ? 'active' : '') + '" onclick="window.goToPaymentPage(' + i + ')">' + i + '</button>';
+                    } else if (i === page - 2 || i === page + 2) {
+                        html += '<span style="padding: 0 4px; color: #94a3b8;">...</span>';
+                    }
                 }
-            });
 
-            paginationInfo.innerHTML = 'Showing <strong>' + (start + 1) + '</strong>-<strong>' + end + '</strong> of <strong>' + totalRows + '</strong> payments';
+                // Next button
+                html += '<button type="button" class="btn-page" ' + (page === totalPages ? 'disabled' : '') + ' onclick="window.goToPaymentPage(' + (page + 1) + ')" aria-label="Next Page">';
+                html += '<i class="fas fa-chevron-right" style="font-size: 0.7rem;"></i></button>';
 
-            var html = '';
-            
-            // Prev button
-            html += '<button type="button" class="btn-page" ' + (page === 1 ? 'disabled' : '') + ' onclick="window.goToPaymentPage(' + (page - 1) + ')" aria-label="Previous Page">';
-            html += '<i class="fas fa-chevron-left" style="font-size: 0.7rem;"></i></button>';
-
-            // Page buttons
-            for (var i = 1; i <= totalPages; i++) {
-                if (i === 1 || i === totalPages || (i >= page - 1 && i <= page + 1)) {
-                    html += '<button type="button" class="btn-page ' + (i === page ? 'active' : '') + '" onclick="window.goToPaymentPage(' + i + ')">' + i + '</button>';
-                } else if (i === page - 2 || i === page + 2) {
-                    html += '<span style="padding: 0 4px; color: #94a3b8;">...</span>';
-                }
+                paginationControls.innerHTML = html;
             }
 
-            // Next button
-            html += '<button type="button" class="btn-page" ' + (page === totalPages ? 'disabled' : '') + ' onclick="window.goToPaymentPage(' + (page + 1) + ')" aria-label="Next Page">';
-            html += '<i class="fas fa-chevron-right" style="font-size: 0.7rem;"></i></button>';
+            window.goToPaymentPage = function (p) {
+                if (p >= 1 && p <= totalPages) {
+                    renderPage(p);
+                }
+            };
 
-            paginationControls.innerHTML = html;
+            paginationBar.style.display = 'flex';
+            renderPage(1);
         }
 
-        window.goToPaymentPage = function(p) {
-            if (p >= 1 && p <= totalPages) {
-                renderPage(p);
-            }
-        };
-
-        paginationBar.style.display = 'flex';
-        renderPage(1);
-    }
-
-    document.addEventListener('DOMContentLoaded', initPaymentPagination);
+        document.addEventListener('DOMContentLoaded', initPaymentPagination);
     </script>
     {% else %}
-    <div style="text-align: center; padding: 100px 40px; background: white; border-radius: 20px; border: 1px dashed #e2e8f0;">
+    <div
+        style="text-align: center; padding: 100px 40px; background: white; border-radius: 20px; border: 1px dashed #e2e8f0;">
         <i class="fas fa-file-invoice" style="font-size: 3.5rem; color: #f1f5f9; margin-bottom: 24px;"></i>
         <h3 style="font-weight: 800; color: var(--bill-primary);">No assessment bill found</h3>
-        <p style="color: #64748b; font-weight: 500;">The cashier will generate the bill once the enrollment is processed.</p>
+        <p style="color: #64748b; font-weight: 500;">The cashier will generate the bill once the enrollment is
+            processed.</p>
     </div>
     {% endif %}
 </div>
