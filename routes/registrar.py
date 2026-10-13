@@ -893,7 +893,11 @@ def registrar_enrollments():
             LEFT JOIN enrollment_documents d ON d.enrollment_id = e.enrollment_id
             WHERE {new_where}
             GROUP BY e.enrollment_id
-            ORDER BY e.branch_enrollment_no ASC NULLS LAST, e.created_at DESC
+            ORDER BY
+                e.grade_level ASC,
+                e.student_last_name ASC,
+                e.student_first_name ASC,
+                e.student_middle_name ASC
             LIMIT %s OFFSET %s
         """, tuple(new_query_params))
         new_enrollments_raw = cursor.fetchall()
