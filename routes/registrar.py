@@ -3367,6 +3367,10 @@ def registrar_delete_student_enrollment(enrollment_id):
         # Delete student_accounts record if any exists
         cursor.execute("DELETE FROM student_accounts WHERE enrollment_id=%s", (enrollment_id,))
 
+        # Safety net: delete ANY remaining parent_student links for this enrollment
+        # (the loop above only catches parents with user accounts via JOIN — this catches orphans too)
+        cursor.execute("DELETE FROM parent_student WHERE student_id = %s", (enrollment_id,))
+
         # 3. Permanently delete the enrollment record
         cursor.execute("DELETE FROM enrollments WHERE enrollment_id=%s AND branch_id=%s", (enrollment_id, branch_id))
 
