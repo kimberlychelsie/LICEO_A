@@ -527,9 +527,16 @@
                             {% endif %}
                         </td>
                         <td>
-                            <div
-                                style="font-weight: 900; color: var(--ma-primary); font-size: 1.05rem; letter-spacing: -0.01em;">
-                                {{ b.branch_name }}</div>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <span style="font-weight: 900; color: var(--ma-primary); font-size: 1.05rem; letter-spacing: -0.01em;">
+                                    {{ b.branch_name }}
+                                </span>
+                                {% if not b.is_active %}
+                                <span style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-size: 0.72rem; padding: 2px 8px; border-radius: 99px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="fas fa-ban"></i> Deactivated
+                                </span>
+                                {% endif %}
+                            </div>
                         </td>
                         <td>
                             <div
@@ -628,6 +635,19 @@
                                     </form>
                                     {% endif %}
 
+                                    <div style="border-top: 1px solid #f1f5f9; margin: 4px 0;"></div>
+                                    <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/toggle-status"
+                                        style="display:contents;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="action-item {% if b.is_active %}danger{% endif %}"
+                                            onclick="return confirm('Are you sure you want to {% if b.is_active %}deactivate{% else %}reactivate{% endif %} {{ b.branch_name|e }}? {% if b.is_active %}Users in this branch will only have view access and cannot perform new transactions.{% endif %}');">
+                                            {% if b.is_active %}
+                                            <i class="fas fa-ban text-rose-600"></i> Deactivate Branch
+                                            {% else %}
+                                            <i class="fas fa-redo text-emerald-600"></i> Reactivate Branch
+                                            {% endif %}
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         </td>
