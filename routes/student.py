@@ -15,6 +15,7 @@ from cloudinary_helper import LOCAL_UPLOAD_FOLDER
 from utils.send_email import send_email
 from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, price_for_size, size_price_map
 from utils.student_identity import evaluate_student_identity_match, student_name_from_row, normalize_identity_name, normalize_identity_dob, normalize_identity_lrn, normalize_identity_email
+from utils.enrollment_text_validation import enrollment_field_spam_error, enrollment_remarks_error
 from extensions import csrf
 
 logger = logging.getLogger(__name__)
@@ -785,6 +786,35 @@ def enroll(branch_id):
                 return redirect(request.url)
             if not request.form.get("privacy_consent"):
                 flash("You must agree to the Data Privacy Consent.", "error")
+                return redirect(request.url)
+
+            spam_text_fields = [
+                ("Student first name", student_first_name),
+                ("Student middle name", student_middle_name),
+                ("Student last name", student_last_name),
+                ("Birthplace", birthplace),
+                ("Home address", address),
+                ("Father's first name", father_first_name),
+                ("Father's middle name", father_middle_name),
+                ("Father's last name", father_last_name),
+                ("Father's occupation", father_occupation),
+                ("Mother's first name", mother_first_name),
+                ("Mother's middle name", mother_middle_name),
+                ("Mother's last name", mother_last_name),
+                ("Mother's occupation", mother_occupation),
+                ("Guardian first name", guardian_first_name),
+                ("Guardian middle name", guardian_middle_name),
+                ("Guardian last name", guardian_last_name),
+                ("Previous school", previous_school),
+            ]
+            for field_label, field_val in spam_text_fields:
+                spam_err = enrollment_field_spam_error(field_val)
+                if spam_err:
+                    flash(f"{field_label}: {spam_err}", "error")
+                    return redirect(request.url)
+            remarks_err = enrollment_remarks_error(remarks)
+            if remarks_err:
+                flash(f"Remarks: {remarks_err}", "error")
                 return redirect(request.url)
 
             # ── ADDRESS VALIDATION ──
@@ -1901,6 +1931,25 @@ def enroll_edit(enrollment_id):
                     if field == "previous_school" and val:
                         if not re.match(r"^[A-Za-z\s.,-]+$", val) or "  " in val or "--" in val or ".." in val or ",," in val:
                             flash("Previous school contains invalid characters.", "error")
+                            return redirect(request.url)
+
+                    if field == "remarks" and val:
+                        remarks_err = enrollment_remarks_error(val)
+                        if remarks_err:
+                            flash(remarks_err, "error")
+                            return redirect(request.url)
+
+                    if field in [
+                        "student_first_name", "student_middle_name", "student_last_name",
+                        "birthplace", "address",
+                        "father_first_name", "father_middle_name", "father_last_name", "father_occupation",
+                        "mother_first_name", "mother_middle_name", "mother_last_name", "mother_occupation",
+                        "guardian_first_name", "guardian_middle_name", "guardian_last_name",
+                        "previous_school",
+                    ] and val:
+                        spam_err = enrollment_field_spam_error(val)
+                        if spam_err:
+                            flash(spam_err, "error")
                             return redirect(request.url)
                     
                     update_fields.append(f"{field} = %s")

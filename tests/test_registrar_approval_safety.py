@@ -210,6 +210,7 @@ class RegistrarApprovalSafetyTest(unittest.TestCase):
         self.assertIn("Student must be at least 3 years old to enroll.", route_block)
         self.assertIn("Home address must be at least 5 characters long.", route_block)
         self.assertIn("Previous school contains invalid characters.", route_block)
+        self.assertIn("enrollment_field_spam_error", route_block)
         self.assertIn('corrected["shs_track"] = None', route_block)
         self.assertIn("max_dob_date=max_dob_date", route_block)
 
