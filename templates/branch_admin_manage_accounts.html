@@ -1192,6 +1192,40 @@
         </div>
         {% endif %}
     </div>
+
+    {% if view_mode != 'grouped' and total_pages > 1 %}
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:20px 0 8px; border-top:1px solid var(--ma-border); margin-top:8px;">
+        <div style="font-size:0.85rem; color:var(--ma-muted); font-weight:600;">
+            Showing {{ ((page - 1) * per_page) + 1 }}–{{ [page * per_page, total_count] | min }} of {{ total_count }} accounts
+        </div>
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            {% if page > 1 %}
+            <a href="?role={{ role_filter }}&page={{ page - 1 }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}"
+               style="display:inline-flex;align-items:center;gap:4px;padding:7px 14px;border-radius:8px;border:1.5px solid var(--ma-border);background:#fff;font-weight:700;font-size:0.85rem;color:var(--ma-primary);text-decoration:none;transition:all 0.18s;" onmouseover="this.style.background='var(--ma-primary)';this.style.color='#fff';" onmouseout="this.style.background='#fff';this.style.color='var(--ma-primary)';">
+                ← Prev
+            </a>
+            {% endif %}
+
+            {% for p in range(1, total_pages + 1) %}
+                {% if p == page %}
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--ma-primary);color:#fff;font-weight:800;font-size:0.88rem;">{{ p }}</span>
+                {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+                <a href="?role={{ role_filter }}&page={{ p }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}"
+                   style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1.5px solid var(--ma-border);background:#fff;font-weight:700;font-size:0.88rem;color:var(--ma-text);text-decoration:none;transition:all 0.18s;" onmouseover="this.style.background='var(--ma-primary-light)';" onmouseout="this.style.background='#fff';">{{ p }}</a>
+                {% elif p == page - 3 or p == page + 3 %}
+                <span style="color:var(--ma-muted);font-weight:700;padding:0 4px;">…</span>
+                {% endif %}
+            {% endfor %}
+
+            {% if page < total_pages %}
+            <a href="?role={{ role_filter }}&page={{ page + 1 }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}"
+               style="display:inline-flex;align-items:center;gap:4px;padding:7px 14px;border-radius:8px;border:1.5px solid var(--ma-border);background:#fff;font-weight:700;font-size:0.85rem;color:var(--ma-primary);text-decoration:none;transition:all 0.18s;" onmouseover="this.style.background='var(--ma-primary)';this.style.color='#fff';" onmouseout="this.style.background='#fff';this.style.color='var(--ma-primary)';">
+                Next →
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 </div>
 

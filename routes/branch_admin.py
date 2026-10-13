@@ -586,6 +586,11 @@ def branch_admin_manage_accounts():
     filter_grade = request.args.get("grade", "")
     filter_section = request.args.get("section", "")
     filter_search = request.args.get("search", "").strip()
+    per_page = 10
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -846,10 +851,19 @@ def branch_admin_manage_accounts():
 
         accounts.sort(key=academic_sort_key)
 
+        # ── pagination (flat view only; grouped view shows all) ──
+        total_count = len(accounts)
+        total_pages = max(1, -(-total_count // per_page))
+        page = min(page, total_pages)  # clamp page to valid range
+        if view_mode != 'grouped':
+            offset = (page - 1) * per_page
+            accounts = accounts[offset: offset + per_page]
+
     except Exception as e:
         db.rollback()
         flash(f"An error occurred: {str(e)}", "error")
         accounts, grades = [], []
+        total_count, total_pages = 0, 1
     finally:
         cursor.close()
         db.close()
@@ -863,7 +877,11 @@ def branch_admin_manage_accounts():
         section_options=section_options,
         filter_grade=filter_grade,
         filter_section=filter_section,
-        filter_search=filter_search
+        filter_search=filter_search,
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages,
+        total_count=total_count,
     )
 
 
