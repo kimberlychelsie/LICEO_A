@@ -187,12 +187,20 @@ def _activate_user_session(user, db, cursor, client_ip):
         return "/teacher", None
     elif role == "parent":
         try:
+            p_full = (user.get("full_name") or "").strip()
+            if not p_full:
+                p_parts = list(filter(None, [user.get("first_name"), user.get("last_name")]))
+                p_full = " ".join(p_parts).strip()
+            if p_full:
+                session["full_name"] = p_full
+
             cursor.execute("""
                 SELECT e.guardian_first_name, e.guardian_middle_name, e.guardian_last_name
                 FROM parent_student ps
                 JOIN enrollments e ON ps.student_id = e.enrollment_id
                 WHERE ps.parent_id = %s
-                ORDER BY e.updated_at DESC, e.created_at DESC
+                  AND NULLIF(TRIM(e.guardian_first_name), '') IS NOT NULL
+                ORDER BY e.created_at DESC
                 LIMIT 1
             """, (user["user_id"],))
             grow = cursor.fetchone()
@@ -209,7 +217,7 @@ def _activate_user_session(user, db, cursor, client_ip):
                         SET first_name = COALESCE(NULLIF(TRIM(first_name), ''), %s),
                             middle_name = COALESCE(NULLIF(TRIM(middle_name), ''), %s),
                             last_name = COALESCE(NULLIF(TRIM(last_name), ''), %s),
-                            full_name = %s
+                            full_name = COALESCE(NULLIF(TRIM(full_name), ''), %s)
                         WHERE user_id = %s
                     """, (
                         grow.get("guardian_first_name"),
@@ -219,6 +227,17 @@ def _activate_user_session(user, db, cursor, client_ip):
                         user["user_id"]
                     ))
                     db.commit()
+            elif p_full:
+                # If users table has guardian name but enrollments doesn't, sync to linked enrollments
+                cursor.execute("""
+                    UPDATE enrollments
+                    SET guardian_first_name = COALESCE(NULLIF(TRIM(guardian_first_name), ''), %s),
+                        guardian_last_name = COALESCE(NULLIF(TRIM(guardian_last_name), ''), %s)
+                    WHERE enrollment_id IN (
+                        SELECT student_id FROM parent_student WHERE parent_id = %s
+                    )
+                """, (user.get("first_name"), user.get("last_name"), user["user_id"]))
+                db.commit()
         except Exception:
             pass
         return "/parent/dashboard", None
@@ -1013,6 +1032,19 @@ def user_profile():
         """, (user_id,))
         linked_students = cursor.fetchall()
 
+        # If user contact_number is empty and user is linked to students, fallback to guardian_contact
+        if not user.get("contact_number") and linked_students:
+            cursor.execute("""
+                SELECT e.guardian_contact
+                FROM parent_student ps
+                JOIN enrollments e ON ps.student_id = e.enrollment_id
+                WHERE ps.parent_id = %s AND e.guardian_contact IS NOT NULL AND TRIM(e.guardian_contact) != ''
+                LIMIT 1
+            """, (user_id,))
+            contact_fallback = cursor.fetchone()
+            if contact_fallback and contact_fallback.get("guardian_contact"):
+                user["contact_number"] = contact_fallback["guardian_contact"]
+
         # Fetch teacher assignments if user is teacher
         teacher_assignments = []
         if user.get("role") == "teacher" or "teacher" in (user.get("user_roles") or ""):
@@ -1080,9 +1112,43 @@ def user_profile_update():
         flash("First name and Last name are required.", "error")
         return redirect(url_for("auth.user_profile"))
 
-    if email and not re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
+    def _is_valid_profile_name(val):
+        if not val:
+            return True
+        v = val.strip()
+        if len(v) < 2:
+            return False
+        letters = re.findall(r"[A-Za-zñÑ]", v)
+        if len(letters) < 2:
+            return False
+        if re.search(r"[-.]{2,}", v):
+            return False
+        if v.startswith(("-", ".")) or v.endswith(("-", ".")):
+            return False
+        return bool(re.match(r"^[A-Za-zñÑ][A-Za-zñÑ\s.-]*[A-Za-zñÑ.]$", v))
+
+    if not _is_valid_profile_name(first_name):
+        flash("First name must contain at least 2 letters and cannot contain repeated or spam special characters.", "error")
+        return redirect(url_for("auth.user_profile"))
+
+    if middle_name and not _is_valid_profile_name(middle_name):
+        flash("Middle name must contain valid letters and cannot contain repeated or spam special characters.", "error")
+        return redirect(url_for("auth.user_profile"))
+
+    if not _is_valid_profile_name(last_name):
+        flash("Last name must contain at least 2 letters and cannot contain repeated or spam special characters.", "error")
+        return redirect(url_for("auth.user_profile"))
+
+    if email and not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email):
         flash("Invalid email format.", "error")
         return redirect(url_for("auth.user_profile"))
+
+    if contact_number:
+        clean_contact = re.sub(r"[\s\-()]", "", contact_number)
+        if not re.match(r"^09\d{9}$", clean_contact):
+            flash("Contact number must be an 11-digit Philippine mobile number starting with 09 (e.g., 09123456789).", "error")
+            return redirect(url_for("auth.user_profile"))
+        contact_number = clean_contact
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -1131,6 +1197,27 @@ def user_profile_update():
                     gender = %s
                 WHERE user_id = %s
             """, (first_name, middle_name or None, last_name, full_name, email or None, contact_number or None, gender or None, user_id))
+
+        # Also sync contact_number and guardian names to linked enrollments so parent dashboard stays in sync
+        if contact_number:
+            cursor.execute("""
+                UPDATE enrollments
+                SET guardian_contact = %s
+                WHERE enrollment_id IN (
+                    SELECT student_id FROM parent_student WHERE parent_id = %s
+                )
+            """, (contact_number, user_id))
+
+        if first_name and last_name:
+            cursor.execute("""
+                UPDATE enrollments
+                SET guardian_first_name = %s,
+                    guardian_middle_name = %s,
+                    guardian_last_name = %s
+                WHERE enrollment_id IN (
+                    SELECT student_id FROM parent_student WHERE parent_id = %s
+                )
+            """, (first_name, middle_name or None, last_name, user_id))
 
         # Re-sync parent links & roles with strict branch isolation
         sync_result = sync_user_parent_links(db, cursor, user_id)

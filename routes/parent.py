@@ -279,12 +279,29 @@ def child_detail(enrollment_id):
             SELECT ps.relationship,
                    e.*,
                    br.branch_name, br.location, br.branch_code,
-                   sec.section_name, sy.label AS year_name
+                   sec.section_name, sy.label AS year_name,
+                   (
+                       SELECT COALESCE(u1.profile_image, '') FROM users u1 
+                       WHERE u1.enrollment_id = e.enrollment_id AND u1.profile_image IS NOT NULL AND u1.profile_image <> '' 
+                       LIMIT 1
+                   ) AS u_stud_profile_image,
+                   (
+                       SELECT COALESCE(u2.profile_image, '') FROM student_accounts sa2 
+                       JOIN users u2 ON sa2.username = u2.username 
+                       WHERE sa2.enrollment_id = e.enrollment_id AND u2.profile_image IS NOT NULL AND u2.profile_image <> '' 
+                       LIMIT 1
+                   ) AS sa_profile_image,
+                   u.full_name AS parent_user_name,
+                   u.first_name AS parent_user_first_name,
+                   u.last_name AS parent_user_last_name,
+                   u.contact_number AS parent_user_contact,
+                   u.email AS parent_user_email
             FROM parent_student ps
             JOIN enrollments e ON ps.student_id = e.enrollment_id
             JOIN branches br ON e.branch_id = br.branch_id
             LEFT JOIN sections sec ON e.section_id = sec.section_id
             LEFT JOIN school_years sy ON e.year_id = sy.year_id
+            LEFT JOIN users u ON ps.parent_id = u.user_id
             WHERE ps.parent_id=%s AND ps.student_id=%s
         """, (session.get("user_id"), enrollment_id))
 
@@ -293,10 +310,29 @@ def child_detail(enrollment_id):
             flash("Child not found or access denied", "error")
             return redirect(url_for("parent.dashboard"))
 
-        fname = child.get("student_first_name") or child.get("first_name") or ""
-        mname = child.get("student_middle_name") or child.get("middle_name") or ""
-        lname = child.get("student_last_name") or child.get("last_name") or ""
+        # Resolve student profile image
+        student_profile_img = (
+            child.get("profile_image")
+            or child.get("u_stud_profile_image")
+            or child.get("sa_profile_image")
+            or None
+        )
+        child["profile_image"] = student_profile_img
+
+        # Resolve student name
+        fname = (child.get("student_first_name") or child.get("first_name") or "").strip()
+        mname = (child.get("student_middle_name") or child.get("middle_name") or "").strip()
+        lname = (child.get("student_last_name") or child.get("last_name") or "").strip()
         fullName = " ".join(filter(None, [fname, mname, lname])).strip()
+        if not fullName:
+            cursor.execute("""
+                SELECT full_name, first_name, last_name FROM users
+                WHERE enrollment_id = %s AND (full_name IS NOT NULL OR first_name IS NOT NULL)
+                LIMIT 1
+            """, (enrollment_id,))
+            u_row = cursor.fetchone()
+            if u_row:
+                fullName = (u_row.get("full_name") or "").strip() or " ".join(filter(None, [u_row.get("first_name"), u_row.get("last_name")])).strip()
         child["student_name"] = fullName if fullName else (child.get("full_name") or child.get("name") or "Student")
 
         br_code = child.get("branch_code") or "LDMAJ"
@@ -305,6 +341,94 @@ def child_detail(enrollment_id):
             child["display_student_id"] = f"{br_code}_{int(br_no):04d}"
         except (ValueError, TypeError):
             child["display_student_id"] = f"{br_code}_{br_no}"
+
+        # Resolve clean guardian name & contact (prevent placeholder 'Parent / Guardian' or blank contact)
+        g_name = ""
+        g_parts = list(filter(None, [
+            (child.get("guardian_first_name") or "").strip(),
+            (child.get("guardian_middle_name") or "").strip(),
+            (child.get("guardian_last_name") or "").strip()
+        ]))
+        if g_parts:
+            g_name = " ".join(g_parts).strip()
+
+        if not g_name:
+            raw_g = (child.get("guardian_name") or "").strip()
+            if raw_g and raw_g.lower() not in ["parent / guardian", "parent/guardian", "parent", "guardian", "none", "n/a"]:
+                g_name = raw_g
+
+        if not g_name:
+            parent_user_parts = list(filter(None, [
+                (child.get("parent_user_first_name") or "").strip(),
+                (child.get("parent_user_last_name") or "").strip()
+            ]))
+            if parent_user_parts:
+                g_name = " ".join(parent_user_parts).strip()
+            elif child.get("parent_user_name"):
+                cand = (child.get("parent_user_name") or "").strip()
+                if cand and cand.lower() not in ["parent / guardian", "parent/guardian", "parent", "guardian", "none", "n/a"]:
+                    g_name = cand
+
+        if not g_name:
+            father_parts = list(filter(None, [
+                (child.get("father_first_name") or "").strip(),
+                (child.get("father_last_name") or "").strip()
+            ]))
+            if father_parts:
+                g_name = " ".join(father_parts).strip()
+            elif child.get("father_name"):
+                cand_f = (child.get("father_name") or "").strip()
+                if cand_f and cand_f.lower() not in ["none", "n/a"]:
+                    g_name = cand_f
+
+        if not g_name:
+            mother_parts = list(filter(None, [
+                (child.get("mother_first_name") or "").strip(),
+                (child.get("mother_last_name") or "").strip()
+            ]))
+            if mother_parts:
+                g_name = " ".join(mother_parts).strip()
+            elif child.get("mother_name"):
+                cand_m = (child.get("mother_name") or "").strip()
+                if cand_m and cand_m.lower() not in ["none", "n/a"]:
+                    g_name = cand_m
+
+        if not g_name:
+            cursor.execute("""
+                SELECT e2.guardian_first_name, e2.guardian_middle_name, e2.guardian_last_name
+                FROM parent_student ps2
+                JOIN enrollments e2 ON ps2.student_id = e2.enrollment_id
+                WHERE ps2.parent_id = %s
+                  AND NULLIF(TRIM(e2.guardian_first_name), '') IS NOT NULL
+                ORDER BY e2.created_at DESC
+                LIMIT 1
+            """, (session.get("user_id"),))
+            sib_row = cursor.fetchone()
+            if sib_row:
+                sib_parts = list(filter(None, [
+                    (sib_row.get("guardian_first_name") or "").strip(),
+                    (sib_row.get("guardian_middle_name") or "").strip(),
+                    (sib_row.get("guardian_last_name") or "").strip()
+                ]))
+                if sib_parts:
+                    g_name = " ".join(sib_parts).strip()
+
+        if not g_name and session.get("role") == "parent":
+            sess_name = (session.get("full_name") or "").strip()
+            if sess_name and sess_name.lower() not in ["parent / guardian", "parent/guardian", "parent", "guardian", "none", "n/a", "student"]:
+                g_name = sess_name
+
+        child["display_guardian_name"] = g_name or "Parent / Guardian"
+
+        g_contact = (
+            (child.get("guardian_contact") or "").strip()
+            or (child.get("parent_user_contact") or "").strip()
+            or (child.get("emergency_contact") or "").strip()
+            or (child.get("father_contact") or "").strip()
+            or (child.get("mother_contact") or "").strip()
+            or "N/A"
+        )
+        child["display_guardian_contact"] = g_contact
 
         cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (enrollment_id,))
         documents = cursor.fetchall()

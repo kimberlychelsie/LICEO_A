@@ -116,6 +116,17 @@
         font-size: 2.5rem;
         font-weight: 900;
         border: 3px solid var(--slate-100);
+        overflow: hidden;
+        flex-shrink: 0;
+        position: relative;
+    }
+
+    .hero-avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 17px;
+        display: block;
     }
 
     .hero-details h2 {
@@ -128,6 +139,7 @@
 
     .hero-badges {
         display: flex;
+        flex-wrap: wrap;
         gap: 10px;
         margin-top: 10px;
     }
@@ -149,59 +161,121 @@
         color: var(--royal-blue);
     }
 
-    /* ── Info Grid (Compact) ── */
-    .info-section {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 24px;
-        margin-bottom: 32px;
-    }
-
-    .info-card {
-        background: white;
-        border-radius: 16px;
-        border: 1px solid var(--slate-200);
-        overflow: hidden;
-    }
-
-    .card-title {
-        padding: 14px 20px;
-        background: var(--slate-50);
-        border-bottom: 1px solid var(--slate-200);
-        font-size: 0.9rem;
-        font-weight: 800;
+    .badge-lrn {
+        background: rgba(37, 99, 235, 0.06);
+        border-color: rgba(37, 99, 235, 0.22);
         color: var(--royal-blue);
+    }
+
+    .badge-lrn i {
+        color: var(--royal-blue);
+    }
+
+    /* ── Guardian Overview Card (Official Contact on Record) ── */
+    .guardian-card {
+        background: #ffffff;
+        border-radius: 20px;
+        border: 1px solid var(--slate-200);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+        margin-bottom: 28px;
+        padding: 24px 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .guardian-header-left {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 14px;
     }
 
-    .card-content {
-        padding: 20px 24px;
+    .overview-icon-badge {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        color: #ffffff;
+        flex-shrink: 0;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
     }
 
-    .field-grid {
+    .icon-guardian {
+        background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+    }
+
+    .overview-header-text h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--slate-800);
+        letter-spacing: -0.01em;
+    }
+
+    .guardian-grid-4 {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        background: var(--slate-50);
+        padding: 18px 20px;
+        border-radius: 14px;
+        border: 1px solid var(--slate-100);
     }
 
-    .field-box {
-        margin-bottom: 12px;
+    .guardian-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
     }
 
-    .field-label {
-        font-size: 0.6rem;
-        font-weight: 900;
+    .guardian-label {
+        font-size: 0.65rem;
+        font-weight: 800;
         color: #94a3b8;
         text-transform: uppercase;
+        letter-spacing: 0.04em;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
 
-    .field-value {
-        font-size: 0.95rem;
+    .guardian-label i {
+        color: #0f766e;
+        font-size: 0.7rem;
+    }
+
+    .guardian-val {
+        font-size: 0.92rem;
         font-weight: 700;
         color: var(--slate-800);
-        margin-top: 2px;
+        word-break: break-word;
+    }
+
+    .guardian-val-highlight {
+        font-weight: 800;
+        color: var(--royal-blue);
+    }
+
+    @media (max-width: 900px) {
+        .guardian-card {
+            padding: 20px 18px;
+        }
+
+        .guardian-grid-4 {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+            padding: 16px 16px;
+        }
+    }
+
+    @media (max-width: 540px) {
+        .guardian-grid-4 {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
     }
 
     /* ── Premium Action Grid ── */
@@ -253,10 +327,21 @@
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
 
-    .icon-grades { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-    .icon-schedule { background: linear-gradient(135deg, #10b981, #047857); }
-    .icon-books { background: linear-gradient(135deg, #f59e0b, #d97706); }
-    .icon-docs { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+    .icon-grades {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    }
+
+    .icon-schedule {
+        background: linear-gradient(135deg, #10b981, #047857);
+    }
+
+    .icon-books {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .icon-docs {
+        background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+    }
 
     .action-tile.active .tile-icon-box {
         background: #ffffff;
@@ -512,7 +597,8 @@
     <!-- Header -->
     <header class="res-hero">
         <div class="res-hero-content">
-            <h1 style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h1
+                style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                 Student <span style="color: var(--gold);">Profile</span>
             </h1>
             <p style="margin: 4px 0 0 0; font-size: 0.95rem; opacity: 0.9; font-weight: 600; color: #93c5fd;">
@@ -523,7 +609,14 @@
 
     <!-- Student Hero -->
     <section class="student-hero">
-        <div class="hero-avatar">{{ child.student_name[0]|upper }}</div>
+        <div class="hero-avatar">
+            {% if child.profile_image %}
+            <img src="{% if child.profile_image.startswith('http') %}{{ child.profile_image }}{% elif child.profile_image.startswith('/') %}{{ child.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ child.profile_image) }}{% endif %}"
+                alt="{{ child.student_name }}" class="hero-avatar-img">
+            {% else %}
+            {{ (child.student_name[0]|upper) if child.student_name else 'S' }}
+            {% endif %}
+        </div>
         <div class="hero-details">
             <h2>{{ child.student_name }}</h2>
             <div class="hero-badges">
@@ -532,63 +625,38 @@
                 <div class="badge-item"><i class="fas fa-school"></i> {{ child.branch_name }}</div>
                 <div class="badge-item"><i class="fas fa-id-card-alt"></i> {{ child.display_student_id or ('LDMAJ_' ~
                     '%04d'|format(child.branch_enrollment_no|default(child.enrollment_id)|int)) }}</div>
+                <div class="badge-item badge-lrn"><i class="fas fa-fingerprint"></i> LRN: {{ child.lrn or 'N/A' }}</div>
             </div>
         </div>
     </section>
 
-    <!-- Identity & Guardian -->
-    <div class="info-section">
-        <div class="info-card">
-            <div class="card-title"><i class="fas fa-id-badge"></i> Student Identity</div>
-            <div class="card-content">
-                <div class="field-grid">
-                    <div class="field-box">
-                        <div class="field-label">LRN</div>
-                        <div class="field-value">{{ child.lrn or 'N/A' }}</div>
-                    </div>
-                    <div class="field-box">
-                        <div class="field-label">Gender</div>
-                        <div class="field-value">{{ child.gender or 'N/A' }}</div>
-                    </div>
-                    <div class="field-box">
-                        <div class="field-label">Birthday</div>
-                        <div class="field-value">{{ child.dob or child.date_of_birth or 'N/A' }}</div>
-                    </div>
-                    <div class="field-box">
-                        <div class="field-label">Contact No.</div>
-                        <div class="field-value">{{ child.contact_number or child.mobile or 'N/A' }}</div>
-                    </div>
-                    <div class="field-box">
-                        <div class="field-label">Email</div>
-                        <div class="field-value">{{ child.email or 'N/A' }}</div>
-                    </div>
-                    <div class="field-box">
-                        <div class="field-label">Last School</div>
-                        <div class="field-value">{{ child.previous_school or 'N/A' }}</div>
-                    </div>
-                </div>
+    <!-- Guardian Information (Official Emergency Contact on Record) -->
+    <div class="guardian-card">
+        <div class="guardian-header-left">
+            <div class="overview-icon-badge icon-guardian">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <div class="overview-header-text">
+                <h3>Guardian Information</h3>
             </div>
         </div>
-        <div class="info-card">
-            <div class="card-title"><i class="fas fa-user-shield"></i> Parent/Guardian</div>
-            <div class="card-content">
-                <div class="field-box">
-                    <div class="field-label">Primary Guardian</div>
-                    <div class="field-value">{{ child.guardian_name or child.parent_name or child.father_name or
-                        child.mother_name or 'Parent / Guardian' }}</div>
-                </div>
-                <div class="field-grid">
-                    <div class="field-box">
-                        <div class="field-label">Relation</div>
-                        <div class="field-value">{{ (child.relationship or child.guardian_relationship or
-                            'Guardian')|capitalize }}</div>
-                    </div>
-                    <div class="field-box">
-                        <div class="field-label">Contact No.</div>
-                        <div class="field-value">{{ child.guardian_contact or child.emergency_contact or
-                            child.father_contact or child.mother_contact or 'N/A' }}</div>
-                    </div>
-                </div>
+
+        <div class="guardian-grid-4">
+            <div class="guardian-item">
+                <span class="guardian-label"><i class="fas fa-user"></i> Guardian Name</span>
+                <span class="guardian-val guardian-val-highlight">{{ child.display_guardian_name }}</span>
+            </div>
+            <div class="guardian-item">
+                <span class="guardian-label"><i class="fas fa-heart"></i> Relationship</span>
+                <span class="guardian-val">{{ (child.relationship or child.guardian_relationship or 'Guardian')|capitalize }}</span>
+            </div>
+            <div class="guardian-item">
+                <span class="guardian-label"><i class="fas fa-phone-alt"></i> Contact Number</span>
+                <span class="guardian-val guardian-val-highlight">{{ child.display_guardian_contact }}</span>
+            </div>
+            <div class="guardian-item">
+                <span class="guardian-label"><i class="fas fa-envelope"></i> Email Address</span>
+                <span class="guardian-val">{{ child.guardian_email or child.parent_user_email or 'N/A' }}</span>
             </div>
         </div>
     </div>
@@ -653,7 +721,8 @@
     </div>
 
     <div class="expansion-box" id="panel-schedule">
-        <div class="panel-wrap table-responsive" style="padding: 0; border: none; background: transparent; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+        <div class="panel-wrap table-responsive"
+            style="padding: 0; border: none; background: transparent; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
             {{ render_weekly_schedule(schedules, title="", subtitle="", show_teacher=true) }}
         </div>
     </div>

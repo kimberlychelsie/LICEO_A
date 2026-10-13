@@ -2524,16 +2524,17 @@ def create_parent_account(enrollment_id):
 
         try:
             parent_email = enrollment.get("guardian_email") or enrollment.get("email")
+            parent_contact = (enrollment.get("guardian_contact") or enrollment.get("emergency_contact") or enrollment.get("father_contact") or enrollment.get("mother_contact") or "").strip() or None
             g_first = (enrollment.get("guardian_first_name") or "").strip()
             g_mid = (enrollment.get("guardian_middle_name") or "").strip()
             g_last = (enrollment.get("guardian_last_name") or "").strip()
             g_full = " ".join(filter(None, [g_first, g_mid, g_last])).strip() or None
 
             cursor.execute("""
-                INSERT INTO users (username, password, role, branch_id, require_password_change, email, first_name, middle_name, last_name, full_name)
-                VALUES (%s, %s, 'parent', %s, TRUE, %s, %s, %s, %s, %s)
+                INSERT INTO users (username, password, role, branch_id, require_password_change, email, first_name, middle_name, last_name, full_name, contact_number)
+                VALUES (%s, %s, 'parent', %s, TRUE, %s, %s, %s, %s, %s, %s)
                 RETURNING user_id
-            """, (username, hashed_password, branch_id, parent_email, g_first or None, g_mid or None, g_last or None, g_full))
+            """, (username, hashed_password, branch_id, parent_email, g_first or None, g_mid or None, g_last or None, g_full, parent_contact))
             parent_id = cursor.fetchone()["user_id"]
 
             cursor.execute("""

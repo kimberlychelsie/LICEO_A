@@ -410,18 +410,18 @@
           <div class="form-grid-2">
             <div class="form-group-custom">
               <label for="first_name">First Name <span style="color: #dc2626;">*</span></label>
-              <input type="text" id="first_name" name="first_name" class="form-control-custom" value="{{ user.first_name or '' }}" required maxlength="100">
+              <input type="text" id="first_name" name="first_name" class="form-control-custom" value="{{ user.first_name or '' }}" required minlength="2" maxlength="50" pattern="^[A-Za-zñÑ](?:[A-Za-zñÑ\s]|-(?=[A-Za-zñÑ])|\.(?=[A-Za-zñÑ]|\s|$))*[A-Za-zñÑ.]$" title="Must start and end with letters, at least 2 letters, no spam hyphens or dots" oninput="cleanNameInput(this)">
             </div>
             <div class="form-group-custom">
               <label for="middle_name">Middle Name</label>
-              <input type="text" id="middle_name" name="middle_name" class="form-control-custom" value="{{ user.middle_name or '' }}" maxlength="100">
+              <input type="text" id="middle_name" name="middle_name" class="form-control-custom" value="{{ user.middle_name or '' }}" maxlength="50" pattern="^(|[A-Za-zñÑ](?:[A-Za-zñÑ\s]|-(?=[A-Za-zñÑ])|\.(?=[A-Za-zñÑ]|\s|$))*[A-Za-zñÑ.])$" title="Letters, single hyphens between letters, or single period" oninput="cleanNameInput(this)">
             </div>
           </div>
 
           <div class="form-grid-2">
             <div class="form-group-custom">
               <label for="last_name">Last Name <span style="color: #dc2626;">*</span></label>
-              <input type="text" id="last_name" name="last_name" class="form-control-custom" value="{{ user.last_name or '' }}" required maxlength="100">
+              <input type="text" id="last_name" name="last_name" class="form-control-custom" value="{{ user.last_name or '' }}" required minlength="2" maxlength="50" pattern="^[A-Za-zñÑ](?:[A-Za-zñÑ\s]|-(?=[A-Za-zñÑ])|\.(?=[A-Za-zñÑ]|\s|$))*[A-Za-zñÑ.]$" title="Must start and end with letters, at least 2 letters, no spam hyphens or dots" oninput="cleanNameInput(this)">
             </div>
             <div class="form-group-custom">
               <label for="gender">Gender</label>
@@ -435,7 +435,7 @@
 
           <div class="form-group-custom">
             <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" class="form-control-custom" value="{{ user.email or '' }}" placeholder="username@domain.com" maxlength="150">
+            <input type="email" id="email" name="email" class="form-control-custom" value="{{ user.email or '' }}" placeholder="username@domain.com" maxlength="150" pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" title="Valid email address">
             <div class="email-info-callout">
               <i class="fas fa-info-circle" style="margin-right: 4px;"></i>
               <strong>Branch Isolation Rule:</strong> If your email matches a student's guardian email in <em>this branch</em>, Parent Mode will automatically link. If you change your email to one that doesn't match any student in this branch, Parent Mode connection will be automatically removed.
@@ -445,7 +445,8 @@
           <div class="form-grid-2">
             <div class="form-group-custom">
               <label for="contact_number">Contact Number</label>
-              <input type="text" id="contact_number" name="contact_number" class="form-control-custom" value="{{ user.contact_number or '' }}" placeholder="e.g. 09123456789" maxlength="30">
+              <input type="tel" id="contact_number" name="contact_number" class="form-control-custom" value="{{ user.contact_number or '' }}" placeholder="09123456789" maxlength="11" minlength="11" inputmode="numeric" pattern="^09\d{9}$" title="Must start with 09 and be exactly 11 digits" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+              <span style="font-size: 0.75rem; color: #64748b; margin-top: 4px; display: block;">Numbers only, must start with 09 (11 digits)</span>
             </div>
             <div class="form-group-custom">
               <label>Account Username (Read-Only)</label>
@@ -478,12 +479,87 @@
 </div>
 
 <script>
+  function cleanNameInput(el) {
+    if (!el) return;
+    let v = el.value;
+    // Disallow numbers and symbols
+    v = v.replace(/[^A-Za-zñÑ\s.-]/g, '');
+    // Disallow leading special characters or spaces
+    v = v.replace(/^[^A-Za-zñÑ]+/g, '');
+    // Prevent spam: collapse multiple consecutive hyphens, periods, or spaces
+    v = v.replace(/--+/g, '-');
+    v = v.replace(/\.\.+/g, '.');
+    v = v.replace(/\s\s+/g, ' ');
+    v = v.replace(/[-.]{2,}/g, '-');
+    el.value = v;
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('profile_form');
     const saveBtn = document.getElementById('btn_save_profile');
     const fileInput = document.getElementById('profile_image_input');
 
     if (!form || !saveBtn) return;
+
+    // Client-side anti-spam and format check on form submission
+    form.addEventListener('submit', function(e) {
+      const fn = (document.getElementById('first_name')?.value || '').trim();
+      const mn = (document.getElementById('middle_name')?.value || '').trim();
+      const ln = (document.getElementById('last_name')?.value || '').trim();
+      const contact = (document.getElementById('contact_number')?.value || '').trim();
+
+      function validateName(val, label, isRequired) {
+        if (!val) {
+          if (isRequired) return `${label} is required.`;
+          return null;
+        }
+        const letters = val.match(/[A-Za-zñÑ]/g) || [];
+        if (letters.length < 2) {
+          return `${label} must contain at least 2 letters.`;
+        }
+        if (/[-.]{2,}/.test(val)) {
+          return `${label} cannot contain spam or repeated special characters (e.g. '--' or '..').`;
+        }
+        if (/^[-.]|[-.]$/.test(val)) {
+          return `${label} cannot start or end with a hyphen or dot.`;
+        }
+        if (!/^[A-Za-zñÑ][A-Za-zñÑ\s.-]*[A-Za-zñÑ.]$/.test(val)) {
+          return `${label} contains invalid formatting.`;
+        }
+        return null;
+      }
+
+      const errFn = validateName(fn, 'First Name', true);
+      if (errFn) {
+        alert(errFn);
+        document.getElementById('first_name')?.focus();
+        e.preventDefault();
+        return false;
+      }
+
+      const errMn = validateName(mn, 'Middle Name', false);
+      if (errMn) {
+        alert(errMn);
+        document.getElementById('middle_name')?.focus();
+        e.preventDefault();
+        return false;
+      }
+
+      const errLn = validateName(ln, 'Last Name', true);
+      if (errLn) {
+        alert(errLn);
+        document.getElementById('last_name')?.focus();
+        e.preventDefault();
+        return false;
+      }
+
+      if (contact && !/^09\d{9}$/.test(contact)) {
+        alert('Contact number must be an 11-digit Philippine mobile number starting with 09 (e.g., 09123456789).');
+        document.getElementById('contact_number')?.focus();
+        e.preventDefault();
+        return false;
+      }
+    });
 
     // Track initial values of all editable form inputs
     const editableInputs = form.querySelectorAll('input:not([type="file"]):not([type="hidden"]):not([readonly]):not([disabled]), select:not([disabled])');
