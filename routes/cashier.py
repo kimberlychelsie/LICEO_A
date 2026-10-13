@@ -4437,7 +4437,7 @@ def uniform_order_items(order_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute("""
-            SELECT uo.created_by_user_id, u_creator.role AS creator_role,
+            SELECT uo.created_by_user_id, u_creator.role AS creator_role, uo.payment_status, uo.order_status,
                    COALESCE(NULLIF(u_creator.full_name, ''), CONCAT_WS(' ', u_creator.first_name, u_creator.last_name), u_creator.username) AS creator_name
             FROM uniform_orders uo
             LEFT JOIN users u_creator ON u_creator.user_id = uo.created_by_user_id
@@ -4456,6 +4456,8 @@ def uniform_order_items(order_id):
         return jsonify({
             "creator_role": meta.get("creator_role"),
             "creator_name": meta.get("creator_name"),
+            "payment_status": meta.get("payment_status"),
+            "order_status": meta.get("order_status"),
             "items": [dict(i) for i in items]
         })
     finally:
@@ -4480,6 +4482,75 @@ def _sync_parent_set_price(cursor, parent_item_id, branch_id):
             SET price = %s
             WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
         """, (total_price, int(parent_item_id), branch_id))
+
+
+def _recompute_unpaid_uniform_orders(cursor, branch_id, order_id=None):
+    """Re-price all UNPAID, not-yet-claimed uniform orders using current catalog prices.
+    Linked unpaid bills are adjusted by the price difference. Returns number of orders changed."""
+    cursor.execute("""
+        SELECT uoi.item_id AS line_id, uoi.order_id, uoi.size_label, uoi.quantity, uoi.unit_price,
+               ii.price, ii.size_label AS sizes, COALESCE(ii.size_price_step, 20) AS step
+        FROM uniform_order_items uoi
+        JOIN uniform_orders uo ON uo.order_id = uoi.order_id
+        JOIN inventory_items ii ON ii.item_id = uoi.inventory_item_id
+        WHERE uo.branch_id = %s
+          AND (%s IS NULL OR uo.order_id = %s)
+          AND LOWER(COALESCE(uo.payment_status, 'unpaid')) <> 'paid'
+          AND uo.order_status IN ('For Ordering', 'Ready for Claim')
+    """, (branch_id, order_id, order_id))
+    changed_orders = set()
+    for ln in cursor.fetchall():
+        new_unit = price_for_size(ln["price"], ln["size_label"], ln["sizes"], ln["step"])
+        if abs(new_unit - float(ln["unit_price"] or 0)) > 0.009:
+            cursor.execute("""
+                UPDATE uniform_order_items SET unit_price = %s, line_total = %s WHERE item_id = %s
+            """, (new_unit, new_unit * int(ln["quantity"] or 1), ln["line_id"]))
+            changed_orders.add(ln["order_id"])
+
+    for oid in changed_orders:
+        cursor.execute("SELECT total_amount, bill_id FROM uniform_orders WHERE order_id = %s", (oid,))
+        o = cursor.fetchone()
+        cursor.execute("SELECT COALESCE(SUM(line_total), 0) AS t FROM uniform_order_items WHERE order_id = %s", (oid,))
+        new_total = float(cursor.fetchone()["t"] or 0)
+        delta = new_total - float(o["total_amount"] or 0)
+        cursor.execute("UPDATE uniform_orders SET total_amount = %s WHERE order_id = %s", (new_total, oid))
+        if o["bill_id"] and abs(delta) > 0.009:
+            cursor.execute("""
+                UPDATE billing
+                SET uniform_fee = COALESCE(uniform_fee, 0) + %s,
+                    total_amount = COALESCE(total_amount, 0) + %s,
+                    balance = COALESCE(balance, 0) + %s
+                WHERE bill_id = %s
+            """, (delta, delta, delta, o["bill_id"]))
+    return len(changed_orders)
+
+
+@cashier_bp.route("/cashier/orders/uniforms/<int:order_id>/recompute", methods=["POST"])
+def uniform_order_recompute(order_id):
+    """Manually re-price a single unpaid uniform order using current catalog prices."""
+    if not _require_cashier():
+        return jsonify({"error": "Unauthorized"}), 403
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("SELECT payment_status, order_status FROM uniform_orders WHERE order_id = %s AND branch_id = %s",
+                       (order_id, branch_id))
+        o = cursor.fetchone()
+        if not o:
+            return jsonify({"error": "Order not found"}), 404
+        if (o["payment_status"] or "").lower() == "paid" or o["order_status"] not in ("For Ordering", "Ready for Claim"):
+            return jsonify({"error": "Only unpaid, unclaimed orders can be recomputed."}), 400
+        changed = _recompute_unpaid_uniform_orders(cursor, branch_id, order_id)
+        db.commit()
+        return jsonify({"success": True, "changed": changed,
+                        "message": "Price updated to current catalog price." if changed else "Price is already up to date."})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 
 @cashier_bp.route("/cashier/uniform-catalog/update", methods=["POST"])
@@ -4559,8 +4630,13 @@ def uniform_catalog_update():
                 WHERE parent_item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
             """, (grade_level, item_id, branch_id))
 
+        repriced = _recompute_unpaid_uniform_orders(cursor, branch_id)
+
         db.commit()
-        return jsonify({"success": True, "message": "Uniform item updated successfully"})
+        msg = "Uniform item updated successfully"
+        if repriced:
+            msg += f". {repriced} unpaid order(s) re-priced."
+        return jsonify({"success": True, "message": msg})
     except Exception as e:
         db.rollback()
         return jsonify({"error": str(e)}), 500

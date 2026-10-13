@@ -1284,7 +1284,25 @@
                         total += parseFloat(item.line_total);
                     });
                     html += '<div class="modal-total"><span>Total</span><span>&#8369;' + total.toFixed(2) + '</span></div>';
+                    const pStatus = String(res.payment_status || '').toLowerCase();
+                    const oStatus = res.order_status || '';
+                    if (pStatus !== 'paid' && (oStatus === 'For Ordering' || oStatus === 'Ready for Claim')) {
+                        html += '<button type="button" id="recomputePriceBtn" style="margin-top:12px;width:100%;padding:10px;border:1px solid #1e3a8a;background:#eef2ff;color:#1e3a8a;font-weight:700;border-radius:10px;cursor:pointer;">&#8635; Recompute Price (use current catalog price)</button>';
+                    }
                     document.getElementById('viewModalItems').innerHTML = html;
+                    const rBtn = document.getElementById('recomputePriceBtn');
+                    if (rBtn) {
+                        rBtn.onclick = function () {
+                            if (!confirm('Update this order to the current catalog price?')) return;
+                            rBtn.disabled = true; rBtn.textContent = 'Recomputing...';
+                            fetch('/cashier/orders/uniforms/' + orderId + '/recompute', { method: 'POST' })
+                                .then(r => r.json())
+                                .then(d => {
+                                    if (d.success) { alert(d.message); location.reload(); }
+                                    else { alert('Error: ' + (d.error || 'Unknown error')); rBtn.disabled = false; rBtn.innerHTML = '&#8635; Recompute Price (use current catalog price)'; }
+                                });
+                        };
+                    }
                 })
                 .catch(() => {
                     document.getElementById('viewModalItems').innerHTML = '<p style="color:#ef4444;">Failed to load items.</p>';
