@@ -52,6 +52,14 @@ def uploaded_file(filename):
     response.headers["Content-Disposition"] = "inline"
     return response
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(
+        os.path.join(app.root_path, 'static', 'img'),
+        'favicon.ico',
+        mimetype='image/x-icon'
+    )
+
 @app.route('/proxy/pdf')
 def proxy_pdf():
     """Server-side proxy to fetch and serve PDFs from Cloudinary with correct headers.

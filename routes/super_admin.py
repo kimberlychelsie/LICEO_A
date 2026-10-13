@@ -321,12 +321,13 @@ def super_admin_branches():
         """)
         retired_admins_pool = cursor.fetchall()
 
-        # Fetch ALL retired + archived for the Archived Accounts modal
+        # Fetch ALL retired + archived for the Archived Accounts modal (admins only)
         cursor.execute("""
             SELECT u.user_id, u.full_name, u.username, u.branch_id, u.email, COALESCE(u.is_archived, FALSE) AS is_archived, u.status, b.branch_name
             FROM users u
             LEFT JOIN branches b ON u.branch_id = b.branch_id
-            WHERE u.role = 'retired_admin' OR u.is_archived IS TRUE OR (u.role = 'branch_admin' AND u.status = 'inactive')
+            WHERE u.role IN ('retired_admin', 'branch_admin')
+              AND (u.is_archived IS TRUE OR u.role = 'retired_admin' OR u.status = 'inactive')
             ORDER BY u.full_name ASC
         """)
         archived_admins_pool = cursor.fetchall()
@@ -841,10 +842,13 @@ def super_admin_delete_retired_admin(user_id):
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cursor.execute("SELECT full_name FROM users WHERE user_id = %s AND role = 'retired_admin'", (user_id,))
+        cursor.execute(
+            "SELECT full_name, role FROM users WHERE user_id = %s AND role IN ('retired_admin', 'branch_admin')",
+            (user_id,)
+        )
         user = cursor.fetchone()
         if not user:
-            flash("Retired admin not found.", "error")
+            flash("Account not found or is not an admin account.", "error")
             return redirect(url_for("super_admin.super_admin_branches"))
 
         cursor.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
@@ -872,10 +876,13 @@ def super_admin_archive_retired_admin(user_id):
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cursor.execute("SELECT full_name FROM users WHERE user_id = %s AND role = 'retired_admin'", (user_id,))
+        cursor.execute(
+            "SELECT full_name, role FROM users WHERE user_id = %s AND role IN ('retired_admin', 'branch_admin')",
+            (user_id,)
+        )
         user = cursor.fetchone()
         if not user:
-            flash("Retired admin not found.", "error")
+            flash("Account not found or is not an admin account.", "error")
             return redirect(url_for("super_admin.super_admin_branches"))
 
         cursor.execute("UPDATE users SET is_archived = TRUE WHERE user_id = %s", (user_id,))
