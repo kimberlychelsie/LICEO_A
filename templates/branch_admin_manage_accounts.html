@@ -1056,6 +1056,9 @@
 
             <form method="get" class="search-registry-bar" id="filter-form" style="flex: 1; min-width: 300px; display: flex; gap: 16px; align-items: flex-end; margin: 0; background: transparent; padding: 0; border: none; box-shadow: none;">
                 <input type="hidden" name="role" value="{{ role_filter }}">
+                {% if view_mode == 'grouped' %}
+                <input type="hidden" name="view" value="grouped">
+                {% endif %}
                 {% if show_archived %}
                 <input type="hidden" name="show_archived" value="true">
                 {% endif %}
@@ -1074,6 +1077,25 @@
                             </svg>
                         </button>
                     </div>
+                </div>
+
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 700; font-size: 0.85rem; color: var(--ma-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;">First Name</label>
+                    <select name="fn" class="form-control" onchange="this.form.submit()" style="height: 46px; padding: 0 16px; min-width: 90px;">
+                        <option value="">All</option>
+                        {% for l in alphabet_letters %}
+                        <option value="{{ l }}" {% if filter_fn==l %}selected{% endif %}>{{ l }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 700; font-size: 0.85rem; color: var(--ma-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;">Last Name</label>
+                    <select name="ln" class="form-control" onchange="this.form.submit()" style="height: 46px; padding: 0 16px; min-width: 90px;">
+                        <option value="">All</option>
+                        {% for l in alphabet_letters %}
+                        <option value="{{ l }}" {% if filter_ln==l %}selected{% endif %}>{{ l }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
 
                 {% if role_filter in ['student', 'teacher'] %}
@@ -1110,11 +1132,11 @@
 
                 <div class="form-group" style="margin: 0; display: flex; align-items: flex-end;">
                     {% if view_mode == 'grouped' %}
-                    <a href="?role={{ role_filter }}{% if show_archived %}&show_archived=true{% endif %}" class="btn-elegant"
+                    <a href="?role={{ role_filter }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&fn={{ filter_fn }}&ln={{ filter_ln }}{% if show_archived %}&show_archived=true{% endif %}" class="btn-elegant"
                         style="background: #ffffff; border: 1.5px solid var(--ma-border); color: var(--ma-muted); text-decoration: none; padding: 0 20px; height: 46px; display: flex; align-items: center; justify-content: center;">Default
                         View</a>
                     {% else %}
-                    <a href="?role={{ role_filter }}&view=grouped{% if show_archived %}&show_archived=true{% endif %}" class="btn-elegant"
+                    <a href="?role={{ role_filter }}&view=grouped&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&fn={{ filter_fn }}&ln={{ filter_ln }}{% if show_archived %}&show_archived=true{% endif %}" class="btn-elegant"
                         style="background: #f1f5f9; color: var(--ma-primary); text-decoration: none; padding: 0 20px; height: 46px; display: flex; align-items: center; justify-content: center;">Group
                         View</a>
                     {% endif %}
@@ -1200,7 +1222,7 @@
         </div>
         <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
             {% if page > 1 %}
-            <a href="?role={{ role_filter }}&page={{ page - 1 }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}"
+            <a href="?role={{ role_filter }}&page={{ page - 1 }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&fn={{ filter_fn }}&ln={{ filter_ln }}">
                style="display:inline-flex;align-items:center;gap:4px;padding:7px 14px;border-radius:8px;border:1.5px solid var(--ma-border);background:#fff;font-weight:700;font-size:0.85rem;color:var(--ma-primary);text-decoration:none;transition:all 0.18s;" onmouseover="this.style.background='var(--ma-primary)';this.style.color='#fff';" onmouseout="this.style.background='#fff';this.style.color='var(--ma-primary)';">
                 ← Prev
             </a>
@@ -1210,7 +1232,7 @@
                 {% if p == page %}
                 <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--ma-primary);color:#fff;font-weight:800;font-size:0.88rem;">{{ p }}</span>
                 {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
-                <a href="?role={{ role_filter }}&page={{ p }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}"
+                <a href="?role={{ role_filter }}&page={{ p }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&fn={{ filter_fn }}&ln={{ filter_ln }}">
                    style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1.5px solid var(--ma-border);background:#fff;font-weight:700;font-size:0.88rem;color:var(--ma-text);text-decoration:none;transition:all 0.18s;" onmouseover="this.style.background='var(--ma-primary-light)';" onmouseout="this.style.background='#fff';">{{ p }}</a>
                 {% elif p == page - 3 or p == page + 3 %}
                 <span style="color:var(--ma-muted);font-weight:700;padding:0 4px;">…</span>
@@ -1218,7 +1240,7 @@
             {% endfor %}
 
             {% if page < total_pages %}
-            <a href="?role={{ role_filter }}&page={{ page + 1 }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}"
+            <a href="?role={{ role_filter }}&page={{ page + 1 }}&search={{ filter_search }}&grade={{ filter_grade }}&section={{ filter_section }}&fn={{ filter_fn }}&ln={{ filter_ln }}">
                style="display:inline-flex;align-items:center;gap:4px;padding:7px 14px;border-radius:8px;border:1.5px solid var(--ma-border);background:#fff;font-weight:700;font-size:0.85rem;color:var(--ma-primary);text-decoration:none;transition:all 0.18s;" onmouseover="this.style.background='var(--ma-primary)';this.style.color='#fff';" onmouseout="this.style.background='#fff';this.style.color='var(--ma-primary)';">
                 Next →
             </a>

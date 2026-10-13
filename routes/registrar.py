@@ -37,6 +37,29 @@ def generate_password(length=8):
     characters = string.ascii_letters + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
 
+
+ALPHABET_LETTERS = [chr(c) for c in range(ord("A"), ord("Z") + 1)] + ["Ñ"]
+
+
+def _sanitize_letter_filter(raw):
+    letter = (raw or "").strip().upper()
+    if letter == "Ñ" or (len(letter) == 1 and "A" <= letter <= "Z"):
+        return letter
+    return ""
+
+
+def _row_matches_name_letters(row, fn_letter, ln_letter):
+    """Match optional first-name and last-name letter filters independently."""
+    if fn_letter:
+        first_name = row.get("first_name") or row.get("student_first_name") or ""
+        if not str(first_name).strip().upper().startswith(fn_letter):
+            return False
+    if ln_letter:
+        last_name = row.get("last_name") or row.get("student_last_name") or ""
+        if not str(last_name).strip().upper().startswith(ln_letter):
+            return False
+    return True
+
 def is_valid_email(email):
     # Strict email validation: username@domain.com
     # Username: a-z, 0-9, ., _, -
@@ -2957,6 +2980,8 @@ def registrar_students_by_grade():
         grade_filter = request.args.get("grade", "")
         section_filter = request.args.get("section_id", "")
         year_filter = request.args.get("year_id", "")
+        filter_fn = _sanitize_letter_filter(request.args.get("fn", ""))
+        filter_ln = _sanitize_letter_filter(request.args.get("ln", ""))
 
         # Fetch school years for the dropdown
         cursor.execute("SELECT year_id, label, is_active FROM school_years WHERE branch_id = %s ORDER BY label DESC", (branch_id,))
@@ -3062,6 +3087,9 @@ def registrar_students_by_grade():
                 e["documents"] = json.loads(e["documents"])
             students.append(e)
 
+        if filter_fn or filter_ln:
+            students = [s for s in students if _row_matches_name_letters(s, filter_fn, filter_ln)]
+
         # Fetch active SHS elective offerings
         shs_elective_offerings = []
         if year_filter:
@@ -3097,6 +3125,9 @@ def registrar_students_by_grade():
             section_filter=section_filter,
             school_years=school_years,
             year_filter=str(year_filter) if year_filter else "",
+            filter_fn=filter_fn,
+            filter_ln=filter_ln,
+            alphabet_letters=ALPHABET_LETTERS,
             shs_elective_offerings=shs_elective_offerings,
             branch=branch
         )
@@ -5256,7 +5287,8 @@ def registrar_assign_students():
         grade_options=grade_options,
         sections=filtered_sections,
         students=students,
-        grade_filter=grade_filter
+        grade_filter=grade_filter,
+        alphabet_letters=ALPHABET_LETTERS,
     )
 
 @registrar_bp.route("/registrar/api/assign-student-section", methods=["POST"])

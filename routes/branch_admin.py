@@ -26,6 +26,29 @@ def generate_password(length: int = 8) -> str:
     characters = string.ascii_letters + string.digits
     return "".join(secrets.choice(characters) for _ in range(length))
 
+
+ALPHABET_LETTERS = [chr(c) for c in range(ord("A"), ord("Z") + 1)] + ["Ñ"]
+
+
+def _sanitize_letter_filter(raw):
+    letter = (raw or "").strip().upper()
+    if letter == "Ñ" or (len(letter) == 1 and "A" <= letter <= "Z"):
+        return letter
+    return ""
+
+
+def _row_matches_name_letters(row, fn_letter, ln_letter):
+    """Match optional first-name and last-name letter filters independently."""
+    if fn_letter:
+        first_name = row.get("first_name") or row.get("student_first_name") or ""
+        if not str(first_name).strip().upper().startswith(fn_letter):
+            return False
+    if ln_letter:
+        last_name = row.get("last_name") or row.get("student_last_name") or ""
+        if not str(last_name).strip().upper().startswith(ln_letter):
+            return False
+    return True
+
 # =======================
 # GRADE RANGE MAPPINGS (for inventory grade filter / display)
 # =======================
@@ -586,6 +609,8 @@ def branch_admin_manage_accounts():
     filter_grade = request.args.get("grade", "")
     filter_section = request.args.get("section", "")
     filter_search = request.args.get("search", "").strip()
+    filter_fn = _sanitize_letter_filter(request.args.get("fn", ""))
+    filter_ln = _sanitize_letter_filter(request.args.get("ln", ""))
     per_page = 10
     try:
         page = max(1, int(request.args.get("page", 1)))
@@ -766,6 +791,7 @@ def branch_admin_manage_accounts():
             query = """
                 SELECT 
                     sa.account_id, sa.username, 'student' AS role, CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name) AS full_name,
+                    e.student_first_name, e.student_last_name,
                     e.gender, e.grade_level, sa.is_active, sa.email, e.enrollment_id,
                     s.section_name
                 FROM student_accounts sa
@@ -788,7 +814,7 @@ def branch_admin_manage_accounts():
             # Categorized by Section logic: One row per teacher-section pairing
             query = """
                 SELECT
-                    u.user_id, u.username, u.role, u.full_name, u.gender,
+                    u.user_id, u.username, u.role, u.full_name, u.first_name, u.last_name, u.gender,
                     u.email, COALESCE(g_u.name, u.grade_level) AS teacher_grade, u.status,
                     s.section_name, g_s.name AS section_grade
                 FROM users u
@@ -808,7 +834,7 @@ def branch_admin_manage_accounts():
             params = [branch_id]
             query = f"""
                 SELECT
-                    u.user_id, u.username, u.role, u.user_roles, u.full_name, u.gender,
+                    u.user_id, u.username, u.role, u.user_roles, u.full_name, u.first_name, u.last_name, u.gender,
                     u.email, COALESCE(g.name, u.grade_level) AS grade_level, u.status,
                     (SELECT STRING_AGG(DISTINCT s2.section_name, ', ') 
                      FROM section_teachers st2 
@@ -830,6 +856,8 @@ def branch_admin_manage_accounts():
             cursor.execute(query, tuple(params))
 
         accounts = cursor.fetchall() or []
+        if filter_fn or filter_ln:
+            accounts = [a for a in accounts if _row_matches_name_letters(a, filter_fn, filter_ln)]
 
         # --- ADVANCED ACADEMIC SORTING (PYTHON BASED) ---
         import re
@@ -863,6 +891,7 @@ def branch_admin_manage_accounts():
         db.rollback()
         flash(f"An error occurred: {str(e)}", "error")
         accounts, grades = [], []
+        section_options = []
         total_count, total_pages = 0, 1
     finally:
         cursor.close()
@@ -878,6 +907,9 @@ def branch_admin_manage_accounts():
         filter_grade=filter_grade,
         filter_section=filter_section,
         filter_search=filter_search,
+        filter_fn=filter_fn,
+        filter_ln=filter_ln,
+        alphabet_letters=ALPHABET_LETTERS,
         page=page,
         per_page=per_page,
         total_pages=total_pages,
@@ -3192,6 +3224,8 @@ def branch_admin_manage_teachers():
     branch_id     = session.get("branch_id")
     created_user  = None
     filter_search = request.args.get("search", "").strip()
+    filter_fn = _sanitize_letter_filter(request.args.get("fn", ""))
+    filter_ln = _sanitize_letter_filter(request.args.get("ln", ""))
 
     db     = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -3375,6 +3409,8 @@ Please log in and change your password immediately.
         query += " ORDER BY u.full_name"
         cursor.execute(query, params)
         teachers = cursor.fetchall() or []
+        if filter_fn or filter_ln:
+            teachers = [t for t in teachers if _row_matches_name_letters(t, filter_fn, filter_ln)]
 
         cursor.execute("""
             SELECT
@@ -3411,6 +3447,9 @@ Please log in and change your password immediately.
         grades=grades,
         stats=stats,
         filter_search=filter_search,
+        filter_fn=filter_fn,
+        filter_ln=filter_ln,
+        alphabet_letters=ALPHABET_LETTERS,
         created_user=created_user,
         is_branch_active_status=is_branch_active_status,
     )

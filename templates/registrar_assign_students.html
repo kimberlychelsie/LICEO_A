@@ -103,7 +103,8 @@
         position: relative;
         display: flex;
         align-items: center;
-        min-width: 220px;
+        width: 100%;
+        min-width: 0;
     }
 
 
@@ -119,7 +120,8 @@
 
     .grade-dropdown-select {
         width: 100%;
-        padding: 12px 36px 12px 42px;
+        height: 44px;
+        padding: 0 36px 0 42px;
         border: 1.5px solid var(--ma-border);
         border-radius: 14px;
         font-size: 0.9rem;
@@ -129,6 +131,7 @@
         cursor: pointer;
         appearance: none;
         -webkit-appearance: none;
+        box-sizing: border-box;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231a3a8f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: right 14px center;
@@ -230,19 +233,93 @@
     /* Filters */
     .filter-section {
         display: flex;
-        gap: 16px;
-        align-items: center;
+        flex-direction: column;
+        gap: 10px;
         margin-bottom: 20px;
         background: white;
-        padding: 16px;
+        padding: 14px 16px;
         border-radius: 20px;
         border: 1px solid var(--ma-border);
     }
 
+    .filter-row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .filter-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .filter-field label {
+        font-size: 0.68rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .filter-field.grade {
+        flex: 0 0 180px;
+        width: 180px;
+    }
+
+    .filter-field.search {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .filter-field.letter {
+        flex: 0 0 118px;
+        width: 118px;
+    }
+
+    .letter-select {
+        width: 100%;
+        height: 44px;
+        padding: 0 28px 0 12px;
+        border: 1.5px solid var(--ma-border);
+        border-radius: 14px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--ma-primary);
+        background: #f8fafc;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231a3a8f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+    }
+
+    .letter-select:focus,
+    .letter-select:hover {
+        border-color: var(--ma-primary);
+        background-color: #ffffff;
+        box-shadow: 0 0 0 3px rgba(26, 58, 143, 0.1);
+        outline: none;
+    }
+
+    .filter-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 0 1 auto;
+        margin-left: auto;
+        min-width: 0;
+    }
 
     .search-wrapper {
         position: relative;
-        flex: 1;
+        width: 100%;
     }
 
 
@@ -257,24 +334,37 @@
 
     .form-control {
         width: 100%;
-        padding: 12px 16px 12px 48px;
+        height: 44px;
+        padding: 0 16px 0 48px;
         border: 1.5px solid var(--ma-border);
         border-radius: 14px;
         font-size: 0.95rem;
+        box-sizing: border-box;
     }
 
 
     .toggle-unassigned {
-        padding: 12px 20px;
+        padding: 0 14px;
+        height: 44px;
         border-radius: 14px;
         border: 1.5px solid var(--ma-border);
         background: white;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         font-weight: 700;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    #visibleCount {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--ma-primary);
+        white-space: nowrap;
+        line-height: 1.2;
     }
 
 
@@ -443,12 +533,20 @@
         }
 
         .filter-section {
-            flex-direction: column;
-            align-items: stretch;
             padding: 14px !important;
             gap: 12px !important;
             border-radius: 18px !important;
             margin-bottom: 16px;
+        }
+
+        .filter-row {
+            flex-wrap: wrap;
+        }
+
+        .filter-field.grade,
+        .filter-field.search {
+            flex: 1 1 100%;
+            width: 100%;
         }
 
         .search-wrapper {
@@ -456,16 +554,13 @@
         }
 
         .toggle-unassigned {
-            width: 100%;
             justify-content: center;
-            padding: 10px 14px;
+            padding: 0 12px;
             font-size: 0.8rem;
         }
 
         #visibleCount {
             margin-left: 0 !important;
-            text-align: center;
-            width: 100%;
         }
 
         /* ── Table-to-Card Transformation ── */
@@ -525,6 +620,24 @@
 
         .grade-select-wrapper {
             width: 100%;
+        }
+
+        .filter-field.grade,
+        .filter-field.search,
+        .filter-field.letter {
+            flex: 1 1 100%;
+            width: 100%;
+        }
+
+        .filter-field.letter {
+            flex: 1 1 calc(50% - 6px);
+            width: auto;
+        }
+
+        .filter-actions {
+            margin-left: 0;
+            width: 100%;
+            justify-content: space-between;
         }
 
         .sidebar-column {
@@ -592,26 +705,55 @@
         <!-- Main Column: Table -->
         <div class="table-column">
             <div class="filter-section">
-                <div class="grade-select-wrapper">
-                    <i class="fas fa-graduation-cap grade-select-icon"></i>
-                    <select id="gradeDropdownSelect" class="grade-dropdown-select"
-                        onchange="window.location.href='?grade=' + this.value">
-                        {% for g in grade_options %}
-                        <option value="{{ g.id }}" {% if grade_filter==g.id|string %}selected{% endif %}>{{ g.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                <div class="filter-row">
+                    <div class="filter-field grade">
+                        <label for="gradeDropdownSelect">Grade</label>
+                        <div class="grade-select-wrapper">
+                            <i class="fas fa-graduation-cap grade-select-icon"></i>
+                            <select id="gradeDropdownSelect" class="grade-dropdown-select"
+                                onchange="window.location.href='?grade=' + this.value">
+                                {% for g in grade_options %}
+                                <option value="{{ g.id }}" {% if grade_filter==g.id|string %}selected{% endif %}>{{ g.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-field search">
+                        <label for="searchInput">Search</label>
+                        <div class="search-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchInput" class="form-control" placeholder="Student name..."
+                                oninput="applyFilters()">
+                        </div>
+                    </div>
                 </div>
-                <div class="search-wrapper">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="searchInput" class="form-control" placeholder="Search student name..."
-                        oninput="applyFilters()">
+                <div class="filter-row">
+                    <div class="filter-field letter">
+                        <label for="fnFilter">First Name</label>
+                        <select id="fnFilter" class="letter-select" onchange="applyFilters()">
+                            <option value="">All</option>
+                            {% for l in alphabet_letters %}
+                            <option value="{{ l }}">{{ l }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-field letter">
+                        <label for="lnFilter">Last Name</label>
+                        <select id="lnFilter" class="letter-select" onchange="applyFilters()">
+                            <option value="">All</option>
+                            {% for l in alphabet_letters %}
+                            <option value="{{ l }}">{{ l }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="toggle-unassigned" id="pendingToggle" onclick="togglePending()">
+                            <i class="fas fa-hourglass-half"></i> Unassigned
+                        </button>
+                        <div id="visibleCount"></div>
+                    </div>
                 </div>
-                <button class="toggle-unassigned" id="pendingToggle" onclick="togglePending()">
-                    <i class="fas fa-hourglass-half"></i> Unassigned Only
-                </button>
-                <div id="visibleCount"
-                    style="margin-left: auto; font-size: 0.8rem; font-weight: 800; color: var(--ma-primary);"></div>
             </div>
 
 
@@ -633,6 +775,8 @@
                         <tbody id="studentTbody">
                             {% for s in students %}
                             <tr data-name="{{ s.student_name | lower }}"
+                                data-first-name="{{ (s.student_first_name or '') | upper }}"
+                                data-last-name="{{ (s.student_last_name or '') | upper }}"
                                 data-assigned="{{ '1' if s.section_name else '0' }}"
                                 data-enrollment="{{ s.enrollment_id }}">
                                 <td data-label="ID" style="color: var(--ma-muted); font-size: 0.75rem;">{{
@@ -732,14 +876,22 @@
 
     function applyFilters() {
         const search = document.getElementById('searchInput').value.toLowerCase();
+        const fnEl = document.getElementById('fnFilter');
+        const lnEl = document.getElementById('lnFilter');
+        const fnLetter = fnEl ? (fnEl.value || '').toUpperCase() : '';
+        const lnLetter = lnEl ? (lnEl.value || '').toUpperCase() : '';
         const rows = document.querySelectorAll('#studentTbody tr');
         let visible = 0;
         rows.forEach(row => {
             const name = row.dataset.name || '';
+            const firstName = (row.dataset.firstName || '').trim();
+            const lastName = (row.dataset.lastName || '').trim();
             const assigned = row.dataset.assigned === '1';
             const matchSearch = !search || name.includes(search);
+            const matchFn = !fnLetter || firstName.charAt(0) === fnLetter;
+            const matchLn = !lnLetter || lastName.charAt(0) === lnLetter;
             const matchPending = !showPendingOnly || !assigned;
-            if (matchSearch && matchPending) {
+            if (matchSearch && matchFn && matchLn && matchPending) {
                 row.classList.remove('hidden-row');
                 visible++;
             } else {
