@@ -830,8 +830,9 @@ def branch_admin_manage_accounts():
             params = [branch_id]
             query = f"""
                 SELECT
-                    u.user_id, u.username, u.role, u.user_roles, u.full_name, u.first_name, u.last_name, u.gender,
+                    u.user_id, u.username, u.role, u.user_roles, u.full_name, u.first_name, u.middle_name, u.last_name, u.gender,
                     u.email, COALESCE(g.name, u.grade_level) AS grade_level, u.status,
+                    COALESCE(u.is_swafo, FALSE) AS is_swafo, COALESCE(u.is_dc, FALSE) AS is_dc,
                     (SELECT STRING_AGG(DISTINCT s2.section_name, ', ') 
                      FROM section_teachers st2 
                      JOIN sections s2 ON st2.section_id = s2.section_id 
@@ -3520,7 +3521,7 @@ def branch_admin_edit_teacher(user_id):
     finally:
         cursor.close()
         db.close()
-    return redirect("/branch-admin/manage-teachers")
+    return redirect(request.form.get("next") or request.referrer or "/branch-admin/manage-teachers")
 
 
 @branch_admin_bp.route("/branch-admin/manage-teachers/<int:user_id>/toggle", methods=["POST"])
