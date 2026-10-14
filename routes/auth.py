@@ -22,8 +22,18 @@ def check_password_change_required(user_data, is_student=False):
     return user_data.get("require_password_change", 0) == 1
 
 
+EMOJI_REGEX = re.compile(r"[\U00010000-\U0010ffff]|\u200d|[\u2600-\u27bf]|[\u2300-\u23ff]|[\ufe0e\ufe0f]")
+
+def has_emoji(text: str) -> bool:
+    if not text:
+        return False
+    return bool(EMOJI_REGEX.search(text))
+
+
 def validate_password_policy(password):
-    """Enforce policy: min 8 chars, at least one letter and one number. Returns (ok, error_message)."""
+    """Enforce policy: min 8 chars, at least one letter, one number, and no emojis. Returns (ok, error_message)."""
+    if has_emoji(password):
+        return False, "Emojis are not allowed in passwords."
     if len(password) < 8:
         return False, "Password must be at least 8 characters."
     if not re.search(r"[a-zA-Z]", password):
@@ -275,6 +285,10 @@ def login():
     if request.method == "POST":
         username = request.form["username"].strip()
         password = request.form["password"]
+
+        if has_emoji(username) or has_emoji(password):
+            flash("Emojis are not allowed in username or password.", "error")
+            return render_template("login.html")
 
         db = get_db_connection()
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -562,6 +576,11 @@ def change_password():
         if request.method == "POST":
             new_password = (request.form.get("new_password") or "").strip()
             confirm_password = (request.form.get("confirm_password") or "").strip()
+            current_password = (request.form.get("current_password") or "").strip()
+
+            if has_emoji(new_password) or has_emoji(confirm_password) or has_emoji(current_password):
+                flash("Emojis are not allowed in passwords.", "error")
+                return redirect(url_for("auth.change_password"))
 
             if not new_password:
                 flash("Please enter a new password.", "error")
@@ -867,6 +886,10 @@ def reset_password(token):
         if request.method == "POST":
             new_password = request.form.get("password") or ""
             confirm = request.form.get("confirm_password") or ""
+
+            if has_emoji(new_password) or has_emoji(confirm):
+                flash("Emojis are not allowed in passwords.", "error")
+                return redirect(request.url)
 
             # Use your existing policy function if available:
             ok, err = validate_password_policy(new_password)

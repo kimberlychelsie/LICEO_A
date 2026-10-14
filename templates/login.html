@@ -883,8 +883,14 @@
                 {% endif %}
                 {% endwith %}
 
+                <!-- Emoji Alert -->
+                <div id="emojiAlert" class="alert" style="display:none; background:#fef2f2; border-color:#fecaca; border-left-color:#ef4444; color:#991b1b; margin-bottom: 16px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    <span>Emojis are not allowed in username or password.</span>
+                </div>
+
                 <!-- Form -->
-                <form method="post" id="loginForm" onsubmit="onSubmit()">
+                <form method="post" id="loginForm" onsubmit="return onSubmit(event)">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="field">
@@ -1039,6 +1045,34 @@
     {% endif %}
 
     <script>
+        var EMOJI_REGEX = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B50}\u{FE0E}\u{FE0F}\u{200D}]/u;
+        var EMOJI_GLOBAL = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B50}\u{FE0E}\u{FE0F}\u{200D}]/gu;
+
+        function checkEmoji(input) {
+            var alertBox = document.getElementById('emojiAlert');
+            if (EMOJI_REGEX.test(input.value)) {
+                if (alertBox) alertBox.style.display = 'flex';
+                input.value = input.value.replace(EMOJI_GLOBAL, '');
+                input.style.borderColor = '#ef4444';
+                setTimeout(function() {
+                    input.style.borderColor = '';
+                }, 2000);
+                return true;
+            }
+            return false;
+        }
+
+        var userInput = document.getElementById('username');
+        var passInput = document.getElementById('password');
+        if (userInput) {
+            userInput.addEventListener('input', function() { checkEmoji(this); });
+            userInput.addEventListener('paste', function() { var el = this; setTimeout(function() { checkEmoji(el); }, 10); });
+        }
+        if (passInput) {
+            passInput.addEventListener('input', function() { checkEmoji(this); });
+            passInput.addEventListener('paste', function() { var el = this; setTimeout(function() { checkEmoji(el); }, 10); });
+        }
+
         function togglePw() {
             var p = document.getElementById('password');
             var show = document.getElementById('eyeShow');
@@ -1053,11 +1087,21 @@
                 hide.style.display = 'none';
             }
         }
-        function onSubmit() {
+
+        function onSubmit(e) {
+            var u = document.getElementById('username');
+            var p = document.getElementById('password');
+            if ((u && EMOJI_REGEX.test(u.value)) || (p && EMOJI_REGEX.test(p.value))) {
+                if (e) e.preventDefault();
+                var alertBox = document.getElementById('emojiAlert');
+                if (alertBox) alertBox.style.display = 'flex';
+                return false;
+            }
             var btn = document.getElementById('loginBtn');
             btn.disabled = true;
             document.getElementById('sp').style.display = 'block';
             document.getElementById('btnLabel').textContent = 'Logging in...';
+            return true;
         }
     </script>
 
