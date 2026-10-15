@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, session, redirect, url_for
+from flask import Blueprint, render_template, jsonify, session, redirect, url_for, request, abort
 from db import get_db_connection
 import psycopg2.extras
 
@@ -53,11 +53,20 @@ def homepage():
             return redirect(url_for("librarian.dashboard"))
 
     announcements = query_all("""
-        SELECT announcement_id AS id, title, message, created_at, image_url
-        FROM announcements
-        WHERE is_active = TRUE
-            AND audience = 'all'
-        ORDER BY created_at DESC
+        SELECT
+            a.announcement_id AS id,
+            a.title,
+            a.message,
+            a.created_at,
+            a.image_url,
+            a.branch_id,
+            b.branch_name
+        FROM announcements a
+        LEFT JOIN branches b ON b.branch_id = a.branch_id
+        WHERE a.is_active = TRUE
+            AND a.audience = 'all'
+        ORDER BY a.created_at DESC, a.announcement_id DESC
+        LIMIT 3
     """)
 
     branches = query_all("""
@@ -73,6 +82,133 @@ def homepage():
         branches=branches
     )
 
+
+def _active_public_branches():
+    return query_all("""
+        SELECT branch_id, branch_name
+        FROM branches
+        WHERE is_active = TRUE
+        ORDER BY branch_name ASC
+    """) or []
+
+
+def _requested_branch_id(active_branches=None):
+    raw_branch_id = (request.args.get("branch_id") or "").strip()
+    if not raw_branch_id:
+        return None, False
+    try:
+        branch_id = int(raw_branch_id)
+    except (TypeError, ValueError):
+        return None, True
+    if branch_id <= 0:
+        return None, True
+
+    if active_branches is not None:
+        is_valid = any(branch["branch_id"] == branch_id for branch in active_branches)
+    else:
+        is_valid = bool(query_one("""
+            SELECT 1
+            FROM branches
+            WHERE branch_id = %s AND is_active = TRUE
+        """, (branch_id,)))
+    return (branch_id, False) if is_valid else (None, True)
+
+
+def _get_public_announcements_page(requested_page, branch_id=None, per_page=10):
+    page = max(1, requested_page)
+    filters = ["a.is_active = TRUE", "a.audience = %s"]
+    params = ["all"]
+    if branch_id is not None:
+        filters.append("(a.branch_id = %s OR a.branch_id IS NULL)")
+        params.append(branch_id)
+    where_sql = " AND ".join(filters)
+
+    count_row = query_one(f"""
+        SELECT COUNT(*) AS total
+        FROM announcements a
+        WHERE {where_sql}
+    """, params) or {}
+    total = count_row.get("total", 0)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    offset = (page - 1) * per_page
+
+    announcements = query_all(f"""
+        SELECT
+            a.announcement_id AS id,
+            a.title,
+            a.message,
+            a.created_at,
+            a.image_url,
+            a.branch_id,
+            b.branch_name
+        FROM announcements a
+        LEFT JOIN branches b ON b.branch_id = a.branch_id
+        WHERE {where_sql}
+        ORDER BY a.created_at DESC, a.announcement_id DESC
+        LIMIT %s OFFSET %s
+    """, params + [per_page, offset])
+    return announcements, page, total, total_pages
+
+
+def _requested_page():
+    try:
+        return max(1, int(request.args.get("page", 1)))
+    except (TypeError, ValueError):
+        return 1
+
+
+@public_bp.route("/announcements")
+def public_announcements():
+    per_page = 10
+    branches = _active_public_branches()
+    branch_id, invalid_branch = _requested_branch_id(branches)
+    if invalid_branch:
+        abort(404)
+    announcements, page, total, total_pages = _get_public_announcements_page(_requested_page(), branch_id, per_page)
+    return render_template(
+        "public_announcements.html",
+        announcements=announcements,
+        branches=branches,
+        selected_branch_id=branch_id,
+        page=page,
+        per_page=per_page,
+        total_announcements=total,
+        total_pages=total_pages,
+    )
+
+
+@public_bp.route("/api/public-announcements")
+def public_announcements_api():
+    per_page = 10
+    branch_id, invalid_branch = _requested_branch_id()
+    if invalid_branch:
+        return jsonify({"error": "Invalid or unavailable branch."}), 400
+    announcements, page, total, total_pages = _get_public_announcements_page(_requested_page(), branch_id, per_page)
+    payload = []
+    for announcement in announcements:
+        created_at = announcement.get("created_at")
+        payload.append({
+            "id": announcement.get("id"),
+            "title": announcement.get("title"),
+            "message": announcement.get("message"),
+            "image_url": announcement.get("image_url"),
+            "branch_name": announcement.get("branch_name"),
+            "source": announcement.get("branch_name") or ("School-wide" if announcement.get("branch_id") is None else None),
+            "created_at": created_at.isoformat() if created_at else None,
+            "published_at": created_at.strftime("%b %d, %Y") if created_at else None,
+        })
+
+    return jsonify({
+        "announcements": payload,
+        "selected_branch_id": branch_id,
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
+    })
 
 @public_bp.route("/branch/<int:branch_id>")
 def branch_page(branch_id):

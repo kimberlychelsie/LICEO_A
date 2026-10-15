@@ -1,0 +1,161 @@
+  <div class="hp-announcement-modal" id="announcementDetailsModal" role="dialog" aria-modal="true"
+    aria-labelledby="announcementModalTitle" hidden>
+    <div class="hp-announcement-modal-card">
+      <div class="hp-announcement-modal-head">
+        <h2>Announcement Details</h2>
+        <button type="button" class="hp-announcement-modal-close" id="announcementModalClose"
+          aria-label="Close announcement details">&times;</button>
+      </div>
+      <div class="hp-announcement-modal-body">
+        <h3 class="hp-announcement-modal-title" id="announcementModalTitle"></h3>
+        <div class="hp-announcement-modal-meta" id="announcementModalMeta" hidden>
+          <time class="hp-announcement-modal-date" id="announcementModalDate" hidden></time>
+          <span class="hp-announcement-modal-source" id="announcementModalSource" hidden></span>
+        </div>
+        <div class="hp-announcement-modal-image-wrap" id="announcementModalImageWrap">
+          <img class="hp-announcement-modal-image" id="announcementModalImage" src="" alt="">
+        </div>
+        <p class="hp-announcement-modal-message" id="announcementModalMessage"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="hp-lightbox" id="hpLB" role="dialog" aria-modal="true" aria-label="Fullscreen announcement image" hidden>
+    <button type="button" class="hp-lightbox-close" id="hpLBModalClose" aria-label="Close image preview">&times;</button>
+    <img src="" class="hp-lightbox-img" id="hpLBImg" alt="Announcement image preview">
+  </div>
+<script>
+  // Announcement details and fullscreen image preview
+  (function setupAnnouncements() {
+    const detailsModal = document.getElementById('announcementDetailsModal');
+    const detailsClose = document.getElementById('announcementModalClose');
+    const modalTitle = document.getElementById('announcementModalTitle');
+    const modalMeta = document.getElementById('announcementModalMeta');
+    const modalDate = document.getElementById('announcementModalDate');
+    const modalSource = document.getElementById('announcementModalSource');
+    const modalImageWrap = document.getElementById('announcementModalImageWrap');
+    const modalImage = document.getElementById('announcementModalImage');
+    const modalMessage = document.getElementById('announcementModalMessage');
+    const lightbox = document.getElementById('hpLB');
+    const lightboxImage = document.getElementById('hpLBImg');
+    const lightboxClose = document.getElementById('hpLBModalClose');
+    let lastTrigger = null;
+
+    function syncScrollLock() {
+      const modalOpen = detailsModal && detailsModal.classList.contains('show');
+      const lightboxOpen = lightbox && lightbox.classList.contains('active');
+      const listOpen = document.getElementById('publicAnnouncementsListModal')?.classList.contains('show');
+      document.body.style.overflow = modalOpen || lightboxOpen || listOpen ? 'hidden' : '';
+    }
+
+    function openDetails(card) {
+      if (!detailsModal || !card) return;
+
+      const title = card.querySelector('.ann-row-content h3');
+      const message = card.querySelector('.ann-row-content p');
+      const date = card.querySelector('.js-announcement-date');
+      const source = card.querySelector('.js-announcement-source');
+      const image = card.querySelector('.ann-row-img-wrap img');
+      const hasImage = card.dataset.hasImage !== 'false';
+
+      lastTrigger = card;
+      modalTitle.textContent = title ? title.textContent.trim() : 'Announcement';
+      modalMessage.textContent = message ? message.textContent.trim() : 'No description provided.';
+
+      const dateText = date ? date.textContent.trim() : '';
+      const sourceText = source ? source.textContent.trim() : '';
+      modalDate.textContent = dateText;
+      modalDate.hidden = !dateText;
+      modalSource.textContent = sourceText;
+      modalSource.hidden = !sourceText;
+      modalMeta.hidden = !dateText && !sourceText;
+
+      if (hasImage && image) {
+        modalImage.src = image.currentSrc || image.src;
+        modalImage.alt = image.alt || modalTitle.textContent;
+        modalImageWrap.hidden = false;
+      } else {
+        modalImage.removeAttribute('src');
+        modalImage.alt = '';
+        modalImageWrap.hidden = true;
+      }
+
+      detailsModal.hidden = false;
+      detailsModal.classList.add('show');
+      syncScrollLock();
+      detailsClose.focus();
+    }
+
+    function closeDetails() {
+      if (!detailsModal) return;
+      detailsModal.classList.remove('show');
+      detailsModal.hidden = true;
+      syncScrollLock();
+      if (lastTrigger) lastTrigger.focus();
+    }
+
+    function openImage(src, alt) {
+      if (!lightbox || !lightboxImage || !src) return;
+      lightboxImage.src = src;
+      lightboxImage.alt = alt || 'Announcement image preview';
+      lightbox.hidden = false;
+      lightbox.classList.add('active');
+      syncScrollLock();
+      lightboxClose.focus();
+    }
+
+    function closeImage() {
+      if (!lightbox) return;
+      lightbox.classList.remove('active');
+      lightbox.hidden = true;
+      lightboxImage.removeAttribute('src');
+      syncScrollLock();
+      if (detailsModal && detailsModal.classList.contains('show')) {
+        modalImage.focus();
+      }
+    }
+
+    document.addEventListener('click', function (event) {
+      const card = event.target.closest('.js-announcement-card');
+      if (card) openDetails(card);
+    });
+
+    document.addEventListener('keydown', function (event) {
+      const card = event.target.closest('.js-announcement-card');
+      if (card && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        openDetails(card);
+      }
+    });
+
+    detailsClose?.addEventListener('click', closeDetails);
+    detailsModal?.addEventListener('click', function (event) {
+      if (event.target === detailsModal) closeDetails();
+    });
+    modalImage?.addEventListener('click', function () {
+      openImage(modalImage.currentSrc || modalImage.src, modalImage.alt);
+    });
+    modalImage?.setAttribute('tabindex', '0');
+    modalImage?.setAttribute('role', 'button');
+    modalImage?.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openImage(modalImage.currentSrc || modalImage.src, modalImage.alt);
+      }
+    });
+
+    lightboxClose?.addEventListener('click', closeImage);
+    lightbox?.addEventListener('click', function (event) {
+      if (event.target === lightbox) closeImage();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape') return;
+      if (lightbox && lightbox.classList.contains('active')) {
+        closeImage();
+      } else if (detailsModal && detailsModal.classList.contains('show')) {
+        closeDetails();
+      }
+    });
+  })();
+</script>

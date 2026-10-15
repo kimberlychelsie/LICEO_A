@@ -21,6 +21,32 @@ branch_admin_bp = Blueprint("branch_admin", __name__)
 # =======================
 # HELPERS
 # =======================
+def _announcement_list_state(values, prefix=""):
+    audience = (values.get(f"{prefix}audience") or "any").strip().lower()
+    if audience not in ("any", "all", "teacher"):
+        audience = "any"
+    status = (values.get(f"{prefix}status") or "any").strip().lower()
+    if status not in ("any", "published", "archived"):
+        status = "any"
+    search = (values.get(f"{prefix}search") or "").strip()[:200]
+    try:
+        page = max(1, int(values.get(f"{prefix}page") or 1))
+    except (TypeError, ValueError):
+        page = 1
+    return audience, status, search, page
+
+
+def _broadcast_station_redirect_from_form():
+    audience, status, search, page = _announcement_list_state(request.form, "return_")
+    query = {"page": page}
+    if audience != "any":
+        query["audience"] = audience
+    if status != "any":
+        query["status"] = status
+    if search:
+        query["search"] = search
+    return redirect(url_for("branch_admin.branch_admin_broadcast_station", **query))
+
 def generate_password(length: int = 8) -> str:
     """Generate a cryptographically secure random password for staff accounts."""
     characters = string.ascii_letters + string.digits
@@ -326,6 +352,10 @@ def branch_admin_broadcast_station():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     announcements_list = []
+    audience_filter, status_filter, filter_search, page = _announcement_list_state(request.args)
+    per_page = 10
+    total_announcements = 0
+    total_pages = 1
 
     try:
         if request.method == "POST":
@@ -333,18 +363,20 @@ def branch_admin_broadcast_station():
             # Add Homepage Announcement
             # -----------------------
             if request.form.get("add_announcement") == "1":
-                title   = (request.form.get("announcement_title") or "").strip()
-                message = (request.form.get("announcement_message") or "").strip()
+                title   = (request.form.get("announcement_title") or "").strip()[:120]
+                message = (request.form.get("announcement_message") or "").strip()[:1000]
                 if title:
                     image_url = None
                     photo = request.files.get("announcement_photo")
                     if photo and photo.filename:
-                        ALLOWED = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                        allowed_mimetypes = {'image/png', 'image/jpeg', 'image/gif', 'image/webp'}
                         ext = photo.filename.rsplit('.', 1)[-1].lower() if '.' in photo.filename else ''
-                        if ext in ALLOWED:
-                            image_url = upload_announcement_photo(photo)
-                        else:
-                            flash("Photo must be PNG, JPG, GIF, or WEBP.", "warning")
+                        mimetype = (photo.mimetype or '').lower()
+                        if ext not in allowed_extensions or mimetype not in allowed_mimetypes:
+                            flash("Announcement image must be PNG, JPG, GIF, or WEBP. The announcement was not posted.", "error")
+                            return _broadcast_station_redirect_from_form()
+                        image_url = upload_announcement_photo(photo)
 
                     audience = (request.form.get("audience") or "all").strip().lower()
                     if audience not in ("all", "teacher"):
@@ -361,16 +393,38 @@ def branch_admin_broadcast_station():
                         flash("Announcement added to homepage!", "success")
                 else:
                     flash("Announcement title is required.", "error")
-                return redirect(url_for("branch_admin.branch_admin_broadcast_station"))
+                return _broadcast_station_redirect_from_form()
 
-        # Load announcements
-        cursor.execute("""
+        filters = ["branch_id = %s"]
+        params = [branch_id]
+        if audience_filter in ("all", "teacher"):
+            filters.append("audience = %s")
+            params.append(audience_filter)
+        if status_filter == "published":
+            filters.append("is_active = TRUE")
+        elif status_filter == "archived":
+            filters.append("is_active = FALSE")
+        if filter_search:
+            filters.append("(title ILIKE %s OR COALESCE(message, '') ILIKE %s)")
+            search_pattern = f"%{filter_search}%"
+            params.extend((search_pattern, search_pattern))
+
+        where_sql = " AND ".join(filters)
+        cursor.execute(f"SELECT COUNT(*) AS total FROM announcements WHERE {where_sql}", params)
+        count_row = cursor.fetchone() or {}
+        total_announcements = count_row.get("total", 0)
+        total_pages = max(1, (total_announcements + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        offset = (page - 1) * per_page
+
+        cursor.execute(f"""
             SELECT announcement_id AS id, title, message, (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS created_at_local, is_active,
                    image_url, branch_id, audience
             FROM announcements
-            WHERE branch_id = %s
-            ORDER BY created_at DESC
-        """, (branch_id,))
+            WHERE {where_sql}
+            ORDER BY created_at DESC, announcement_id DESC
+            LIMIT %s OFFSET %s
+        """, params + [per_page, offset])
         announcements_list = cursor.fetchall() or []
 
     except Exception as e:
@@ -379,7 +433,17 @@ def branch_admin_broadcast_station():
         cursor.close()
         db.close()
 
-    return render_template("branch_admin_announcements.html", announcements_list=announcements_list)
+    return render_template(
+        "branch_admin_announcements.html",
+        announcements_list=announcements_list,
+        audience_filter=audience_filter,
+        status_filter=status_filter,
+        filter_search=filter_search,
+        page=page,
+        per_page=per_page,
+        total_announcements=total_announcements,
+        total_pages=total_pages,
+    )
 
 @branch_admin_bp.route("/branch-admin/announcements/<int:announcement_id>/toggle", methods=["POST"])
 def announcement_toggle(announcement_id):
@@ -412,8 +476,70 @@ def announcement_toggle(announcement_id):
         db.close()
     
     if request.form.get("from_station"):
-        return redirect(url_for("branch_admin.branch_admin_broadcast_station"))
+        return _broadcast_station_redirect_from_form()
     return redirect(url_for("branch_admin.dashboard"))
+
+
+@branch_admin_bp.route("/branch-admin/announcements/<int:announcement_id>/edit", methods=["POST"])
+def announcement_edit(announcement_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        return redirect("/")
+
+    title   = (request.form.get("announcement_title") or "").strip()[:120]
+    message = (request.form.get("announcement_message") or "").strip()[:1000]
+    audience = (request.form.get("audience") or "all").strip().lower()
+    if audience not in ("all", "teacher"):
+        audience = "all"
+
+    if not title:
+        flash("Announcement title is required.", "error")
+        return _broadcast_station_redirect_from_form()
+
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        image_url = None
+        photo = request.files.get("announcement_photo")
+        if photo and photo.filename:
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            allowed_mimetypes = {'image/png', 'image/jpeg', 'image/gif', 'image/webp'}
+            ext = photo.filename.rsplit('.', 1)[-1].lower() if '.' in photo.filename else ''
+            mimetype = (photo.mimetype or '').lower()
+            if ext not in allowed_extensions or mimetype not in allowed_mimetypes:
+                flash("Announcement image must be PNG, JPG, GIF, or WEBP. Changes were not saved.", "error")
+                return _broadcast_station_redirect_from_form()
+            image_url = upload_announcement_photo(photo)
+
+        if image_url:
+            cur.execute("""
+                UPDATE announcements
+                SET title = %s, message = %s, audience = %s, image_url = %s
+                WHERE announcement_id = %s AND branch_id = %s
+            """, (title, message, audience, image_url, announcement_id, branch_id))
+        else:
+            cur.execute("""
+                UPDATE announcements
+                SET title = %s, message = %s, audience = %s
+                WHERE announcement_id = %s AND branch_id = %s
+            """, (title, message, audience, announcement_id, branch_id))
+
+        if cur.rowcount == 0:
+            flash("Announcement not found.", "error")
+        else:
+            db.commit()
+            flash("Announcement updated.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not update announcement: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return _broadcast_station_redirect_from_form()
 
 @branch_admin_bp.route("/branch-admin/announcements/<int:announcement_id>/delete", methods=["POST"])
 def announcement_delete(announcement_id):
@@ -441,7 +567,7 @@ def announcement_delete(announcement_id):
         db.close()
 
     if request.form.get("from_station"):
-        return redirect(url_for("branch_admin.branch_admin_broadcast_station"))
+        return _broadcast_station_redirect_from_form()
     return redirect(url_for("branch_admin.dashboard"))
 
 @branch_admin_bp.after_request

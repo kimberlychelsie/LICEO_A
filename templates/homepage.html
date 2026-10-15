@@ -777,6 +777,11 @@
   }
 
   /* ── Unified Announcement Cards ── */
+  .ann-section-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; flex-wrap:wrap; }
+  .ann-section-heading .sec-title { margin-bottom:0; }
+  .ann-view-all { color:#0c2461; font-size:.9rem; font-weight:800; text-decoration:none; padding:8px 0; }
+  .ann-view-all:hover, .ann-view-all:focus-visible { color:#b8860b; text-decoration:underline; }
+
   .ann-list {
     display: flex;
     flex-direction: column;
@@ -786,41 +791,37 @@
 
   .ann-row-card {
     background: #fff;
+    min-width: 0;
+    overflow: hidden;
     border-radius: 24px;
-    padding: 24px;
+    padding: 18px;
     display: flex;
-    gap: 32px;
+    gap: 18px;
     align-items: center;
     border: 1px solid #e2e8f0;
     box-shadow: 0 4px 20px rgba(12, 36, 97, 0.03);
     transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
     text-decoration: none;
     color: inherit;
+    cursor: pointer;
   }
 
-  @media (max-width: 768px) {
-    .ann-row-card {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 20px;
-      padding: 20px;
-    }
-  }
-
-  .ann-row-card:hover {
-    transform: translateX(10px);
+  .ann-row-card:hover,
+  .ann-row-card:focus-visible {
+    transform: translateY(-2px);
     border-color: #f0d060;
     box-shadow: 0 12px 30px rgba(12, 36, 97, 0.08);
+    outline: none;
   }
 
   .ann-row-img-wrap {
-    width: 140px;
-    height: 140px;
-    border-radius: 20px;
+    width: 96px;
+    height: 72px;
+    border-radius: 12px;
     overflow: hidden;
     position: relative;
     flex-shrink: 0;
-    cursor: zoom-in;
+    cursor: pointer;
     background: #f1f5f9;
     display: flex;
     align-items: center;
@@ -828,14 +829,7 @@
     border: 1px solid #f1f5f9;
   }
 
-  @media (max-width: 768px) {
-    .ann-row-img-wrap {
-      width: 100%;
-      height: 200px;
-    }
-  }
-
-  .ann-row-img-wrap img {
+.ann-row-img-wrap img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -866,6 +860,7 @@
 
   .ann-row-content {
     flex: 1;
+    min-width: 0;
   }
 
   .ann-row-content h3 {
@@ -873,15 +868,53 @@
     font-size: 1.3rem;
     font-weight: 800;
     color: #0c2461;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
     line-height: 1.3;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
+  .ann-row-meta,
+  .hp-announcement-modal-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    color: #7c879b;
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .ann-row-meta {
+    margin: -2px 0 7px;
+  }
+
+  .ann-row-source,
+  .hp-announcement-modal-source {
+    overflow-wrap: anywhere;
+  }
+
+  .js-announcement-date:not([hidden]) + .js-announcement-source::before,
+  .hp-announcement-modal-date:not([hidden]) + .hp-announcement-modal-source::before {
+    content: "\2022";
+    margin-right: 6px;
+    color: #a8b0be;
+  }
   .ann-row-content p {
     font-size: 0.95rem;
     color: #64748b;
     line-height: 1.7;
     margin: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   /* ── Lightbox ── */
@@ -889,7 +922,7 @@
     position: fixed;
     inset: 0;
     background: rgba(12, 36, 97, 0.98);
-    z-index: 10000;
+    z-index: 10002;
     display: none;
     align-items: center;
     justify-content: center;
@@ -903,8 +936,11 @@
   }
 
   .hp-lightbox-img {
-    max-width: 95%;
-    max-height: 90vh;
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 40px);
     border-radius: 16px;
     box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
     transform: scale(0.9);
@@ -1818,7 +1854,197 @@
         line-height: 1.7;
       }
     }
-  </style>
+  /* Shared announcement details modal */
+  .hp-announcement-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(12, 36, 97, 0.68);
+    backdrop-filter: blur(4px);
+  }
+
+  .hp-announcement-modal.show {
+    display: flex;
+  }
+
+  .hp-announcement-modal-card {
+    width: min(760px, 100%);
+    max-height: min(90vh, 820px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: #fff;
+    border: 1px solid rgba(240, 208, 96, 0.75);
+    border-radius: 20px;
+    box-shadow: 0 24px 70px rgba(12, 36, 97, 0.28);
+  }
+
+  .hp-announcement-modal-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 22px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .hp-announcement-modal-head h2 {
+    margin: 0;
+    color: #0c2461;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+  }
+
+  .hp-announcement-modal-close {
+    flex: 0 0 auto;
+    border: 0;
+    background: #f1f5f9;
+    color: #0c2461;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .hp-announcement-modal-close:hover,
+  .hp-announcement-modal-close:focus-visible {
+    background: #e2e8f0;
+    outline: 3px solid rgba(240, 208, 96, 0.55);
+  }
+
+  .hp-announcement-modal-body {
+    padding: 24px 28px 30px;
+  }
+
+  .hp-announcement-modal-title {
+    margin: 0 0 8px;
+    color: #0c2461;
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.35rem, 3vw, 1.8rem);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .hp-announcement-modal-meta {
+    margin-bottom: 20px;
+  }
+
+  .hp-announcement-modal-meta[hidden] {
+    display: none;
+  }
+
+  .hp-announcement-modal-date {
+    display: inline;
+    color: #64748b;
+    font-size: 0.85rem;
+  }
+
+  .hp-announcement-modal-image-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 22px;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #f8fafc;
+  }
+
+  .hp-announcement-modal-image-wrap[hidden] {
+    display: none;
+  }
+
+  .hp-announcement-modal-image {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 300px;
+    object-fit: contain;
+    cursor: pointer;
+  }
+
+  .hp-announcement-modal-message {
+    margin: 0;
+    color: #475569;
+    line-height: 1.75;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  @media (max-width: 768px) {
+    .ann-row-card {
+      flex-direction: row;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .ann-row-img-wrap {
+      width: 88px;
+      height: 68px;
+    }
+
+    .hp-announcement-modal {
+      padding: 16px;
+    }
+
+    .hp-announcement-modal-card {
+      max-height: 92vh;
+      border-radius: 16px;
+    }
+
+    .hp-announcement-modal-body {
+      padding: 20px;
+    }
+
+    .hp-announcement-modal-image {
+      max-height: 260px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .ann-row-img-wrap {
+      width: 76px;
+      height: 64px;
+    }
+
+    .ann-row-content h3 {
+      font-size: 1rem;
+    }
+
+    .ann-row-content p {
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .hp-announcement-modal {
+      padding: 10px;
+    }
+
+    .hp-announcement-modal-head {
+      padding: 14px 16px;
+    }
+
+    .hp-announcement-modal-body {
+      padding: 18px 16px 22px;
+    }
+
+    .hp-announcement-modal-image {
+      max-height: 220px;
+    }
+  }
+</style>
   <section class="about-liceo-section" id="about" style="overflow-x: hidden; width: 100%;">
     <div class="about-liceo-grid">
       <!-- LEFT: Text + Stats + Gallery -->
@@ -1975,40 +2201,46 @@
       </svg>
       Latest Updates
     </p>
-    <h2 class="sec-title">School Announcements</h2>
+    <div class="ann-section-heading">
+      <h2 class="sec-title">School Announcements</h2>
+      <a class="ann-view-all" id="publicAnnouncementsViewAll" href="{{ url_for('public.public_announcements') }}">View All <span aria-hidden="true">&rarr;</span></a>
+    </div>
 
     <div class="ann-list">
-      <!-- DUMMY FOR VERIFICATION -->
-      <div class="ann-row-card fade-up">
-        <div class="ann-row-img-wrap" onclick="openLB('{{ url_for('static', filename='img/spdcss_logo.webp') }}')">
+      <article class="ann-row-card fade-up js-announcement-card" tabindex="0" role="button"
+        aria-label="View announcement: Welcome to the New Liceo LMS Portal">
+        <div class="ann-row-img-wrap js-announcement-image"
+>
           <img src="{{ url_for('static', filename='img/spdcss_logo.webp') }}" alt="Welcome">
-          <div class="ann-img-overlay">
-            <i class="fas fa-eye"></i>
-          </div>
+          <div class="ann-img-overlay" aria-hidden="true"><i class="fas fa-eye"></i></div>
         </div>
         <div class="ann-row-content">
           <h3>Welcome to the New Liceo LMS Portal</h3>
-          <p>We are excited to launch our modernized enrollment and management system. Explore the new features and stay
-            tuned for more updates!</p>
+          <p>We are excited to launch our modernized enrollment and management system. Explore the new features and stay tuned for more updates!</p>
+          <time class="js-announcement-date" hidden></time>
         </div>
-      </div>
+      </article>
 
       {% if announcements %}
       {% for a in announcements %}
-      <div class="ann-row-card fade-up">
-        <div class="ann-row-img-wrap"
-          onclick="openLB('{{ a.image_url if a.image_url else url_for('static', filename='img/spdcss_logo.webp') }}')">
+      <article class="ann-row-card fade-up js-announcement-card" tabindex="0" role="button"
+        aria-label="View announcement: {{ a.title }}" data-has-image="{{ 'true' if a.image_url else 'false' }}">
+        <div class="ann-row-img-wrap js-announcement-image">
           <img src="{{ a.image_url if a.image_url else url_for('static', filename='img/spdcss_logo.webp') }}"
             alt="{{ a.title }}">
-          <div class="ann-img-overlay">
-            <i class="fas fa-eye"></i>
-          </div>
+          <div class="ann-img-overlay" aria-hidden="true"><i class="fas fa-eye"></i></div>
         </div>
         <div class="ann-row-content">
           <h3>{{ a.title }}</h3>
-          {% if a.message %}<p>{{ a.message }}</p>{% endif %}
+          {% if a.created_at or a.branch_name or a.branch_id is none %}
+          <div class="ann-row-meta">
+            {% if a.created_at %}<time class="js-announcement-date" datetime="{{ a.created_at.isoformat() }}">{{ a.created_at.strftime('%b %d, %Y') }}</time>{% endif %}
+            {% if a.branch_name %}<span class="ann-row-source js-announcement-source">{{ a.branch_name }}</span>{% elif a.branch_id is none %}<span class="ann-row-source js-announcement-source">School-wide</span>{% endif %}
+          </div>
+          {% endif %}
+          {% if a.message %}<p>{{ a.message }}</p>{% else %}<p>No description provided.</p>{% endif %}
         </div>
-      </div>
+      </article>
       {% endfor %}
       {% else %}
       <p style="color:#94a3b8; margin-top:16px;">No announcements yet. Check back soon!</p>
@@ -2016,12 +2248,8 @@
     </div>
   </section>
 
-  <!-- ── LIGHTBOX MODAL ── -->
-  <div class="hp-lightbox" id="hpLB" onclick="closeLB()">
-    <button class="hp-lightbox-close" onclick="closeLB()">&times;</button>
-    <img src="" class="hp-lightbox-img" id="hpLBImg" onclick="event.stopPropagation()">
-  </div>
-
+  {% include "components/public_announcements_list_modal.html" %}
+  {% include "components/public_announcement_modal.html" %}
 
 </div>
 
@@ -2123,72 +2351,9 @@
 <script>
   function goToBranch(url) { if (url) window.location.href = url; }
 
-  // ── Enroll Modal ──
-  let selectedBranchUrl = '';
-  function openEnrollModal() {
-    document.getElementById('enrollModalOverlay').classList.add('active');
-    document.body.style.overflow = 'hidden';
 
-    // Reset state
-    document.getElementById('enrollModalSelect').value = '';
-    document.getElementById('enrollConfirmBox').style.display = 'none';
-    const btn = document.getElementById('enrollProceedBtn');
-    btn.classList.remove('loading');
-  }
 
-  function closeEnrollModal() {
-    document.getElementById('enrollModalOverlay').classList.remove('active');
-    document.body.style.overflow = '';
-  }
-
-  function handleModalSelectChange(val) {
-    const confirmBox = document.getElementById('enrollConfirmBox');
-    const confirmText = document.getElementById('enrollConfirmText');
-    selectedBranchUrl = val;
-
-    if (val) {
-      const selectEl = document.getElementById('enrollModalSelect');
-      const selectedOption = selectEl.options[selectEl.selectedIndex];
-      const branchName = selectedOption.getAttribute('data-name') || selectedOption.text;
-
-      confirmText.textContent = `Are you sure you want to enroll at ${branchName}?`;
-      confirmBox.style.display = 'block';
-    } else {
-      confirmBox.style.display = 'none';
-    }
-  }
-
-  function proceedEnrollment() {
-    if (!selectedBranchUrl) return;
-
-    const btn = document.getElementById('enrollProceedBtn');
-    btn.classList.add('loading');
-
-    // Simulate slight loading delay before redirect for effect
-    setTimeout(() => {
-      window.location.href = selectedBranchUrl;
-    }, 800);
-  }
-
-  // ── Lightbox ──
-  function openLB(src) {
-    const lb = document.getElementById('hpLB');
-    const img = document.getElementById('hpLBImg');
-    if (lb && img) {
-      img.src = src;
-      lb.classList.add('active');
-      document.body.style.overflow = 'hidden'; // prevent scroll
-    }
-  }
-  function closeLB() {
-    const lb = document.getElementById('hpLB');
-    if (lb) {
-      lb.classList.remove('active');
-      document.body.style.overflow = '';
-    }
-  }
-
-  // ── Scroll fade-up ──
+  // Scroll fade-up ──
   (function () {
     var els = document.querySelectorAll('.fade-up');
     function check() {

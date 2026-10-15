@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Announcements — Branch Admin{% endblock %}
+{% block full_title %}Announcements &mdash; Branch Admin | Liceo LMS{% endblock %}
 
 {% block content %}
 <style>
@@ -42,7 +42,7 @@
         }
     }
 
-    /* ── Hero Banner ── */
+    /* â”€â”€ Hero Banner â”€â”€ */
     .hero-banner {
         background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
         border-radius: 20px;
@@ -85,13 +85,16 @@
         margin: 0;
     }
 
-    /* ── The Dual Broadcast Station ── */
+    /* â”€â”€ The Dual Broadcast Station â”€â”€ */
     .broadcast-station-hub {
         display: grid;
-        grid-template-columns: 1.7fr 1.3fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 32px;
         margin-bottom: 48px;
         align-items: flex-start;
+        max-width: 1400px;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     .broadcast-card-glass {
@@ -127,9 +130,10 @@
         gap: 12px;
     }
 
-    /* ── Focused Announcement Card Preview ── */
+    /* â”€â”€ Focused Announcement Card Preview â”€â”€ */
     .preview-card-wrapper {
         height: 100%;
+        min-width: 0;
     }
 
     .preview-card-v3 {
@@ -142,6 +146,7 @@
         position: relative;
         display: flex;
         flex-direction: column;
+        min-width: 0;
     }
 
     .preview-label-badge {
@@ -216,6 +221,8 @@
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     #preview_headline span {
@@ -231,9 +238,29 @@
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
-    /* ── Form Styling ── */
+    .file-help-text {
+        color: var(--ma-muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        margin: 8px 0 0 5px;
+    }
+
+    .file-error-text {
+        color: #dc2626;
+        display: none;
+    }
+
+    .btn-gold-prestige.is-ready {
+        background: #16a34a;
+        color: #fff;
+        box-shadow: 0 10px 25px rgba(22, 163, 74, 0.22);
+    }
+
+    /* â”€â”€ Form Styling â”€â”€ */
     .form-group-prem {
         margin-bottom: 24px;
     }
@@ -293,6 +320,15 @@
         box-shadow: 0 15px 35px var(--ma-gold-glow);
         background: #fde047;
     }
+    .btn-gold-prestige:disabled,
+    .btn-gold-prestige:disabled:hover {
+        background: #e5e7eb;
+        color: #94a3b8;
+        box-shadow: none;
+        cursor: not-allowed;
+        transform: none;
+        opacity: 1;
+    }
 
     .command-hub-title {
         font-size: 1.1rem;
@@ -304,10 +340,18 @@
         display: flex;
         align-items: center;
         gap: 10px;
+        max-width: 1400px;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     .stream-history-item {
         background: #fff;
+        max-width: 1400px;
+        margin-left: auto;
+        margin-right: auto;
+        min-width: 0;
+        overflow: hidden;
         border-radius: 24px;
         padding: 18px;
         display: flex;
@@ -322,8 +366,204 @@
         border-color: var(--ma-gold);
         transform: scale(1.02);
     }
+    .stream-history-content {
+        flex: 1;
+        min-width: 0;
+    }
 
-    /* ── Responsive Refinements ── */
+    .stream-history-title {
+        font-weight: 800;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+
+    .stream-history-title-text {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .stream-history-message {
+        font-size: 0.8rem;
+        color: var(--ma-muted);
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .announcement-actions { display: none; }
+    .announcement-manage { position: relative; flex: 0 0 auto; }
+    .stream-history-item.menu-open { position: relative; z-index: 30; }
+    .announcement-manage summary { list-style: none; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #334155; padding: 10px 16px; border-radius: 14px; font-weight: 800; font-size: 0.75rem; }
+    .announcement-manage summary::-webkit-details-marker { display: none; }
+    .announcement-manage[open] summary { border-color: var(--ma-gold); color: var(--ma-primary); }
+    .announcement-manage-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; min-width: 150px; padding: 8px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16); }
+    .announcement-manage-menu.open-up { top: auto; bottom: calc(100% + 8px); }
+    .announcement-manage-menu .action-btn, .announcement-manage-menu form { width: 100%; display: block; }
+    .announcement-manage-menu .action-btn { text-align: left; border: 0; border-radius: 9px; }
+    .announcement-manage-menu .action-btn:hover { background: #f8fafc; }
+    .announcement-thumb { width: 96px; height: 72px; }
+    .stream-history-item { overflow: visible; cursor: pointer; }
+    .stream-history-item > .announcement-thumb { width: 96px !important; height: 72px !important; overflow: hidden; }
+
+    .action-btn {
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #334155;
+        padding: 10px 16px;
+        border-radius: 14px;
+        font-weight: 800;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        border-color: var(--ma-gold);
+        color: var(--ma-primary);
+    }
+
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.62);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 3000;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .announcement-modal {
+        background: #fff;
+        border-radius: 24px;
+        box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28);
+        width: min(720px, 100%);
+        max-height: 90vh;
+        overflow: auto;
+    }
+
+    .modal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 22px 24px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-head h3 {
+        margin: 0;
+        color: var(--ma-primary);
+        font-size: 1.2rem;
+        font-weight: 900;
+    }
+
+    .modal-close {
+        border: none;
+        background: #f1f5f9;
+        color: #334155;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 1.25rem;
+        font-weight: 900;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        padding: 0 24px 24px;
+        flex-wrap: wrap;
+    }
+
+    .modal-preview-card {
+        border: 2px solid var(--ma-gold);
+        border-radius: 22px;
+        overflow: hidden;
+        background: #fff;
+    }
+
+    .modal-preview-image {
+        min-height: 210px;
+        background: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        font-weight: 900;
+    }
+
+    .modal-preview-image img {
+        width: 100%;
+        height: 260px;
+        object-fit: cover;
+        display: none;
+    }
+
+    .current-image-preview {
+        width: 100%;
+        height: 150px;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        color: var(--ma-muted);
+        font-size: 0.85rem;
+        font-weight: 800;
+        margin-bottom: 12px;
+    }
+
+    .current-image-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+
+    .modal-preview-content {
+        padding: 26px;
+    }
+
+    .modal-preview-title {
+        color: var(--ma-primary);
+        font-size: 1.6rem;
+        line-height: 1.2;
+        font-weight: 900;
+        margin: 0 0 12px;
+        overflow-wrap: anywhere;
+    }
+
+    .modal-preview-message {
+        color: var(--ma-muted);
+        font-size: 0.98rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        margin: 0;
+    }
+    .stream-history-title-text { flex: 1 1 auto; }
+    .announcement-actions { flex: 0 0 auto; align-items: center; }
+    .modal-preview-image { max-height: 420px; overflow: hidden; }
+    .modal-preview-image img { height: auto; max-height: 420px; object-fit: contain; }
+    /* â”€â”€ Responsive Refinements â”€â”€ */
     @media (max-width: 1024px) {
         .ma-container {
             padding: 32px 20px;
@@ -338,11 +578,7 @@
             gap: 24px;
         }
 
-        .preview-card-wrapper {
-            order: -1;
-        }
 
-        /* Show preview above form on tablets/phones */
     }
 
     @media (max-width: 768px) {
@@ -437,6 +673,7 @@
             border-radius: 16px;
         }
     }
+    .announcement-controls{margin-bottom:22px}.audience-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.audience-tab{color:#475569;text-decoration:none;border:1px solid #e2e8f0;background:#fff;padding:9px 16px;border-radius:8px;font-size:.82rem;font-weight:800}.audience-tab.active{color:#fff;background:var(--ma-primary);border-color:var(--ma-primary)}.announcement-filter-form{display:grid;grid-template-columns:minmax(220px,1fr) 190px auto auto;gap:10px;align-items:center}.announcement-filter-form .input-prem{padding:12px 15px;border-radius:8px;font-size:.85rem}.filter-button,.reset-filter{min-height:44px;padding:10px 18px;border-radius:8px;font-size:.8rem;font-weight:800}.filter-button{border:0;background:var(--ma-primary);color:#fff;cursor:pointer}.reset-filter{display:inline-flex;align-items:center;justify-content:center;border:1px solid #e2e8f0;color:#475569;text-decoration:none;background:#fff}.announcement-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin:5px 0 4px;color:#64748b;font-size:.72rem;font-weight:700}.announcement-empty{padding:44px 24px;border:1px dashed #cbd5e1;border-radius:12px;text-align:center;color:#64748b;font-weight:600}.announcement-pagination{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:18px;color:#64748b;font-size:.78rem;font-weight:700}.pagination-links{display:flex;gap:6px;flex-wrap:wrap}.pagination-link{min-width:36px;height:36px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e2e8f0;border-radius:8px;color:#334155;background:#fff;text-decoration:none}.pagination-link.active{color:#fff;background:var(--ma-primary);border-color:var(--ma-primary)}.pagination-link.disabled{color:#94a3b8;background:#f8fafc;pointer-events:none}@media(max-width:768px){.announcement-filter-form{grid-template-columns:1fr 1fr}.announcement-filter-form .search-field{grid-column:1/-1}.announcement-pagination{align-items:flex-start;flex-direction:column}}@media(max-width:480px){.announcement-filter-form{grid-template-columns:1fr}.announcement-filter-form .search-field{grid-column:auto}}
 </style>
 
 <div class="ma-container">
@@ -462,30 +699,34 @@
             </h3>
             <p
                 style="color: var(--ma-muted); font-size: 0.9rem; font-weight: 500; margin-bottom: 30px; margin-top: -10px;">
-                Create announcements for the portal homepage. The preview panel updates automatically as you type.
+                Create announcements for the portal homepage. Review the modal preview before posting.
             </p>
 
             {% if is_branch_active_status and not is_history_mode %}
             <form method="post" action="{{ url_for('branch_admin.branch_admin_broadcast_station') }}"
-                enctype="multipart/form-data">
+                enctype="multipart/form-data" id="announcement_form" onsubmit="return openCreatePreview(event)">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="add_announcement" value="1">
+                <input type="hidden" name="return_audience" value="{{ audience_filter }}">
+                <input type="hidden" name="return_status" value="{{ status_filter }}">
+                <input type="hidden" name="return_search" value="{{ filter_search }}">
+                <input type="hidden" name="return_page" value="{{ page }}">
 
                 <div class="form-group-prem">
                     <label>Announcement Title</label>
                     <input class="input-prem" id="headline_input" name="announcement_title"
-                        placeholder="e.g. Enrollment is now OPEN!" required oninput="syncPreview()">
+                        placeholder="e.g. Enrollment is now OPEN!" required maxlength="120" oninput="syncCreateDraft()">
                 </div>
 
                 <div class="form-group-prem">
                     <label>Announcement Message</label>
                     <textarea class="input-prem" id="summary_input" name="announcement_message"
-                        placeholder="A brief summary for the homepage..." style="resize: none; height: 100px;"
-                        oninput="syncPreview()"></textarea>
+                        placeholder="A brief summary for the homepage..." style="resize: none; height: 100px; overflow-y: auto;"
+                        maxlength="1000" oninput="syncCreateDraft()"></textarea>
                 </div>
                 <div class="form-group-prem">
                     <label>Audience</label>
-                    <select class="input-prem" name="audience" id="audience_input" onchange="syncPreview()">
+                    <select class="input-prem" name="audience" id="audience_input" onchange="syncCreateDraft()">
                         <option value="all" selected>All (Homepage)</option>
                         <option value="teacher">Teachers only (Teacher Dashboard)</option>
                     </select>
@@ -494,40 +735,41 @@
                 <div class="form-group-prem">
                     <label>Announcement Image</label>
                     <input type="file" id="photo_input" name="announcement_photo" class="input-prem"
-                        style="padding: 12px; font-size: 0.8rem;" accept="image/*" onchange="previewImage(this)">
+                        style="padding: 12px; font-size: 0.8rem;" accept=".png,.jpg,.jpeg,.gif,.webp"
+                        onchange="previewImage(this)">
+                    <div class="file-help-text">Accepted: PNG, JPG, GIF, or WEBP only.</div>
+                    <div class="file-help-text file-error-text" id="photo_error">Please choose an image file only.</div>
                 </div>
 
-                <button type="submit" class="btn-gold-prestige">
-                    <i class="fas fa-paper-plane"></i> Post Announcement
+                <button type="submit" class="btn-gold-prestige" id="announcement_submit_btn">
+                    <i class="fas fa-eye"></i> Preview Announcement
                 </button>
             </form>
             {% endif %}
         </div>
-
-        <!-- LIVE VIEW PREVIEW CARD -->
-        <div class="preview-card-wrapper">
-            <div class="preview-card-v3">
-                <div class="preview-label-badge">Announcement Preview</div>
-                <div class="preview-img-slot" id="preview_img_container">
-                    <i class="fas fa-image placeholder-icon" id="preview_placeholder"></i>
-                    <img id="preview_img_tag" src="" alt="Live Preview">
-                </div>
-                <div class="preview-content-slot">
-                    <h2 id="preview_headline">Announcement <span>Title</span></h2>
-                    <p id="preview_summary">Your announcement message preview will appear here...</p>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- FEED HISTORY -->
-    {% if announcements_list %}
     <div class="command-hub-title"><i class="fas fa-history"></i> Recent Announcements</div>
+    <div class="announcement-controls">
+        <nav class="audience-tabs" aria-label="Announcement audience">
+            <a class="audience-tab{% if audience_filter == 'any' %} active{% endif %}" href="{{ url_for('branch_admin.branch_admin_broadcast_station', audience='any', status=status_filter, search=filter_search) }}">All</a>
+            <a class="audience-tab{% if audience_filter == 'all' %} active{% endif %}" href="{{ url_for('branch_admin.branch_admin_broadcast_station', audience='all', status=status_filter, search=filter_search) }}">Homepage</a>
+            <a class="audience-tab{% if audience_filter == 'teacher' %} active{% endif %}" href="{{ url_for('branch_admin.branch_admin_broadcast_station', audience='teacher', status=status_filter, search=filter_search) }}">Teachers</a>
+        </nav>
+        <form method="get" action="{{ url_for('branch_admin.branch_admin_broadcast_station') }}" class="announcement-filter-form">
+            <input type="hidden" name="audience" value="{{ audience_filter }}">
+            <input class="input-prem search-field" type="search" name="search" value="{{ filter_search }}" placeholder="Search title or content" maxlength="200" aria-label="Search announcements">
+            <select class="input-prem" name="status" aria-label="Announcement status"><option value="any"{% if status_filter == 'any' %} selected{% endif %}>All Status</option><option value="published"{% if status_filter == 'published' %} selected{% endif %}>Published</option><option value="archived"{% if status_filter == 'archived' %} selected{% endif %}>Archived</option></select>
+            <button type="submit" class="filter-button">Apply</button><a class="reset-filter" href="{{ url_for('branch_admin.branch_admin_broadcast_station') }}">Reset</a>
+        </form>
+    </div>
+    {% if announcements_list %}
     {% for a in announcements_list %}
-    <div class="stream-history-item"
+    <div class="stream-history-item" role="button" tabindex="0" onclick="openDetailsModal('details-modal-{{ a.id }}')"
         style="{% if not a.is_active %}opacity: 0.85; border-left: 5px solid #94a3b8; background: #f8fafc;{% endif %}">
         <div
-            style="width: 80px; height: 50px; background: #f1f5f9; border-radius: 12px; overflow: hidden; flex-shrink: 0;">
+            class="announcement-thumb" style="background: #f1f5f9; border-radius: 12px; overflow: hidden; flex-shrink: 0;">
             {% if a.image_url %}<img src="{{ a.image_url }}" style="width:100%; height:100%; object-fit:cover;">{% else
             %}<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size: 1.2rem;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -541,86 +783,386 @@
                 </svg>
             </div>{% endif %}
         </div>
-        <div style="flex: 1;">
-            <div style="font-weight: 800; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                {{ a.title }}
+        <div class="stream-history-content">
+            <div class="stream-history-title">
+                <span class="stream-history-title-text">{{ a.title }}</span>
                 {% if a.is_active %}
                 <span
-                    style="font-size: 0.65rem; background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 6px; font-weight: 900;">LIVE</span>
+                    style="font-size: 0.65rem; background: #dcfce7; color: #16a34a; padding: 4px 8px; border-radius: 999px; font-weight: 900; white-space: nowrap;">PUBLISHED</span>
                 {% else %}
                 <span
                     style="font-size: 0.65rem; background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 6px; font-weight: 900;">ARCHIVED</span>
                 {% endif %}
             </div>
-            <div style="font-size: 0.8rem; color: var(--ma-muted);">{{ a.message[:80] }}{% if a.message|length > 80
+            <div class="announcement-meta">
+                {% if a.created_at_local %}<span><i class="far fa-calendar-alt"></i> {{ a.created_at_local.strftime('%b %d, %Y - %I:%M %p') }}</span>{% endif %}
+                <span><i class="fas fa-users"></i> {{ 'Teachers' if a.audience == 'teacher' else 'Homepage' }}</span>
+            </div>
+            <div class="stream-history-message">{{ (a.message or '')[:80] }}{% if (a.message or '')|length > 80
                 %}...{% endif %}</div>
         </div>
         {% if not is_history_mode %}
-        <div style="display: flex; gap: 8px;">
-            <form method="post" action="{{ url_for('branch_admin.announcement_toggle', announcement_id=a.id) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="from_station" value="1">
-                <button type="submit"
-                    style="{% if a.is_active %}background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2;{% else %}background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7;{% endif %} padding: 10px 18px; border-radius: 14px; font-weight: 800; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;">
-                    {{ 'Archive' if a.is_active else 'Restore' }}
-                </button>
-            </form>
-
-            <form method="post" action="{{ url_for('branch_admin.announcement_delete', announcement_id=a.id) }}"
-                onsubmit="return confirm('Permanently delete this announcement?')">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="from_station" value="1">
-                <button type="submit"
-                    style="background: #ffffff; color: #94a3b8; border: 1px solid #e2e8f0; padding: 10px 18px; border-radius: 14px; font-weight: 800; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;">
-                    Delete
-                </button>
-            </form>
-        </div>
+        <details class="announcement-manage" onclick="event.stopPropagation()">
+            <summary>Manage</summary>
+            <div class="announcement-manage-menu">
+                <button type="button" class="action-btn" onclick="openDetailsModal('edit-modal-{{ a.id }}')">Edit</button>
+                <form method="post" action="{{ url_for('branch_admin.announcement_toggle', announcement_id=a.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="from_station" value="1">
+                <input type="hidden" name="return_audience" value="{{ audience_filter }}">
+                <input type="hidden" name="return_status" value="{{ status_filter }}">
+                <input type="hidden" name="return_search" value="{{ filter_search }}">
+                <input type="hidden" name="return_page" value="{{ page }}">
+                    {% if a.is_active %}
+                    <button type="button" class="action-btn" onclick="openArchiveConfirmation(this.form, this)">Archive</button>
+                    {% else %}
+                    <button type="submit" class="action-btn">Restore</button>
+                    {% endif %}
+                </form>
+                <form method="post" action="{{ url_for('branch_admin.announcement_delete', announcement_id=a.id) }}" onsubmit="return confirm('Permanently delete this announcement?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="from_station" value="1">
+                <input type="hidden" name="return_audience" value="{{ audience_filter }}">
+                <input type="hidden" name="return_status" value="{{ status_filter }}">
+                <input type="hidden" name="return_search" value="{{ filter_search }}">
+                <input type="hidden" name="return_page" value="{{ page }}">
+                    <button type="submit" class="action-btn">Delete</button>
+                </form>
+            </div>
+        </details>
         {% endif %}
     </div>
+
+    <div class="modal-overlay" id="details-modal-{{ a.id }}" onclick="closeModalOnBackdrop(event)">
+        <div class="announcement-modal">
+            <div class="modal-head">
+                <h3>Announcement Details</h3>
+                <button type="button" class="modal-close" onclick="closeModal('details-modal-{{ a.id }}')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-preview-card">
+                    <div class="modal-preview-image">
+                        {% if a.image_url %}<img src="{{ a.image_url }}" alt="{{ a.title }}" style="display:block;">{% else %}<span>No image attached</span>{% endif %}
+                    </div>
+                    <div class="modal-preview-content">
+                        <div class="announcement-meta">
+                            {% if a.created_at_local %}<span><i class="far fa-calendar-alt"></i> {{ a.created_at_local.strftime('%b %d, %Y - %I:%M %p') }}</span>{% endif %}
+                            <span><i class="fas fa-users"></i> {{ 'Teachers' if a.audience == 'teacher' else 'Homepage' }}</span><span>{{ 'Published' if a.is_active else 'Archived' }}</span>
+                        </div>
+                        <h2 class="modal-preview-title">{{ a.title }}</h2>
+                        <p class="modal-preview-message">{{ a.message or 'No message provided.' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="edit-modal-{{ a.id }}" onclick="closeModalOnBackdrop(event)">
+        <div class="announcement-modal">
+            <div class="modal-head">
+                <h3>Edit Announcement</h3>
+                <button type="button" class="modal-close" onclick="closeModal('edit-modal-{{ a.id }}')">&times;</button>
+            </div>
+            <form method="post" action="{{ url_for('branch_admin.announcement_edit', announcement_id=a.id) }}" enctype="multipart/form-data" class="edit-announcement-form" data-original-title="{{ a.title|e }}" data-original-message="{{ (a.message or '')|e }}" data-original-audience="{{ a.audience or 'all' }}" onsubmit="return validateEditSubmit(this)">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="from_station" value="1">
+                <input type="hidden" name="return_audience" value="{{ audience_filter }}">
+                <input type="hidden" name="return_status" value="{{ status_filter }}">
+                <input type="hidden" name="return_search" value="{{ filter_search }}">
+                <input type="hidden" name="return_page" value="{{ page }}">
+                <div class="modal-body">
+                    <div class="form-group-prem">
+                        <label>Announcement Title</label>
+                        <input class="input-prem" name="announcement_title" value="{{ a.title }}" required maxlength="120" oninput="syncEditSaveState(this.form)">
+                    </div>
+                    <div class="form-group-prem">
+                        <label>Announcement Message</label>
+                        <textarea class="input-prem" name="announcement_message" maxlength="1000" style="resize: none; min-height: 160px; overflow-y: auto;" oninput="syncEditSaveState(this.form)">{{ a.message or '' }}</textarea>
+                    </div>
+                    <div class="form-group-prem">
+                        <label>Audience</label>
+                        <select class="input-prem" name="audience" onchange="syncEditSaveState(this.form)">
+                            <option value="all" {% if a.audience != 'teacher' %}selected{% endif %}>All (Homepage)</option>
+                            <option value="teacher" {% if a.audience == 'teacher' %}selected{% endif %}>Teachers only (Teacher Dashboard)</option>
+                        </select>
+                    </div>
+                    <div class="form-group-prem">
+                        <label>Current Image</label>
+                        <div class="current-image-preview">
+                            {% if a.image_url %}
+                            <img src="{{ a.image_url }}" alt="Current announcement image">
+                            {% else %}
+                            <span>No image attached</span>
+                            {% endif %}
+                        </div>
+                        <label>Replace Image</label>
+                        <input type="file" name="announcement_photo" class="input-prem scoped-image-input" style="padding: 12px; font-size: 0.8rem;" accept=".png,.jpg,.jpeg,.gif,.webp" onchange="syncEditSaveState(this.form)">
+                        <div class="file-help-text">Leave blank to keep the current image.</div>
+                        <div class="file-help-text file-error-text scoped-image-error">Please choose an image file only.</div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="action-btn" onclick="closeModal('edit-modal-{{ a.id }}')">Cancel</button>
+                    <button type="submit" class="btn-gold-prestige edit-save-btn" style="width:auto; padding:12px 22px; border-radius:14px; font-size:0.9rem;" disabled>Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
     {% endfor %}
+    {% else %}
+    <div class="announcement-empty">No announcements match the selected filters.</div>
+    {% endif %}
+    {% if total_announcements > 0 %}
+    <div class="announcement-pagination">
+        <span>Showing {{ ((page - 1) * per_page) + 1 }}-{{ [page * per_page, total_announcements]|min }} of {{ total_announcements }}</span>
+        {% if total_pages > 1 %}<nav class="pagination-links" aria-label="Announcement pages">
+            <a class="pagination-link{% if page == 1 %} disabled{% endif %}" href="{{ url_for('branch_admin.branch_admin_broadcast_station', audience=audience_filter, status=status_filter, search=filter_search, page=page-1) }}">&lsaquo;</a>
+            {% for page_number in range(1, total_pages + 1) %}{% if page_number == 1 or page_number == total_pages or (page_number >= page - 2 and page_number <= page + 2) %}<a class="pagination-link{% if page_number == page %} active{% endif %}" href="{{ url_for('branch_admin.branch_admin_broadcast_station', audience=audience_filter, status=status_filter, search=filter_search, page=page_number) }}">{{ page_number }}</a>{% elif (page_number == 2 and page > 4) or (page_number == total_pages - 1 and page < total_pages - 3) %}<span class="pagination-link disabled">&hellip;</span>{% endif %}{% endfor %}
+            <a class="pagination-link{% if page == total_pages %} disabled{% endif %}" href="{{ url_for('branch_admin.branch_admin_broadcast_station', audience=audience_filter, status=status_filter, search=filter_search, page=page+1) }}">&rsaquo;</a>
+        </nav>{% endif %}
+    </div>
     {% endif %}
 </div>
 
+
+<div class="modal-overlay" id="create-preview-modal" onclick="closeModalOnBackdrop(event)">
+    <div class="announcement-modal">
+        <div class="modal-head">
+            <h3>Preview Announcement</h3>
+            <button type="button" class="modal-close" onclick="closeModal('create-preview-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-preview-card">
+                <div class="modal-preview-image" id="create_preview_image_box">
+                    <span id="create_preview_placeholder">No image attached</span>
+                    <img id="create_preview_image" src="" alt="Announcement preview">
+                </div>
+                <div class="modal-preview-content">
+                    <div id="create_preview_audience" style="font-size:0.78rem; color:#64748b; font-weight:900; text-transform:uppercase; margin-bottom:10px;">Homepage</div>
+                    <h2 class="modal-preview-title" id="create_preview_title">Draft Headline</h2>
+                    <p class="modal-preview-message" id="create_preview_message">Your announcement message preview will appear here.</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="action-btn" onclick="closeModal('create-preview-modal')">Keep Editing</button>
+            <button type="button" class="btn-gold-prestige" style="width:auto; padding:12px 22px; border-radius:14px; font-size:0.9rem;" onclick="submitCreateAnnouncement()">
+                <i class="fas fa-paper-plane"></i> Post Announcement
+            </button>
+        </div>
+    </div>
+</div>
+<div class="modal-overlay" id="archive-confirm-modal" onclick="closeArchiveOnBackdrop(event)" role="dialog" aria-modal="true" aria-labelledby="archive-confirm-title" aria-describedby="archive-confirm-message">
+    <div class="announcement-modal" style="width:min(520px, 100%);">
+        <div class="modal-head">
+            <h3 id="archive-confirm-title">Archive Announcement?</h3>
+            <button type="button" class="modal-close" onclick="closeArchiveConfirmation()" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body"><p id="archive-confirm-message" style="margin:0; color:var(--ma-muted); line-height:1.65;">Are you sure you want to archive this announcement? It will no longer be visible to its intended audience, but you can restore it later.</p></div>
+        <div class="modal-actions">
+            <button type="button" class="action-btn" onclick="closeArchiveConfirmation()">Cancel</button>
+            <button type="button" class="btn-gold-prestige" id="confirm-archive-btn" style="width:auto; padding:12px 22px; border-radius:14px; font-size:0.9rem;" onclick="confirmArchiveAnnouncement()">Archive Announcement</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    function syncPreview() {
-        const headline = document.getElementById('headline_input').value;
-        const summary = document.getElementById('summary_input').value;
-        const previewHeadline = document.getElementById('preview_headline');
-        const previewSummary = document.getElementById('preview_summary');
+    const allowedImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    let createPreviewImageUrl = '';
+    let pendingArchiveForm = null;
+    let archiveSubmitting = false;
+    let archiveTrigger = null;
 
-        if (headline) {
-            previewHeadline.innerHTML = headline.split(' ').map(word =>
-                (word.toLowerCase() === 'liceo' || word.toLowerCase() === 'liceo') ? `<span>${word}</span>` : word
-            ).join(' ');
-        } else {
-            previewHeadline.innerHTML = 'Draft <span>Headline</span>';
-        }
+    function closeManageMenus(except = null) {
+        document.querySelectorAll('.announcement-manage[open]').forEach((menu) => {
+            if (menu !== except) menu.removeAttribute('open');
+        });
+        document.querySelectorAll('.stream-history-item.menu-open').forEach((card) => {
+            if (!except || card !== except.closest('.stream-history-item')) card.classList.remove('menu-open');
+        });
+    }
 
-        if (summary) {
-            previewSummary.innerText = summary;
-        } else {
-            previewSummary.innerText = 'Your announcement summary will appear here as you type...';
+    document.querySelectorAll('.announcement-manage').forEach((menu) => {
+        menu.addEventListener('toggle', () => {
+            const card = menu.closest('.stream-history-item');
+            const dropdown = menu.querySelector('.announcement-manage-menu');
+            if (!menu.open) {
+                card?.classList.remove('menu-open');
+                dropdown?.classList.remove('open-up');
+                return;
+            }
+            closeManageMenus(menu);
+            card?.classList.add('menu-open');
+            dropdown?.classList.remove('open-up');
+            requestAnimationFrame(() => {
+                const menuRect = menu.getBoundingClientRect();
+                const dropdownHeight = dropdown?.offsetHeight || 0;
+                const spaceBelow = window.innerHeight - menuRect.bottom;
+                const spaceAbove = menuRect.top;
+                dropdown?.classList.toggle('open-up', spaceBelow < dropdownHeight + 12 && spaceAbove > spaceBelow);
+            });
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.announcement-manage')) closeManageMenus();
+    });
+
+    function openArchiveConfirmation(form, trigger) {
+        pendingArchiveForm = form;
+        archiveTrigger = trigger;
+        archiveSubmitting = false;
+        closeManageMenus();
+        const modal = document.getElementById('archive-confirm-modal');
+        const button = document.getElementById('confirm-archive-btn');
+        if (button) button.disabled = false;
+        modal?.classList.add('show');
+        modal?.querySelector('.modal-close')?.focus();
+    }
+
+    function closeArchiveConfirmation() {
+        if (archiveSubmitting) return;
+        document.getElementById('archive-confirm-modal')?.classList.remove('show');
+        pendingArchiveForm = null;
+        archiveTrigger?.focus();
+        archiveTrigger = null;
+    }
+
+    function closeArchiveOnBackdrop(event) {
+        if (event.target.id === 'archive-confirm-modal') closeArchiveConfirmation();
+    }
+
+    function confirmArchiveAnnouncement() {
+        if (!pendingArchiveForm || archiveSubmitting) return;
+        archiveSubmitting = true;
+        const button = document.getElementById('confirm-archive-btn');
+        if (button) button.disabled = true;
+        pendingArchiveForm.submit();
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        if (document.getElementById('archive-confirm-modal')?.classList.contains('show')) closeArchiveConfirmation();
+        else closeManageMenus();
+    });
+
+    function openDetailsModal(id) {
+        closeManageMenus();
+        document.getElementById(id)?.classList.add('show');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id)?.classList.remove('show');
+    }
+
+    function closeModalOnBackdrop(event) {
+        if (event.target.classList.contains('modal-overlay')) {
+            event.target.classList.remove('show');
         }
     }
 
-    function previewImage(input) {
-        const previewImg = document.getElementById('preview_img_tag');
-        const placeholder = document.getElementById('preview_placeholder');
+    function validateImageFile(file) {
+        return !file || allowedImageTypes.includes(file.type);
+    }
 
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                previewImg.src = e.target.result;
-                previewImg.style.display = 'block';
-                placeholder.style.display = 'none';
-            }
-            reader.readAsDataURL(input.files[0]);
+    function validateImageInput(input) {
+        const error = document.getElementById('photo_error');
+        const file = input?.files?.[0];
+        const isValid = validateImageFile(file);
+        if (error) error.style.display = isValid ? 'none' : 'block';
+        if (!isValid) {
+            input.value = '';
+            createPreviewImageUrl = '';
+        }
+        return isValid;
+    }
+
+    function validateScopedImage(form) {
+        const input = form.querySelector('.scoped-image-input');
+        const error = form.querySelector('.scoped-image-error');
+        const file = input?.files?.[0];
+        const isValid = validateImageFile(file);
+        if (error) error.style.display = isValid ? 'none' : 'block';
+        if (!isValid && input) input.value = '';
+        return isValid;
+    }
+
+    function hasEditChanges(form) {
+        const title = form.querySelector('[name="announcement_title"]')?.value.trim() || '';
+        const message = form.querySelector('[name="announcement_message"]')?.value.trim() || '';
+        const audience = form.querySelector('[name="audience"]')?.value || 'all';
+        const imageFile = form.querySelector('.scoped-image-input')?.files?.[0];
+
+        return title !== (form.dataset.originalTitle || '')
+            || message !== (form.dataset.originalMessage || '')
+            || audience !== (form.dataset.originalAudience || 'all')
+            || Boolean(imageFile);
+    }
+
+    function syncEditSaveState(form) {
+        const saveBtn = form.querySelector('.edit-save-btn');
+        const imageIsValid = validateScopedImage(form);
+        if (!saveBtn) return;
+        saveBtn.disabled = !imageIsValid || !hasEditChanges(form);
+    }
+
+    function validateEditSubmit(form) {
+        if (!validateScopedImage(form)) return false;
+        syncEditSaveState(form);
+        return hasEditChanges(form);
+    }
+
+    function syncCreateDraft() {
+        const title = document.getElementById('headline_input')?.value.trim() || 'Draft Headline';
+        const message = document.getElementById('summary_input')?.value.trim() || 'Your announcement message preview will appear here.';
+        const audience = document.getElementById('audience_input')?.value === 'teacher' ? 'Teachers only' : 'Homepage';
+
+        document.getElementById('create_preview_title').innerText = title;
+        document.getElementById('create_preview_message').innerText = message;
+        document.getElementById('create_preview_audience').innerText = audience;
+    }
+
+    function previewImage(input) {
+        if (!validateImageInput(input)) return;
+
+        const file = input.files && input.files[0];
+        if (!file) {
+            createPreviewImageUrl = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            createPreviewImageUrl = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function openCreatePreview(event) {
+        event.preventDefault();
+        const form = event.target;
+        const photoInput = document.getElementById('photo_input');
+
+        if (!form.reportValidity() || !validateImageInput(photoInput)) return false;
+
+        syncCreateDraft();
+        const previewImg = document.getElementById('create_preview_image');
+        const placeholder = document.getElementById('create_preview_placeholder');
+        if (createPreviewImageUrl) {
+            previewImg.src = createPreviewImageUrl;
+            previewImg.style.display = 'block';
+            placeholder.style.display = 'none';
         } else {
             previewImg.src = '';
             previewImg.style.display = 'none';
             placeholder.style.display = 'block';
         }
+        openDetailsModal('create-preview-modal');
+        return false;
+    }
+
+    function submitCreateAnnouncement() {
+        document.getElementById('announcement_form')?.submit();
     }
 </script>
 {% endblock %}
