@@ -4,17 +4,24 @@ import os
 from pathlib import Path
 import re
 import unittest
+from unittest.mock import patch
 import uuid
 import zipfile
 
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
+from db import get_teacher_announcement_year_mode
 
 
 SOURCE_PATH = Path(__file__).resolve().parents[1] / "routes" / "teacher.py"
 SOURCE = SOURCE_PATH.read_text(encoding="utf-8")
 STUDENT_SOURCE = (
     Path(__file__).resolve().parents[1] / "routes" / "student_portal.py"
+).read_text(encoding="utf-8")
+MIGRATION_SOURCE = (
+    Path(__file__).resolve().parents[1]
+    / "migrations"
+    / "add_teacher_announcements_year_id.sql"
 ).read_text(encoding="utf-8")
 TREE = ast.parse(SOURCE)
 WANTED = {
@@ -167,6 +174,7 @@ class TeacherAnnouncementRouteSecurityTest(unittest.TestCase):
         self.assertIn("LIMIT %s OFFSET %s", route_source)
         self.assertIn("a.teacher_user_id = %s", route_source)
         self.assertIn("SPLIT_PART(COALESCE(a.body, ''), '[ATTACHMENT|', 1)", route_source)
+        self.assertIn('where_clauses.append("a.year_id = %s")', route_source)
         self.assertIn("WHERE {where_sql}", route_source)
 
     def test_list_state_validates_filters_and_return_values(self):
@@ -191,6 +199,99 @@ class TeacherAnnouncementRouteSecurityTest(unittest.TestCase):
             {"view": "mine", "search": "notice", "section_id": 12, "page": 4},
             return_state,
         )
+
+    def test_create_supports_legacy_and_year_aware_inserts(self):
+        create_start = SOURCE.index("def teacher_announce():")
+        create_end = SOURCE.index("def teacher_announce_delete", create_start)
+        create_source = SOURCE[create_start:create_end]
+        self.assertIn('announcement_year_mode == "legacy"', create_source)
+        self.assertIn(
+            "(teacher_user_id, branch_id, grade_level, title, body, year_id)",
+            create_source,
+        )
+        self.assertIn(
+            "user_id, branch_id, grade_to_save, title, body or None, year_id",
+            create_source,
+        )
+
+    def test_strict_mode_covers_dashboard_mutations_and_attachments(self):
+        self.assertIn("recent_announcement_mode", SOURCE)
+        self.assertIn('delete_year_sql = " AND year_id = %s"', SOURCE)
+        self.assertIn('mutation_year_sql = " AND year_id = %s"', SOURCE)
+        self.assertIn(
+            'announcement.get("year_id") != active_year_id',
+            SOURCE,
+        )
+
+    def test_student_feed_uses_active_enrollment_year_in_strict_mode(self):
+        self.assertIn(
+            'announcement_params["year_id"] = active_enrollment["year_id"]',
+            STUDENT_SOURCE,
+        )
+        self.assertIn(
+            'announcement_year_sql = " AND a.year_id = %(year_id)s"',
+            STUDENT_SOURCE,
+        )
+
+
+class FakeSchemaCursor:
+    def __init__(self, has_year_id):
+        self.has_year_id = has_year_id
+        self.queries = []
+
+    def execute(self, query):
+        self.queries.append(query)
+
+    def fetchone(self):
+        return {"has_year_id": self.has_year_id}
+
+
+class TeacherAnnouncementYearCompatibilityTest(unittest.TestCase):
+    def test_missing_column_uses_legacy_mode_without_year_query(self):
+        cursor = FakeSchemaCursor(False)
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual("legacy", get_teacher_announcement_year_mode(cursor))
+        self.assertEqual(1, len(cursor.queries))
+        self.assertIn("information_schema.columns", cursor.queries[0])
+
+    def test_migrated_column_defaults_to_bridge_mode(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(
+                "bridge",
+                get_teacher_announcement_year_mode(FakeSchemaCursor(True)),
+            )
+
+    def test_strict_mode_requires_the_migrated_column(self):
+        with patch.dict(
+            os.environ,
+            {"TEACHER_ANNOUNCEMENTS_STRICT_YEAR": "true"},
+            clear=True,
+        ):
+            self.assertEqual(
+                "strict",
+                get_teacher_announcement_year_mode(FakeSchemaCursor(True)),
+            )
+            with self.assertRaises(RuntimeError):
+                get_teacher_announcement_year_mode(FakeSchemaCursor(False))
+
+    def test_migration_is_additive_nullable_and_does_not_backfill(self):
+        self.assertIn(
+            "ADD COLUMN IF NOT EXISTS year_id INTEGER",
+            MIGRATION_SOURCE,
+        )
+        self.assertNotIn("year_id INTEGER NOT NULL", MIGRATION_SOURCE)
+        self.assertIn("FOREIGN KEY (branch_id, year_id)", MIGRATION_SOURCE)
+        self.assertIn("ON DELETE RESTRICT", MIGRATION_SOURCE)
+        self.assertIn("NOT VALID", MIGRATION_SOURCE)
+        self.assertIn(
+            "CREATE INDEX IF NOT EXISTS idx_teacher_ann_branch_year_created",
+            MIGRATION_SOURCE,
+        )
+        executable_sql = "\n".join(
+            line for line in MIGRATION_SOURCE.splitlines()
+            if not line.lstrip().startswith("--")
+        )
+        self.assertNotIn("UPDATE teacher_announcements", executable_sql)
 
 
 class TeacherAnnouncementTemplateTest(unittest.TestCase):

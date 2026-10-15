@@ -1,5 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, session, flash, url_for, jsonify
-from db import get_db_connection, get_break_times_config
+from db import (
+    get_db_connection,
+    get_break_times_config,
+    get_teacher_announcement_year_mode,
+)
 from werkzeug.security import generate_password_hash
 import logging
 import psycopg2.extras
@@ -254,12 +258,25 @@ def dashboard():
                 _m2 = _re.match(r'^Grade\s+(\d+)$', grade_full, _re.IGNORECASE)
                 grade_short = _m2.group(1) if _m2 else grade_full
 
-            cursor.execute("""
+            announcement_year_mode = get_teacher_announcement_year_mode(cursor)
+            announcement_year_sql = ""
+            announcement_params = {
+                "branch_id": branch_id,
+                "section_id": str(active_section_id),
+                "grade_full": grade_full,
+                "grade_short": grade_short,
+            }
+            if announcement_year_mode == "strict":
+                announcement_year_sql = " AND a.year_id = %(year_id)s"
+                announcement_params["year_id"] = active_enrollment["year_id"]
+
+            cursor.execute(f"""
                 SELECT a.announcement_id, a.title, a.body, a.created_at,
                        u.username AS posted_by, u.full_name, u.gender
                 FROM teacher_announcements a
                 JOIN users u ON u.user_id = a.teacher_user_id
                 WHERE a.branch_id = %(branch_id)s
+                  {announcement_year_sql}
                   AND (
                       a.grade_level LIKE '%%:' || %(section_id)s
                       OR (
@@ -269,12 +286,7 @@ def dashboard():
                   )
                 ORDER BY a.created_at DESC, a.announcement_id DESC
                 LIMIT 20
-            """, {
-                "branch_id":   branch_id,
-                "section_id":  str(active_section_id),
-                "grade_full":  grade_full,
-                "grade_short": grade_short,
-            })
+            """, announcement_params)
             raw_ann = cursor.fetchall() or []
 
             for a in raw_ann:

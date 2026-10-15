@@ -1,6 +1,10 @@
 import re
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify, send_file, abort
-from db import get_db_connection, get_break_times_config
+from db import (
+    get_db_connection,
+    get_break_times_config,
+    get_teacher_announcement_year_mode,
+)
 from utils.send_email import send_email
 import psycopg2.extras
 from cloudinary_helper import upload_file
@@ -679,6 +683,7 @@ def teacher_dashboard():
         if not year_id:
             flash("No active school year set. Please inform your branch admin.", "error")
             year_id = 0
+        announcement_year_mode = get_teacher_announcement_year_mode(cur)
 
         # ── Sections + subjects assigned to this teacher (for this branch) ──
         ph_tz = pytz.timezone("Asia/Manila")
@@ -839,6 +844,10 @@ def teacher_dashboard():
         
         conditions = []
         params = {"branch_id": branch_id}
+        announcement_year_sql = ""
+        if announcement_year_mode == "strict":
+            announcement_year_sql = " AND a.year_id = %(year_id)s"
+            params["year_id"] = year_id
         
         for i, grade in enumerate(assigned_grades):
             g_full, g_short = _normalize_grade(grade)
@@ -860,6 +869,7 @@ def teacher_dashboard():
                 FROM teacher_announcements a
                 JOIN users u ON u.user_id = a.teacher_user_id
                 WHERE a.branch_id = %(branch_id)s
+                  {announcement_year_sql}
                   AND ({where_clause})
                 ORDER BY a.created_at DESC
             """, params)
@@ -901,6 +911,7 @@ def teacher_dashboard():
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        recent_announcement_mode = get_teacher_announcement_year_mode(cur)
         for a in today_assignments:
             if a.get('start_time') and a.get('end_time'):
                 st = a['start_time'].strftime('%H:%M:%S')
@@ -972,12 +983,18 @@ def teacher_dashboard():
                 })
                 
             # 3. Announcements
-            cur.execute("""
+            recent_year_sql = ""
+            recent_params = [user_id]
+            if recent_announcement_mode == "strict":
+                recent_year_sql = " AND year_id = %s"
+                recent_params.append(year_id)
+            cur.execute(f"""
                 SELECT announcement_id AS id, title, 'Announcement' AS type, created_at
                 FROM teacher_announcements
                 WHERE teacher_user_id = %s
+                  {recent_year_sql}
                 ORDER BY created_at DESC LIMIT 15
-            """, (user_id,))
+            """, recent_params)
             for row in cur.fetchall():
                 recent_activities.append({
                     'title': row['title'],
@@ -1075,6 +1092,7 @@ def teacher_class_announcements():
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         year_id = _get_active_school_year(cur, branch_id)
+        announcement_year_mode = get_teacher_announcement_year_mode(cur)
         teacher_sections = (
             _class_announcement_sections(cur, user_id, branch_id, year_id)
             if year_id else []
@@ -1101,6 +1119,9 @@ def teacher_class_announcements():
                 )""",
             ]
             query_params = [branch_id, str(selected_section), grade_full, grade_short]
+            if announcement_year_mode == "strict":
+                where_clauses.append("a.year_id = %s")
+                query_params.append(year_id)
             if view_filter == "mine":
                 where_clauses.append("a.teacher_user_id = %s")
                 query_params.append(user_id)
@@ -1267,6 +1288,7 @@ def teacher_announce():
         if not year_id:
             flash("No active school year.", "error")
             return redirect(back_url)
+        announcement_year_mode = get_teacher_announcement_year_mode(cur)
 
         try:
             target_section_id = int(target_section_id)
@@ -1296,12 +1318,22 @@ def teacher_announce():
                 body + f"\n\n[ATTACHMENT|/uploads/{filename}|{original_name}]"
             ).strip()
 
-        cur.execute("""
-            INSERT INTO teacher_announcements
-                (teacher_user_id, branch_id, grade_level, title, body)
-            VALUES (%s, %s, %s, %s, %s)
-            RETURNING announcement_id
-        """, (user_id, branch_id, grade_to_save, title, body or None))
+        if announcement_year_mode == "legacy":
+            cur.execute("""
+                INSERT INTO teacher_announcements
+                    (teacher_user_id, branch_id, grade_level, title, body)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING announcement_id
+            """, (user_id, branch_id, grade_to_save, title, body or None))
+        else:
+            cur.execute("""
+                INSERT INTO teacher_announcements
+                    (teacher_user_id, branch_id, grade_level, title, body, year_id)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING announcement_id
+            """, (
+                user_id, branch_id, grade_to_save, title, body or None, year_id
+            ))
         ann_row = cur.fetchone()
         ann_id = ann_row["announcement_id"]
 
@@ -1393,12 +1425,20 @@ def teacher_announce_delete(announcement_id):
         if not year_id:
             flash("No active school year.", "error")
             return redirect(back_url)
-        cur.execute("""
+        announcement_year_mode = get_teacher_announcement_year_mode(cur)
+
+        delete_year_sql = ""
+        delete_params = [announcement_id, user_id, branch_id]
+        if announcement_year_mode == "strict":
+            delete_year_sql = " AND year_id = %s"
+            delete_params.append(year_id)
+        cur.execute(f"""
             DELETE FROM teacher_announcements
             WHERE announcement_id = %s
               AND teacher_user_id = %s
               AND branch_id = %s
-        """, (announcement_id, user_id, branch_id))
+              {delete_year_sql}
+        """, delete_params)
         db.commit()
         if cur.rowcount:
             flash("Announcement deleted.", "success")
@@ -1448,13 +1488,21 @@ def teacher_announce_edit(announcement_id):
         if not year_id:
             flash("No active school year.", "error")
             return redirect(back_url)
+        announcement_year_mode = get_teacher_announcement_year_mode(cur)
+
         # Get existing body to preserve attachment if not removed/replaced
-        cur.execute("""
+        mutation_year_sql = ""
+        select_params = [announcement_id, user_id, branch_id]
+        if announcement_year_mode == "strict":
+            mutation_year_sql = " AND year_id = %s"
+            select_params.append(year_id)
+        cur.execute(f"""
             SELECT body FROM teacher_announcements
             WHERE announcement_id = %s
               AND teacher_user_id = %s
               AND branch_id = %s
-        """, (announcement_id, user_id, branch_id))
+              {mutation_year_sql}
+        """, select_params)
         row = cur.fetchone()
         if not row:
             flash("Announcement not found or not yours.", "error")
@@ -1485,13 +1533,19 @@ def teacher_announce_edit(announcement_id):
             
         final_body = (body + final_attachment_tag).strip()
 
-        cur.execute("""
+        update_params = [
+            title, final_body or None, announcement_id, user_id, branch_id
+        ]
+        if announcement_year_mode == "strict":
+            update_params.append(year_id)
+        cur.execute(f"""
             UPDATE teacher_announcements
                SET title = %s, body = %s
              WHERE announcement_id = %s
                AND teacher_user_id = %s
                AND branch_id = %s
-        """, (title, final_body or None, announcement_id, user_id, branch_id))
+               {mutation_year_sql}
+        """, update_params)
         db.commit()
         if cur.rowcount:
             flash("Announcement updated.", "success")
@@ -1518,9 +1572,13 @@ def teacher_announcement_attachment(announcement_id):
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cur.execute("""
+        announcement_year_mode = get_teacher_announcement_year_mode(cur)
+        attachment_year_column = (
+            ", year_id" if announcement_year_mode != "legacy" else ""
+        )
+        cur.execute(f"""
             SELECT announcement_id, teacher_user_id, branch_id,
-                   grade_level, body
+                   grade_level, body {attachment_year_column}
             FROM teacher_announcements
             WHERE announcement_id = %s
         """, (announcement_id,))
@@ -1537,6 +1595,11 @@ def teacher_announcement_attachment(announcement_id):
         branch_id = announcement["branch_id"]
         active_year_id = _get_active_school_year(cur, branch_id)
         if not active_year_id:
+            abort(403)
+        if (
+            announcement_year_mode == "strict"
+            and announcement.get("year_id") != active_year_id
+        ):
             abort(403)
 
         allowed = False

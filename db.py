@@ -8,6 +8,34 @@ logging.basicConfig(level=logging.INFO)
 
 _MIGRATIONS_RUN = False
 
+
+def get_teacher_announcement_year_mode(cur):
+    """Return legacy, bridge, or strict without referencing a missing column."""
+    cur.execute("""
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'teacher_announcements'
+              AND column_name = 'year_id'
+        ) AS has_year_id
+    """)
+    row = cur.fetchone()
+    has_year_id = bool(
+        row.get("has_year_id") if isinstance(row, dict) else row[0]
+    )
+    strict_requested = os.getenv(
+        "TEACHER_ANNOUNCEMENTS_STRICT_YEAR", ""
+    ).strip().lower() in {"1", "true", "yes", "on"}
+
+    if strict_requested and not has_year_id:
+        raise RuntimeError(
+            "Teacher announcement strict-year mode requires the year_id migration."
+        )
+    if not has_year_id:
+        return "legacy"
+    return "strict" if strict_requested else "bridge"
+
 def _startup_migrations_enabled():
     return os.getenv("LICEO_RUN_STARTUP_MIGRATIONS", "").strip().lower() in ("1", "true", "yes", "on")
 
