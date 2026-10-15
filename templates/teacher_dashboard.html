@@ -2,6 +2,7 @@
 {% block title %}Teacher Dashboard{% endblock %}
 
 {% block styles %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
@@ -407,6 +408,8 @@
     /* Activity Item Specific */
     .activity-card-item {
         display: flex;
+        min-width: 0;
+        overflow: hidden;
         align-items: center;
         gap: 16px;
         padding: 14px 18px;
@@ -470,9 +473,11 @@
 
     .activity-title-text {
         font-weight: 700;
+        overflow-wrap: anywhere;
+        word-break: break-word;
         color: #0f172a;
         font-size: 0.95rem;
-        white-space: nowrap;
+        white-space: normal;
         overflow: hidden;
         text-overflow: ellipsis;
     }
@@ -580,7 +585,7 @@
         color: #1a3a8f;
         font-size: 1rem;
         margin-bottom: 3px;
-        white-space: nowrap;
+        white-space: normal;
         overflow: hidden;
         text-overflow: ellipsis;
     }
@@ -601,7 +606,7 @@
         font-size: 0.75rem;
         font-weight: 700;
         color: #4f46e5;
-        white-space: nowrap;
+        white-space: normal;
         display: flex;
         align-items: center;
         gap: 5px;
@@ -872,26 +877,22 @@
         </div>
         <div class="activity-list">
             {% for a in admin_announcements[:2] %}
-            <div class="activity-card-item">
-                <div class="activity-avatar-badge avatar-announcement">
-                    <i class="fas fa-bullhorn"></i>
-                </div>
-                <div class="activity-content-box">
-                    <div class="activity-title-text">{{ a.title }}</div>
-                    {% if a.message %}
-                    <div class="activity-sub-info">
-                        <span>{{ a.message }}</span>
+            <article class="teacher-announcement-card js-teacher-announcement" tabindex="0" role="button"
+                aria-label="View announcement: {{ a.title }}" data-has-image="{{ 'true' if a.image_url else 'false' }}">
+                {% if a.image_url %}
+                <div class="teacher-announcement-thumb"><img src="{{ a.image_url }}" alt="" loading="lazy"></div>
+                {% endif %}
+                <div class="teacher-announcement-content">
+                    <div class="teacher-announcement-title">{{ a.title }}</div>
+                    {% if a.created_at_local or a.branch_name %}
+                    <div class="teacher-announcement-meta">
+                        {% if a.created_at_local %}<time class="teacher-announcement-date" datetime="{{ a.created_at_local.isoformat() }}">{{ a.created_at_local.strftime('%b %d, %Y - %I:%M %p') }}</time>{% endif %}
+                        {% if a.branch_name %}<span class="teacher-announcement-source">{{ a.branch_name }}</span>{% endif %}
                     </div>
                     {% endif %}
-                    <div class="activity-sub-info">
-                        <span class="activity-date"><i class="far fa-clock"></i> {{ a.created_at_local.strftime('%b %d, %Y • %I:%M %p') if a.created_at_local else '' }}</span>
-                    </div>
+                    <div class="teacher-announcement-preview">{{ a.message or 'No description provided.' }}</div>
                 </div>
-                {% if a.image_url %}
-                <img src="{{ a.image_url }}" alt="{{ a.title }}"
-                    style="width: 56px; height: 56px; object-fit: cover; border-radius: 12px;">
-                {% endif %}
-            </div>
+            </article>
             {% endfor %}
         </div>
     </div>
@@ -931,7 +932,7 @@
                             <span class="activity-badge-type">{{ act.type|replace('_', ' ')|title }}</span>
                             <span class="activity-bullet">&bull;</span>
                             <span class="activity-date"><i class="far fa-clock"></i> {{ act.created_at.strftime('%b %d,
-                                %Y • %I:%M %p') if act.created_at else '' }}</span>
+                                %Y â€¢ %I:%M %p') if act.created_at else '' }}</span>
                         </div>
                     </div>
                     <i class="fas fa-chevron-right activity-arrow"></i>
@@ -994,7 +995,7 @@
                     <div class="class-info-box">
                         <div class="class-name-text">{{ a.subject_name }}</div>
                         <div class="class-section-text"><i class="fas fa-layer-group"
-                                style="color: #94a3b8; font-size: 0.8rem;"></i> {{ a.grade_level_name }} — {{
+                                style="color: #94a3b8; font-size: 0.8rem;"></i> {{ a.grade_level_name }} â€” {{
                             a.section_name }}</div>
                     </div>
                     {% if a.start_time and a.end_time and dur is defined and dur > 0 %}
@@ -1010,7 +1011,7 @@
                     </div>
                     {% elif a.start_time %}
                     <div class="class-countdown-pill">
-                        <i class="far fa-clock"></i> —
+                        <i class="far fa-clock"></i> â€”
                     </div>
                     {% endif %}
                     <i class="fas fa-chevron-right" style="color: #cbd5e1; font-size: 0.8rem; flex-shrink: 0; transition: transform 0.2s, color 0.2s;"></i>
@@ -1028,53 +1029,57 @@
     </div>
 </div>
 
-<!-- Admin Announcements Modal -->
-<div id="announcements-modal" class="modal-overlay" onclick="if(event.target === this) this.classList.remove('show')">
-    <div class="modal-content" style="max-width: 580px;">
+<!-- Admin Announcements list modal -->
+<div id="announcements-modal" class="modal-overlay" role="dialog" aria-modal="true"
+    aria-labelledby="announcements-list-title"
+    data-announcements-url="{{ url_for('teacher.teacher_admin_announcements') }}">
+    <div class="modal-content teacher-announcements-list-dialog">
         <div class="modal-header">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <div class="section-header-icon icon-bg-blue" style="width: 34px; height: 34px; font-size: 0.95rem;">
-                    <i class="fas fa-bullhorn"></i>
-                </div>
-                <h2>Admin Announcements</h2>
+                <div class="section-header-icon icon-bg-blue" style="width: 34px; height: 34px; font-size: 0.95rem;"><i class="fas fa-bullhorn"></i></div>
+                <h2 id="announcements-list-title">Admin Announcements</h2>
             </div>
-            <button class="modal-close" onclick="document.getElementById('announcements-modal').classList.remove('show')">
-                <i class="fas fa-times"></i>
-            </button>
+            <button type="button" class="modal-close" id="announcements-list-close" aria-label="Close announcements"><i class="fas fa-times" aria-hidden="true"></i></button>
         </div>
-        <div class="modal-body activity-list" style="max-height: 460px; overflow-y: auto; padding: 20px;">
-            {% if admin_announcements %}
-            {% for a in admin_announcements %}
-            <div class="activity-card-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
-                    <div class="activity-avatar-badge avatar-announcement" style="flex-shrink: 0;">
-                        <i class="fas fa-bullhorn"></i>
-                    </div>
-                    <div class="activity-content-box">
-                        <div class="activity-title-text">{{ a.title }}</div>
-                        <div class="activity-sub-info">
-                            <span class="activity-date"><i class="far fa-clock"></i> {{ a.created_at_local.strftime('%b %d, %Y • %I:%M %p') if a.created_at_local else '' }}</span>
-                        </div>
-                    </div>
-                    {% if a.image_url %}
-                    <img src="{{ a.image_url }}" alt="{{ a.title }}"
-                        style="width: 52px; height: 52px; object-fit: cover; border-radius: 10px; flex-shrink: 0;">
-                    {% endif %}
-                </div>
-                {% if a.message %}
-                <div style="font-size: 0.875rem; color: #475569; font-weight: 500; line-height: 1.6; padding: 10px 14px; background: #f8fafc; border-radius: 10px; border-left: 3px solid #e2e8f0; width: 100%;">
-                    {{ a.message }}
-                </div>
-                {% endif %}
+        <div class="teacher-announcements-list-body" id="teacher-announcements-list-body">
+            <div class="teacher-announcements-state" id="teacher-announcements-state" role="status">Loading announcements...</div>
+            <div class="activity-list" id="teacher-announcements-list"></div>
+        </div>
+        <div class="teacher-announcements-pagination" id="teacher-announcements-pagination" hidden>
+            <div class="teacher-announcements-count" id="teacher-announcements-count"></div>
+            <div class="teacher-announcements-page-controls">
+                <button type="button" class="teacher-announcements-page-button" id="teacher-announcements-previous">Previous</button>
+                <span id="teacher-announcements-page-label">Page 1 of 1</span>
+                <button type="button" class="teacher-announcements-page-button" id="teacher-announcements-next">Next</button>
             </div>
-            {% endfor %}
-            {% else %}
-            <div style="text-align: center; padding: 40px 0; color: #64748b; font-weight: 500;">
-                No announcements at this time.
-            </div>
-            {% endif %}
         </div>
     </div>
+</div>
+
+<!-- Announcement details modal -->
+<div id="teacher-announcement-details" class="teacher-announcement-modal" role="dialog" aria-modal="true" aria-labelledby="teacher-announcement-title" hidden>
+    <div class="teacher-announcement-dialog">
+        <div class="teacher-announcement-dialog-head">
+            <h2>Announcement Details</h2>
+            <button type="button" class="teacher-announcement-close" id="teacher-announcement-close" aria-label="Close announcement details"><i class="fas fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="teacher-announcement-dialog-body">
+            <h3 class="teacher-announcement-modal-title" id="teacher-announcement-title"></h3>
+            <div class="teacher-announcement-modal-meta" id="teacher-announcement-meta" hidden>
+                <time class="teacher-announcement-modal-date" id="teacher-announcement-date" hidden></time>
+                <span class="teacher-announcement-modal-source" id="teacher-announcement-source" hidden></span>
+            </div>
+            <div class="teacher-announcement-modal-image-wrap" id="teacher-announcement-image-wrap" hidden>
+                <img class="teacher-announcement-modal-image" id="teacher-announcement-image" src="" alt="">
+            </div>
+            <p class="teacher-announcement-modal-message" id="teacher-announcement-message"></p>
+        </div>
+    </div>
+</div>
+
+<div id="teacher-announcement-lightbox" class="teacher-announcement-lightbox" role="dialog" aria-modal="true" aria-label="Announcement image preview" hidden>
+    <button type="button" class="teacher-announcement-close" id="teacher-lightbox-close" aria-label="Close image preview"><i class="fas fa-times" aria-hidden="true"></i></button>
+    <img id="teacher-lightbox-image" src="" alt="">
 </div>
 
 <!-- Upcoming Classes Modal -->
@@ -1123,7 +1128,7 @@
                 <div class="class-info-box">
                     <div class="class-name-text">{{ a.subject_name }}</div>
                     <div class="class-section-text"><i class="fas fa-layer-group"
-                            style="color: #94a3b8; font-size: 0.8rem;"></i> {{ a.grade_level_name }} — {{ a.section_name
+                            style="color: #94a3b8; font-size: 0.8rem;"></i> {{ a.grade_level_name }} â€” {{ a.section_name
                         }}</div>
                 </div>
                 {% if a.start_time and a.end_time and dur is defined and dur > 0 %}
@@ -1139,7 +1144,7 @@
                 </div>
                 {% elif a.start_time %}
                 <div class="class-countdown-pill">
-                    <i class="far fa-clock"></i> —
+                    <i class="far fa-clock"></i> â€”
                 </div>
                 {% endif %}
                 <i class="fas fa-chevron-right" style="color: #cbd5e1; font-size: 0.8rem; flex-shrink: 0; transition: transform 0.2s, color 0.2s;"></i>
@@ -1183,7 +1188,7 @@
                         <span>Created a new</span>
                         <span class="activity-badge-type">{{ act.type|replace('_', ' ')|title }}</span>
                         <span class="activity-bullet">&bull;</span>
-                        <span class="activity-date"><i class="far fa-clock"></i> {{ act.created_at.strftime('%b %d, %Y •
+                        <span class="activity-date"><i class="far fa-clock"></i> {{ act.created_at.strftime('%b %d, %Y â€¢
                             %I:%M %p') if act.created_at else '' }}</span>
                     </div>
                 </div>
@@ -1305,6 +1310,215 @@
             opacity: 1;
         }
     }
+    /* Homepage-aligned admin announcement cards and details */
+    .teacher-announcement-card {
+        display: flex; align-items: center; gap: 16px; min-width: 0;
+        padding: 14px 16px; margin-bottom: 12px; overflow: hidden;
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+        color: inherit; cursor: pointer;
+        transition: border-color .2s, box-shadow .2s, transform .2s;
+    }
+    .teacher-announcement-card:last-child { margin-bottom: 0; }
+    .teacher-announcement-card:hover, .teacher-announcement-card:focus-visible {
+        border-color: #f0c419; box-shadow: 0 6px 16px rgba(15,23,42,.07);
+        outline: none; transform: translateY(-2px);
+    }
+    .teacher-announcement-thumb {
+        width: 72px; height: 58px; flex: 0 0 72px; overflow: hidden;
+        border-radius: 10px; background: #f1f5f9;
+    }
+    .teacher-announcement-thumb img { width: 100%; height: 100%; display: block; object-fit: cover; }
+    .teacher-announcement-content { flex: 1; min-width: 0; }
+    .teacher-announcement-title, .teacher-announcement-preview {
+        display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden;
+        overflow-wrap: anywhere; word-break: break-word;
+    }
+    .teacher-announcement-title {
+        -webkit-line-clamp: 2; color: #0f172a; font-size: .95rem;
+        font-weight: 700; line-height: 1.4;
+    }
+    .teacher-announcement-meta {
+        display: flex; flex-wrap: wrap; gap: 6px; margin: 3px 0;
+        color: #7c879b; font-size: .75rem; line-height: 1.35;
+    }
+    .teacher-announcement-date:not([hidden]) + .teacher-announcement-source::before,
+    .teacher-announcement-modal-date:not([hidden]) + .teacher-announcement-modal-source::before {
+        content: "\2022"; margin-right: 6px; color: #a8b0be;
+    }
+    .teacher-announcement-preview {
+        -webkit-line-clamp: 2; color: #64748b; font-size: .825rem; line-height: 1.4;
+    }
+    .teacher-announcements-list-dialog {
+        width: min(760px, calc(100% - 32px));
+        max-width: 760px;
+        max-height: min(88vh, 780px);
+        display: flex;
+        flex-direction: column;
+    }
+    .teacher-announcements-list-body {
+        min-height: 180px;
+        padding: 20px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .teacher-announcements-state {
+        min-height: 140px;
+        display: grid;
+        place-items: center;
+        color: #64748b;
+        font-size: .9rem;
+        font-weight: 600;
+        text-align: center;
+    }
+    .teacher-announcements-state[hidden] { display: none; }
+    .teacher-announcements-state.is-inline { min-height: 0; padding: 8px 0 16px; }
+    .teacher-announcements-state.is-loading {
+        grid-template-columns: auto auto;
+        justify-content: center;
+        gap: 10px;
+    }
+    .teacher-announcements-state.is-loading::before {
+        content: "";
+        width: 16px;
+        height: 16px;
+        border: 2px solid #cbd5e1;
+        border-top-color: #1a3a8f;
+        border-radius: 50%;
+        animation: teacher-announcement-spin .7s linear infinite;
+    }
+    @keyframes teacher-announcement-spin { to { transform: rotate(360deg); } }
+    .teacher-announcements-retry {
+        display: inline-flex;
+        margin-top: 10px;
+        padding: 8px 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #fff;
+        color: #1a3a8f;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .teacher-announcements-pagination {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 20px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: .8rem;
+        font-weight: 600;
+    }
+    .teacher-announcements-pagination[hidden] { display: none; }
+    .teacher-announcements-page-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        white-space: nowrap;
+    }
+    .teacher-announcements-page-button {
+        min-height: 36px;
+        padding: 7px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #fff;
+        color: #1a3a8f;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .teacher-announcements-page-button:hover:not(:disabled),
+    .teacher-announcements-page-button:focus-visible {
+        border-color: #1a3a8f;
+        outline: none;
+    }
+    .teacher-announcements-page-button:disabled {
+        background: #e5e7eb;
+        border-color: #e5e7eb;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+    .teacher-announcement-modal {
+        position: fixed; inset: 0; z-index: 11000; display: none;
+        align-items: center; justify-content: center; padding: 24px;
+        background: rgba(12,36,97,.68); backdrop-filter: blur(4px);
+    }
+    .teacher-announcement-modal.show { display: flex; }
+    .teacher-announcement-dialog {
+        width: min(760px,100%); max-height: min(90vh,820px);
+        overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+        background: #fff; border: 1px solid rgba(240,208,96,.75);
+        border-radius: 20px; box-shadow: 0 24px 70px rgba(12,36,97,.28);
+    }
+    .teacher-announcement-dialog-head {
+        position: sticky; top: 0; z-index: 2; display: flex; align-items: center;
+        justify-content: space-between; gap: 16px; padding: 18px 22px;
+        background: #fff; border-bottom: 1px solid #e2e8f0;
+    }
+    .teacher-announcement-dialog-head h2 {
+        margin: 0; color: #0c2461; font-size: 1.15rem; font-weight: 800;
+    }
+    .teacher-announcement-close {
+        width: 38px; height: 38px; flex: 0 0 38px; display: grid;
+        place-items: center; border: 0; border-radius: 50%;
+        background: #f1f5f9; color: #0c2461; cursor: pointer;
+    }
+    .teacher-announcement-close:hover, .teacher-announcement-close:focus-visible {
+        background: #e2e8f0; outline: 3px solid rgba(240,208,96,.55);
+    }
+    .teacher-announcement-dialog-body { padding: 24px 28px 30px; }
+    .teacher-announcement-modal-title {
+        margin: 0 0 8px; color: #0c2461; font-size: 1.55rem; line-height: 1.3;
+        overflow-wrap: anywhere; word-break: break-word;
+    }
+    .teacher-announcement-modal-meta {
+        display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px;
+        color: #7c879b; font-size: .82rem;
+    }
+    .teacher-announcement-modal-meta[hidden],
+    .teacher-announcement-modal-image-wrap[hidden] { display: none; }
+    .teacher-announcement-modal-image-wrap {
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 22px; overflow: hidden; border-radius: 14px; background: #f8fafc;
+    }
+    .teacher-announcement-modal-image {
+        display: block; width: auto; max-width: 100%; height: auto;
+        max-height: 300px; object-fit: contain; cursor: zoom-in;
+    }
+    .teacher-announcement-modal-message {
+        margin: 0; color: #475569; line-height: 1.75; white-space: pre-wrap;
+        overflow-wrap: anywhere; word-break: break-word;
+    }
+    .teacher-announcement-lightbox {
+        position: fixed; inset: 0; z-index: 11001; display: none;
+        align-items: center; justify-content: center; padding: 20px;
+        background: rgba(12,36,97,.96);
+    }
+    .teacher-announcement-lightbox.show { display: flex; }
+    .teacher-announcement-lightbox img {
+        display: block; width: auto; height: auto; max-width: calc(100vw - 40px);
+        max-height: calc(100vh - 40px); object-fit: contain; border-radius: 14px;
+    }
+    .teacher-announcement-lightbox .teacher-announcement-close {
+        position: fixed; top: 20px; right: 20px; z-index: 1;
+    }
+    @media (max-width: 600px) {
+        .teacher-announcement-card { gap: 12px; padding: 12px; }
+        .teacher-announcements-list-dialog { width: calc(100% - 20px); max-height: 92vh; }
+        .teacher-announcements-list-body { padding: 12px; }
+        .teacher-announcements-pagination { align-items: stretch; flex-direction: column; gap: 8px; padding: 12px; }
+        .teacher-announcements-page-controls { justify-content: space-between; }
+        .teacher-announcements-page-button { flex: 1; }
+        .teacher-announcements-count { text-align: center; }
+        .teacher-announcement-thumb { width: 64px; height: 56px; flex-basis: 64px; }
+        .teacher-announcement-modal { padding: 10px; }
+        .teacher-announcement-dialog { max-height: 92vh; border-radius: 16px; }
+        .teacher-announcement-dialog-head { padding: 14px 16px; }
+        .teacher-announcement-dialog-body { padding: 18px 16px 22px; }
+        .teacher-announcement-modal-title { font-size: 1.3rem; }
+        .teacher-announcement-modal-image { max-height: 220px; }
+    }
 </style>
 
 <script>
@@ -1340,5 +1554,304 @@
             menu.classList.remove('show');
         });
     });
+    // Paginated announcement list, details, and image preview.
+    (function setupTeacherAnnouncements() {
+        const listModal = document.getElementById('announcements-modal');
+        const listBody = document.getElementById('teacher-announcements-list-body');
+        const list = document.getElementById('teacher-announcements-list');
+        const state = document.getElementById('teacher-announcements-state');
+        const pagination = document.getElementById('teacher-announcements-pagination');
+        const count = document.getElementById('teacher-announcements-count');
+        const pageLabel = document.getElementById('teacher-announcements-page-label');
+        const previous = document.getElementById('teacher-announcements-previous');
+        const next = document.getElementById('teacher-announcements-next');
+        const details = document.getElementById('teacher-announcement-details');
+        const lightbox = document.getElementById('teacher-announcement-lightbox');
+        const detailClose = document.getElementById('teacher-announcement-close');
+        const listClose = document.getElementById('announcements-list-close');
+        const imageClose = document.getElementById('teacher-lightbox-close');
+        const title = document.getElementById('teacher-announcement-title');
+        const meta = document.getElementById('teacher-announcement-meta');
+        const date = document.getElementById('teacher-announcement-date');
+        const source = document.getElementById('teacher-announcement-source');
+        const imageWrap = document.getElementById('teacher-announcement-image-wrap');
+        const detailImage = document.getElementById('teacher-announcement-image');
+        const lightboxImage = document.getElementById('teacher-lightbox-image');
+        const message = document.getElementById('teacher-announcement-message');
+        const viewAll = document.querySelector('.btn-view-all[onclick*="announcements-modal"]');
+        let currentPage = 1;
+        let loading = false;
+        let requestNumber = 0;
+        let controller = null;
+        let lastTrigger = null;
+
+        const isOpen = element => element && element.classList.contains('show');
+
+        function syncScroll() {
+            document.body.style.overflow =
+                isOpen(listModal) || isOpen(details) || isOpen(lightbox) ? 'hidden' : '';
+        }
+
+        function setControlsDisabled(disabled, data) {
+            previous.disabled = disabled || !data || !data.has_previous;
+            next.disabled = disabled || !data || !data.has_next;
+        }
+
+        function showState(text, canRetry, isLoading = false) {
+            state.replaceChildren();
+            state.classList.toggle('is-inline', list.children.length > 0);
+            state.classList.toggle('is-loading', isLoading);
+            state.hidden = false;
+            const content = document.createElement('div');
+            content.textContent = text;
+            if (canRetry) {
+                const lineBreak = document.createElement('br');
+                const retry = document.createElement('button');
+                retry.type = 'button';
+                retry.className = 'teacher-announcements-retry';
+                retry.textContent = 'Retry';
+                retry.addEventListener('click', () => loadPage(currentPage));
+                content.append(lineBreak, retry);
+            }
+            state.append(content);
+        }
+
+        function makeCard(announcement) {
+            const card = document.createElement('article');
+            card.className = 'teacher-announcement-card js-teacher-announcement';
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', 'View announcement: ' + (announcement.title || 'Announcement'));
+            card.dataset.hasImage = announcement.image_url ? 'true' : 'false';
+
+            if (announcement.image_url) {
+                const thumb = document.createElement('div');
+                const image = document.createElement('img');
+                thumb.className = 'teacher-announcement-thumb';
+                image.src = announcement.image_url;
+                image.alt = '';
+                image.loading = 'lazy';
+                thumb.append(image);
+                card.append(thumb);
+            }
+
+            const content = document.createElement('div');
+            const cardTitle = document.createElement('div');
+            const preview = document.createElement('div');
+            content.className = 'teacher-announcement-content';
+            cardTitle.className = 'teacher-announcement-title';
+            cardTitle.textContent = announcement.title || 'Announcement';
+            preview.className = 'teacher-announcement-preview';
+            preview.textContent = announcement.message || 'No description provided.';
+            content.append(cardTitle);
+
+            if (announcement.published_at || announcement.branch_name) {
+                const cardMeta = document.createElement('div');
+                cardMeta.className = 'teacher-announcement-meta';
+                if (announcement.published_at) {
+                    const time = document.createElement('time');
+                    time.className = 'teacher-announcement-date';
+                    time.textContent = announcement.published_at;
+                    if (announcement.created_at) time.dateTime = announcement.created_at;
+                    cardMeta.append(time);
+                }
+                if (announcement.branch_name) {
+                    const branch = document.createElement('span');
+                    branch.className = 'teacher-announcement-source';
+                    branch.textContent = announcement.branch_name;
+                    cardMeta.append(branch);
+                }
+                content.append(cardMeta);
+            }
+
+            content.append(preview);
+            card.append(content);
+            return card;
+        }
+
+        function renderPage(data) {
+            const fragment = document.createDocumentFragment();
+            data.announcements.forEach(announcement => fragment.append(makeCard(announcement)));
+            list.replaceChildren(fragment);
+            state.hidden = data.total !== 0;
+            if (!data.total) showState('No admin announcements at this time.', false);
+
+            currentPage = data.page;
+            const start = data.total ? ((data.page - 1) * data.per_page) + 1 : 0;
+            const end = data.total ? start + data.announcements.length - 1 : 0;
+            count.textContent = data.total
+                ? 'Showing ' + start + '-' + end + ' of ' + data.total + ' announcements'
+                : 'Showing 0 announcements';
+            pageLabel.textContent = 'Page ' + (data.total_pages ? data.page : 1) +
+                ' of ' + Math.max(data.total_pages, 1);
+            pagination.hidden = false;
+            setControlsDisabled(false, data);
+            listBody.scrollTop = 0;
+        }
+
+        async function loadPage(page) {
+            if (loading && page === currentPage) return;
+            if (controller) controller.abort();
+
+            const thisRequest = ++requestNumber;
+            controller = new AbortController();
+            loading = true;
+            setControlsDisabled(true);
+            if (!list.children.length) showState('Loading announcements...', false, true);
+
+            try {
+                const url = new URL(listModal.dataset.announcementsUrl, window.location.origin);
+                url.searchParams.set('page', Math.max(1, page));
+                const response = await fetch(url, {
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'same-origin',
+                    signal: controller.signal
+                });
+                if (!response.ok) throw new Error('Request failed');
+                const data = await response.json();
+                if (thisRequest !== requestNumber) return;
+                renderPage(data);
+            } catch (error) {
+                if (error.name === 'AbortError' || thisRequest !== requestNumber) return;
+                showState('Announcements could not be loaded. Please try again.', true);
+                setControlsDisabled(false);
+            } finally {
+                if (thisRequest === requestNumber) {
+                    loading = false;
+                    controller = null;
+                }
+            }
+        }
+
+        function openDetails(card) {
+            const text = selector => card.querySelector(selector)?.textContent.trim() || '';
+            const cardImage = card.querySelector('.teacher-announcement-thumb img');
+            const dateText = text('.teacher-announcement-date');
+            const sourceText = text('.teacher-announcement-source');
+            lastTrigger = card;
+            title.textContent = text('.teacher-announcement-title') || 'Announcement';
+            message.textContent = text('.teacher-announcement-preview') || 'No description provided.';
+            date.textContent = dateText;
+            date.hidden = !dateText;
+            source.textContent = sourceText;
+            source.hidden = !sourceText;
+            meta.hidden = !dateText && !sourceText;
+
+            if (card.dataset.hasImage === 'true' && cardImage) {
+                detailImage.src = cardImage.currentSrc || cardImage.src;
+                detailImage.alt = title.textContent;
+                imageWrap.hidden = false;
+            } else {
+                detailImage.removeAttribute('src');
+                detailImage.alt = '';
+                imageWrap.hidden = true;
+            }
+
+            details.hidden = false;
+            details.classList.add('show');
+            syncScroll();
+            detailClose.focus();
+        }
+
+        function closeDetails() {
+            details.classList.remove('show');
+            details.hidden = true;
+            syncScroll();
+            lastTrigger?.focus();
+        }
+
+        function openList() {
+            listModal.classList.add('show');
+            syncScroll();
+            listClose.focus();
+            loadPage(1);
+        }
+
+        function closeList() {
+            requestNumber += 1;
+            if (controller) controller.abort();
+            controller = null;
+            loading = false;
+            listModal.classList.remove('show');
+            syncScroll();
+            viewAll?.focus();
+        }
+
+        function openImage() {
+            if (!detailImage.src) return;
+            lightboxImage.src = detailImage.currentSrc || detailImage.src;
+            lightboxImage.alt = detailImage.alt;
+            lightbox.hidden = false;
+            lightbox.classList.add('show');
+            syncScroll();
+            imageClose.focus();
+        }
+
+        function closeImage() {
+            lightbox.classList.remove('show');
+            lightbox.hidden = true;
+            lightboxImage.removeAttribute('src');
+            syncScroll();
+            detailImage.focus();
+        }
+
+        document.querySelectorAll('.td-wrap .js-teacher-announcement').forEach(card => {
+            card.addEventListener('click', () => openDetails(card));
+            card.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openDetails(card);
+                }
+            });
+        });
+
+        list.addEventListener('click', event => {
+            const card = event.target.closest('.js-teacher-announcement');
+            if (card) openDetails(card);
+        });
+        list.addEventListener('keydown', event => {
+            const card = event.target.closest('.js-teacher-announcement');
+            if (card && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                openDetails(card);
+            }
+        });
+
+        viewAll?.removeAttribute('onclick');
+        viewAll?.addEventListener('click', openList);
+        previous.addEventListener('click', () => {
+            if (!loading && currentPage > 1) loadPage(currentPage - 1);
+        });
+        next.addEventListener('click', () => {
+            if (!loading) loadPage(currentPage + 1);
+        });
+        listClose?.addEventListener('click', closeList);
+        listModal?.addEventListener('click', event => {
+            if (event.target === listModal) closeList();
+        });
+        detailClose?.addEventListener('click', closeDetails);
+        details?.addEventListener('click', event => {
+            if (event.target === details) closeDetails();
+        });
+        detailImage?.addEventListener('click', openImage);
+        detailImage?.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openImage();
+            }
+        });
+        detailImage?.setAttribute('tabindex', '0');
+        detailImage?.setAttribute('role', 'button');
+        imageClose?.addEventListener('click', closeImage);
+        lightbox?.addEventListener('click', event => {
+            if (event.target === lightbox) closeImage();
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key !== 'Escape') return;
+            if (isOpen(lightbox)) closeImage();
+            else if (isOpen(details)) closeDetails();
+            else if (isOpen(listModal)) closeList();
+        });
+    })();
 </script>
 {% endblock %}

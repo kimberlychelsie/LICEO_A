@@ -391,6 +391,81 @@ def _sync_matching_options_for_exam(cur, exam_id, user_id, branch_id, year_id):
 
 
 
+@teacher_bp.route("/teacher/admin-announcements")
+def teacher_admin_announcements():
+    if not _require_teacher():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        return jsonify({"error": "No branch assigned"}), 400
+
+    page = request.args.get("page", default=1, type=int) or 1
+    page = max(1, page)
+    per_page = 10
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT COUNT(*) AS total
+            FROM announcements a
+            WHERE a.is_active = TRUE
+              AND a.branch_id = %s
+              AND a.audience = 'teacher'
+        """, (branch_id,))
+        total = cur.fetchone()["total"]
+        total_pages = (total + per_page - 1) // per_page
+
+        if total_pages:
+            page = min(page, total_pages)
+        else:
+            page = 1
+
+        offset = (page - 1) * per_page
+        cur.execute("""
+            SELECT a.announcement_id AS id, a.title, a.message,
+                   (a.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS created_at_local,
+                   a.image_url, b.branch_name
+            FROM announcements a
+            LEFT JOIN branches b ON b.branch_id = a.branch_id
+            WHERE a.is_active = TRUE
+              AND a.branch_id = %s
+              AND a.audience = 'teacher'
+            ORDER BY a.created_at DESC, a.announcement_id DESC
+            LIMIT %s OFFSET %s
+        """, (branch_id, per_page, offset))
+        rows = cur.fetchall() or []
+
+        announcements = []
+        for row in rows:
+            created_at = row["created_at_local"]
+            announcements.append({
+                "id": row["id"],
+                "title": row["title"],
+                "message": row["message"],
+                "image_url": row["image_url"],
+                "branch_name": row["branch_name"],
+                "created_at": created_at.isoformat() if created_at else None,
+                "published_at": created_at.strftime("%b %d, %Y - %I:%M %p") if created_at else None,
+            })
+
+        return jsonify({
+            "announcements": announcements,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_previous": page > 1,
+        })
+    except Exception:
+        return jsonify({"error": "Could not load announcements. Please try again."}), 500
+    finally:
+        cur.close()
+        db.close()
+
+
 @teacher_bp.route("/teacher")
 def teacher_dashboard():
     if not _require_teacher():
@@ -484,13 +559,16 @@ def teacher_dashboard():
 
         # ── Branch Admin Announcements (for teachers) ──
         cur.execute("""
-            SELECT announcement_id AS id, title, message, (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS created_at_local, image_url
-            FROM announcements
-            WHERE is_active = TRUE
-              AND branch_id = %s
-              AND audience = 'teacher'
-            ORDER BY created_at DESC
-            LIMIT 20
+            SELECT a.announcement_id AS id, a.title, a.message,
+                   (a.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS created_at_local,
+                   a.image_url, b.branch_name
+            FROM announcements a
+            LEFT JOIN branches b ON b.branch_id = a.branch_id
+            WHERE a.is_active = TRUE
+              AND a.branch_id = %s
+              AND a.audience = 'teacher'
+            ORDER BY a.created_at DESC, a.announcement_id DESC
+            LIMIT 2
         """, (branch_id,))
         admin_announcements = cur.fetchall() or []
 
