@@ -18,12 +18,14 @@ STUDENT_SOURCE = (
 ).read_text(encoding="utf-8")
 TREE = ast.parse(SOURCE)
 WANTED = {
+    "CLASS_ANNOUNCEMENTS_PER_PAGE",
     "CLASS_ANNOUNCEMENT_EXTENSIONS",
     "CLASS_ANNOUNCEMENT_MAX_FILE_SIZE",
     "_normalize_grade",
     "_parse_class_announcement_attachment",
     "_validate_class_announcement_file",
     "_announcement_target_matches",
+    "_class_announcement_list_state",
 }
 NODES = [
     node
@@ -49,7 +51,9 @@ NAMESPACE = {
 exec(compile(ast.Module(body=NODES, type_ignores=[]), str(SOURCE_PATH), "exec"), NAMESPACE)
 
 CLASS_ANNOUNCEMENT_MAX_FILE_SIZE = NAMESPACE["CLASS_ANNOUNCEMENT_MAX_FILE_SIZE"]
+CLASS_ANNOUNCEMENTS_PER_PAGE = NAMESPACE["CLASS_ANNOUNCEMENTS_PER_PAGE"]
 _announcement_target_matches = NAMESPACE["_announcement_target_matches"]
+_class_announcement_list_state = NAMESPACE["_class_announcement_list_state"]
 _parse_class_announcement_attachment = NAMESPACE["_parse_class_announcement_attachment"]
 _validate_class_announcement_file = NAMESPACE["_validate_class_announcement_file"]
 
@@ -128,7 +132,7 @@ class TeacherAnnouncementTargetSecurityTest(unittest.TestCase):
 
 class TeacherAnnouncementRouteSecurityTest(unittest.TestCase):
     def test_feed_enforces_branch_and_deterministic_order(self):
-        self.assertIn("WHERE a.branch_id = %s", SOURCE)
+        self.assertIn('"a.branch_id = %s"', SOURCE)
         self.assertIn(
             "ORDER BY a.created_at DESC, a.announcement_id DESC",
             SOURCE,
@@ -153,6 +157,65 @@ class TeacherAnnouncementRouteSecurityTest(unittest.TestCase):
         self.assertIn('role not in {"teacher", "student"}', SOURCE)
         self.assertIn('not attachment["path"].startswith("/uploads/")', SOURCE)
         self.assertIn("file_path.startswith(upload_root + os.sep)", SOURCE)
+
+    def test_list_uses_server_side_pagination_and_matching_search(self):
+        route_start = SOURCE.index("def teacher_class_announcements():")
+        route_end = SOURCE.index("def teacher_set_grade", route_start)
+        route_source = SOURCE[route_start:route_end]
+        self.assertEqual(10, CLASS_ANNOUNCEMENTS_PER_PAGE)
+        self.assertIn("SELECT COUNT(*) AS total", route_source)
+        self.assertIn("LIMIT %s OFFSET %s", route_source)
+        self.assertIn("a.teacher_user_id = %s", route_source)
+        self.assertIn("SPLIT_PART(COALESCE(a.body, ''), '[ATTACHMENT|', 1)", route_source)
+        self.assertIn("WHERE {where_sql}", route_source)
+
+    def test_list_state_validates_filters_and_return_values(self):
+        state = _class_announcement_list_state({
+            "view": "invalid",
+            "search": "x" * 250,
+            "section_id": "-4",
+            "page": "bad",
+        })
+        self.assertEqual("all", state["view"])
+        self.assertEqual(200, len(state["search"]))
+        self.assertIsNone(state["section_id"])
+        self.assertEqual(1, state["page"])
+
+        return_state = _class_announcement_list_state({
+            "return_view": "mine",
+            "return_search": "notice",
+            "return_section_id": "12",
+            "return_page": "4",
+        })
+        self.assertEqual(
+            {"view": "mine", "search": "notice", "section_id": 12, "page": 4},
+            return_state,
+        )
+
+
+class TeacherAnnouncementTemplateTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.template = (
+            Path(__file__).resolve().parents[1]
+            / "templates"
+            / "teacher_class_announcements.html"
+        ).read_text(encoding="utf-8")
+
+    def test_template_has_filters_pagination_and_shared_modals(self):
+        self.assertIn(">All Section<", self.template)
+        self.assertIn(">My Announcements<", self.template)
+        self.assertIn('name="search"', self.template)
+        self.assertIn('class="ca-pagination"', self.template)
+        self.assertEqual(1, self.template.count('id="details-modal"'))
+        self.assertEqual(1, self.template.count('id="edit-modal"'))
+        self.assertEqual(1, self.template.count('id="delete-modal"'))
+
+    def test_manage_actions_remain_owner_only_and_attachments_are_protected(self):
+        self.assertIn("announcement.is_owner", self.template)
+        self.assertIn("teacher.teacher_announcement_attachment", self.template)
+        self.assertNotIn('href="{{ announcement.attachment.path', self.template)
+        self.assertIn("resize: none", self.template)
 
 
 if __name__ == "__main__":

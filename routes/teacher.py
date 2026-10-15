@@ -346,6 +346,41 @@ def _get_active_school_year(cur, branch_id):
 
 CLASS_ANNOUNCEMENT_EXTENSIONS = {"jpeg", "jpg", "png", "pdf", "doc", "docx"}
 CLASS_ANNOUNCEMENT_MAX_FILE_SIZE = 10 * 1024 * 1024
+CLASS_ANNOUNCEMENTS_PER_PAGE = 10
+
+
+def _class_announcement_list_state(values):
+    view_filter = (
+        values.get("return_view") or values.get("view") or "all"
+    ).strip().lower()
+    if view_filter not in {"all", "mine"}:
+        view_filter = "all"
+
+    search = (values.get("return_search") or values.get("search") or "").strip()[:200]
+    try:
+        section_id = int(
+            values.get("return_section_id") or values.get("section_id")
+        )
+        if section_id <= 0:
+            section_id = None
+    except (TypeError, ValueError):
+        section_id = None
+    try:
+        page = max(1, int(values.get("return_page") or values.get("page") or 1))
+    except (TypeError, ValueError):
+        page = 1
+
+    return {
+        "view": view_filter,
+        "search": search,
+        "section_id": section_id,
+        "page": page,
+    }
+
+
+def _class_announcement_back_url(values):
+    state = _class_announcement_list_state(values)
+    return url_for("teacher.teacher_class_announcements", **state)
 
 
 def _class_announcement_sections(cur, teacher_id, branch_id, year_id):
@@ -1026,9 +1061,15 @@ def teacher_class_announcements():
         cur.close()
         db.close()
 
+    state = _class_announcement_list_state(request.args)
     selected_grade = (request.args.get("grade") or teacher_grade or "").strip()
-    selected_section = request.args.get("section_id", type=int)
+    selected_section = state["section_id"]
+    view_filter = state["view"]
+    filter_search = state["search"]
+    page = state["page"]
     announcements = []
+    total_announcements = 0
+    total_pages = 1
 
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -1049,23 +1090,54 @@ def teacher_class_announcements():
         if year_id and selected_section:
             selected_grade = section_map[int(selected_section)]["grade_level_name"]
             grade_full, grade_short = _normalize_grade(selected_grade)
-            cur.execute("""
+            where_clauses = [
+                "a.branch_id = %s",
+                """(
+                    a.grade_level LIKE '%%:' || %s
+                    OR (
+                        a.grade_level NOT LIKE '%%:%%'
+                        AND (a.grade_level ILIKE %s OR a.grade_level ILIKE %s)
+                    )
+                )""",
+            ]
+            query_params = [branch_id, str(selected_section), grade_full, grade_short]
+            if view_filter == "mine":
+                where_clauses.append("a.teacher_user_id = %s")
+                query_params.append(user_id)
+            if filter_search:
+                where_clauses.append("""(
+                    a.title ILIKE %s
+                    OR SPLIT_PART(COALESCE(a.body, ''), '[ATTACHMENT|', 1) ILIKE %s
+                )""")
+                search_pattern = f"%{filter_search}%"
+                query_params.extend([search_pattern, search_pattern])
+
+            where_sql = " AND ".join(where_clauses)
+            cur.execute(
+                f"SELECT COUNT(*) AS total FROM teacher_announcements a WHERE {where_sql}",
+                query_params,
+            )
+            total_row = cur.fetchone()
+            total_announcements = int(total_row["total"] or 0)
+            total_pages = max(
+                1,
+                (total_announcements + CLASS_ANNOUNCEMENTS_PER_PAGE - 1)
+                // CLASS_ANNOUNCEMENTS_PER_PAGE,
+            )
+            page = min(page, total_pages)
+            offset = (page - 1) * CLASS_ANNOUNCEMENTS_PER_PAGE
+
+            cur.execute(f"""
                 SELECT a.announcement_id, a.title, a.body,
                        a.created_at, a.teacher_user_id,
                        u.username AS posted_by,
                        u.full_name, u.gender, a.grade_level
                 FROM teacher_announcements a
                 JOIN users u ON u.user_id = a.teacher_user_id
-                WHERE a.branch_id = %s
-                  AND (
-                      a.grade_level LIKE '%%:' || %s
-                      OR (
-                          a.grade_level NOT LIKE '%%:%%'
-                          AND (a.grade_level ILIKE %s OR a.grade_level ILIKE %s)
-                      )
-                  )
+                WHERE {where_sql}
                 ORDER BY a.created_at DESC, a.announcement_id DESC
-            """, (branch_id, str(selected_section), grade_full, grade_short))
+                LIMIT %s OFFSET %s
+            """, query_params + [CLASS_ANNOUNCEMENTS_PER_PAGE, offset])
             raw_ann = cur.fetchall() or []
         
         import pytz
@@ -1085,6 +1157,15 @@ def teacher_class_announcements():
             
             a["body"], a["attachment"] = _parse_class_announcement_attachment(a.get("body"))
             a["is_owner"] = a.get("teacher_user_id") == user_id
+            target = a.get("grade_level") or ""
+            if ":" in target:
+                target_section = section_map.get(int(selected_section))
+                a["section_label"] = (
+                    f'{target_section["grade_level_name"]} - {target_section["section_name"]}'
+                    if target_section else "Assigned section"
+                )
+            else:
+                a["section_label"] = f"Grade-wide: {selected_grade}"
                     
             announcements.append(a)
     finally:
@@ -1097,7 +1178,13 @@ def teacher_class_announcements():
         selected_section=selected_section,
         announcements=announcements,
         teacher_sections=teacher_sections,
-        teacher_grade=teacher_grade
+        teacher_grade=teacher_grade,
+        view_filter=view_filter,
+        filter_search=filter_search,
+        page=page,
+        total_pages=total_pages,
+        total_announcements=total_announcements,
+        per_page=CLASS_ANNOUNCEMENTS_PER_PAGE,
     )
 
 
@@ -1162,11 +1249,10 @@ def teacher_announce():
     target_section_id = request.form.get("section_id")
     from_page = request.form.get("from_page")
 
-    # Base grade for redirection
     grade = (request.form.get("grade_level") or "").strip()
     
     if from_page == "announcements":
-        back_url = url_for("teacher.teacher_class_announcements") + (f"?grade={grade}" if grade else "")
+        back_url = _class_announcement_back_url(request.form)
     else:
         back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
 
@@ -1211,7 +1297,7 @@ def teacher_announce():
             ).strip()
 
         cur.execute("""
-            INSERT INTO teacher_announcements 
+            INSERT INTO teacher_announcements
                 (teacher_user_id, branch_id, grade_level, title, body)
             VALUES (%s, %s, %s, %s, %s)
             RETURNING announcement_id
@@ -1295,7 +1381,7 @@ def teacher_announce_delete(announcement_id):
     from_page = request.form.get("from_page")
 
     if from_page == "announcements":
-        back_url = url_for("teacher.teacher_class_announcements") + (f"?grade={grade}" if grade else "")
+        back_url = _class_announcement_back_url(request.form)
     else:
         back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
 
@@ -1307,7 +1393,6 @@ def teacher_announce_delete(announcement_id):
         if not year_id:
             flash("No active school year.", "error")
             return redirect(back_url)
-
         cur.execute("""
             DELETE FROM teacher_announcements
             WHERE announcement_id = %s
@@ -1343,7 +1428,7 @@ def teacher_announce_edit(announcement_id):
     from_page = request.form.get("from_page")
 
     if from_page == "announcements":
-        back_url = url_for("teacher.teacher_class_announcements") + (f"?grade={grade}" if grade else "")
+        back_url = _class_announcement_back_url(request.form)
     else:
         back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
 
@@ -1363,7 +1448,6 @@ def teacher_announce_edit(announcement_id):
         if not year_id:
             flash("No active school year.", "error")
             return redirect(back_url)
-
         # Get existing body to preserve attachment if not removed/replaced
         cur.execute("""
             SELECT body FROM teacher_announcements

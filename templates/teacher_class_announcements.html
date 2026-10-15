@@ -1,659 +1,638 @@
 {% extends "base.html" %}
-{% block title %}Class Announcements Hub{% endblock %}
+{% block title %}Class Announcements | Liceo LMS{% endblock %}
 
 {% block styles %}
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
-
-    .hub-wrap {
-        max-width: 1300px;
+    :root {
+        --ca-blue: #173b8f;
+        --ca-blue-dark: #102d70;
+        --ca-gold: #f8c915;
+        --ca-text: #172033;
+        --ca-muted: #64748b;
+        --ca-line: #dfe6f0;
+        --ca-surface: #f7f9fc;
+    }
+    .ca-page {
+        width: min(1080px, calc(100% - 40px));
         margin: 0 auto;
-        padding: 40px 24px 64px;
-        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        padding: 36px 0 64px;
+        color: var(--ca-text);
+        font-family: "Plus Jakarta Sans", system-ui, sans-serif;
     }
-
-    /* Header */
-    .hub-header {
+    .ca-header {
         display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        margin-bottom: 16px;
-    }
-
-    .hub-title-area h1 {
-        font-size: 3rem;
-        font-weight: 900;
-        color: #1a3a8f;
-        margin: 0 0 16px 0;
-        letter-spacing: -0.04em;
-        line-height: 1;
-    }
-
-    .hub-filter-area {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 8px;
-    }
-    
-    .hub-filter-area label {
-        font-weight: 900;
-        color: #1a3a8f;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .grade-select {
-        padding: 12px 16px;
-        border-radius: 12px;
-        border: 1px solid #cbd5e1;
-        background: #f8fafc;
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: #1e293b;
-        min-width: 260px;
-        cursor: pointer;
-        transition: all 0.2s;
-        font-family: inherit;
-    }
-    .grade-select:focus {
-        outline: none;
-        border-color: #2563eb;
-        background: #fff;
-        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-    }
-
-    /* Grid Layout */
-    .hub-grid {
-        display: grid;
-        grid-template-columns: 420px 1fr;
-        gap: 32px;
-    }
-
-    .hub-box {
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 24px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
-
-    .hub-box-header {
-        background: #f8fafc;
-        border-bottom: 1px solid #e2e8f0;
-        padding: 24px 32px;
-        display: flex;
+        align-items: center;
         justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
-
-    .hub-box-title {
-        margin: 0;
-        font-weight: 900;
-        font-size: 1.15rem;
-        color: #1a3a8f;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .hub-box-body {
-        padding: 24px;
-    }
-
-    /* Form Styles */
-    .ann-form {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-    }
-
-    .form-group label {
-        display: block;
-        font-size: 0.8rem;
-        font-weight: 800;
-        color: #1a3a8f;
-        text-transform: uppercase;
-        margin-bottom: 8px;
-    }
-
-    .ann-input, .ann-textarea {
-        width: 100%;
-        padding: 14px 16px;
-        border-radius: 12px;
-        border: 1px solid #cbd5e1;
-        background: #fff;
-        font-size: 0.95rem;
-        font-weight: 500;
-        color: #1e293b;
-        font-family: inherit;
-        transition: all 0.2s;
-    }
-    
-    .ann-input:focus, .ann-textarea:focus, .grade-select:focus {
-        outline: none;
-        border-color: #1a3a8f;
-        box-shadow: 0 0 0 4px rgba(26, 58, 143, 0.1);
-    }
-
-    .ann-textarea {
-        resize: vertical;
-        min-height: 100px;
-    }
-
-    .form-actions {
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-        margin-top: 8px;
-    }
-
-    .btn-attach {
-        background: #f8fafc;
-        border: 2px dashed #cbd5e1;
-        color: #475569;
-        padding: 12px 16px;
-        border-radius: 12px;
-        font-weight: 800;
-        font-size: 0.9rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: all 0.2s;
-        text-align: center;
-    }
-    .btn-attach:hover {
-        background: #f1f5f9;
-        color: #1a3a8f;
-        border-color: #1a3a8f;
-    }
-    .file-name-display {
-        font-size: 0.8rem;
-        color: #10b981;
-        text-align: center;
-        margin-top: 4px;
-        font-weight: 600;
-        display: none;
-    }
-    
-    .attachment-badge {
-        display: inline-flex;
-        max-width: 100%;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-        align-items: center;
-        gap: 6px;
-        background: #f1f5f9;
-        border: 1px solid #cbd5e1;
-        padding: 6px 12px;
+        gap: 24px;
+        padding: 26px 30px;
+        margin-bottom: 24px;
+        color: #fff;
+        background: var(--ca-blue);
         border-radius: 8px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #1a3a8f;
-        text-decoration: none;
-        margin-top: 12px;
-        transition: background 0.2s;
     }
-    .attachment-badge:hover {
-        background: #e2e8f0;
-    }
-
-    .ann-toggle-icon {
-        color: #94a3b8;
-        transition: transform 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .ann-toggle-icon.open {
-        transform: rotate(180deg);
-    }
-
-    .btn-submit {
-        background: #facc15;
-        color: #1a3a8f;
-        padding: 14px 24px;
-        border-radius: 12px;
-        font-weight: 900;
-        font-size: 0.95rem;
-        border: none;
-        cursor: pointer;
-        transition: all 0.2s;
-        box-shadow: 0 4px 15px rgba(250, 204, 21, 0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-    }
-    .btn-submit:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(250, 204, 21, 0.4);
-    }
-
-    /* Feed List */
-    .ann-list {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    .ann-card {
-        border: 1px solid #e2e8f0;
-        min-width: 0;
-        overflow: hidden;
-        border-radius: 16px;
-        padding: 24px;
+    .ca-header h1 { margin: 0 0 5px; font-size: 1.8rem; line-height: 1.2; font-weight: 800; }
+    .ca-header h1 span { color: var(--ca-gold); }
+    .ca-header p { margin: 0; color: rgba(255,255,255,.82); font-size: .88rem; }
+    .ca-button {
+        min-height: 42px;
+        padding: 10px 16px;
+        border: 1px solid var(--ca-line);
+        border-radius: 7px;
         background: #fff;
-        transition: all 0.2s;
-    }
-    .ann-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.03);
-    }
-
-    .ann-card-head {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        margin-bottom: 16px;
-    }
-
-    .ann-icon {
-        font-size: 1.5rem;
-    }
-
-    .ann-card-title {
-        font-weight: 900;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-        font-size: 1.25rem;
-        color: #1a3a8f;
-        line-height: 1.2;
-        margin-bottom: 6px;
-        letter-spacing: -0.01em;
-    }
-
-    .ann-card-meta {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #64748b;
-    }
-
-    .ann-card-body {
-        font-size: 0.95rem;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-        color: #475569;
-        line-height: 1.6;
-        white-space: pre-wrap;
-        margin-bottom: 20px;
-        padding-bottom: 20px;
-        border-bottom: 1px dashed #e2e8f0;
-    }
-
-    .ann-card-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .ann-card-actions {
-        display: flex;
-        gap: 8px;
-    }
-
-    .btn-text-action {
-        background: transparent;
-        border: none;
-        font-weight: 700;
-        font-size: 0.85rem;
-        cursor: pointer;
-        padding: 4px 8px;
-        border-radius: 6px;
-        transition: all 0.2s;
-    }
-    .btn-edit { color: #2563eb; }
-    .btn-edit:hover { background: #eff6ff; }
-    .btn-del { color: #e11d48; }
-    .btn-del:hover { background: #fff1f2; }
-
-    .ann-tag {
-        font-size: 0.75rem;
+        color: var(--ca-blue);
+        font: inherit;
+        font-size: .82rem;
         font-weight: 800;
-        color: #1a3a8f;
-        background: rgba(26, 58, 143, 0.08);
-        padding: 6px 14px;
-        border-radius: 99px;
-        display: flex;
+        cursor: pointer;
+    }
+    .ca-button:hover { border-color: var(--ca-gold); }
+    .ca-button-primary { border-color: var(--ca-gold); background: var(--ca-gold); color: var(--ca-blue-dark); }
+    .ca-button-danger { border-color: #dc2626; background: #dc2626; color: #fff; }
+    .ca-button:disabled { border-color: #d7dde7; background: #e5e9ef; color: #94a3b8; cursor: not-allowed; }
+    .ca-controls {
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid var(--ca-line);
+    }
+    .ca-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .ca-tab {
+        padding: 9px 16px;
+        border: 1px solid var(--ca-line);
+        border-radius: 7px;
+        color: #475569;
+        background: #fff;
+        font-size: .8rem;
+        font-weight: 800;
+        text-decoration: none;
+    }
+    .ca-tab.active { border-color: var(--ca-blue); color: #fff; background: var(--ca-blue); }
+    .ca-filter-form { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(190px, 280px) auto; gap: 10px; }
+    .ca-input, .ca-select, .ca-textarea {
+        width: 100%;
+        border: 1px solid var(--ca-line);
+        border-radius: 7px;
+        background: #fff;
+        color: var(--ca-text);
+        font: inherit;
+        font-size: .88rem;
+    }
+    .ca-input, .ca-select { min-height: 44px; padding: 10px 13px; }
+    .ca-textarea { min-height: 116px; padding: 12px 13px; resize: none; overflow-y: auto; line-height: 1.5; }
+    .ca-input:focus, .ca-select:focus, .ca-textarea:focus {
+        outline: 0;
+        border-color: var(--ca-blue);
+        box-shadow: 0 0 0 3px rgba(23,59,143,.12);
+    }
+    .ca-list-head { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 12px; }
+    .ca-list-head h2 { margin: 0; color: var(--ca-blue); font-size: 1.05rem; font-weight: 800; }
+    .ca-results { color: var(--ca-muted); font-size: .76rem; font-weight: 700; }
+    .ca-list { display: grid; gap: 12px; }
+    .ca-card {
+        position: relative;
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr) auto;
         align-items: center;
-        gap: 6px;
-        border: 1px solid rgba(26, 58, 143, 0.15);
+        gap: 16px;
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid var(--ca-line);
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
     }
-
-    /* Edit Form */
-    .ann-edit-form {
+    .ca-card:hover, .ca-card:focus-within { border-color: var(--ca-gold); }
+    .ca-card.menu-open { z-index: 30; }
+    .ca-file-icon {
+        display: grid;
+        place-items: center;
+        width: 64px;
+        height: 58px;
+        border-radius: 7px;
+        background: #eef3ff;
+        color: var(--ca-blue);
+        font-size: .72rem;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+    .ca-card-copy { min-width: 0; }
+    .ca-card-title {
+        margin: 0 0 5px;
+        color: var(--ca-text);
+        font-size: .94rem;
+        font-weight: 800;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+    }
+    .ca-card-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--ca-muted); font-size: .7rem; font-weight: 700; }
+    .ca-card-summary {
+        margin: 5px 0 0;
+        color: var(--ca-muted);
+        font-size: .78rem;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+        overflow: hidden;
+    }
+    .ca-attachment-mark { color: var(--ca-blue); }
+    .ca-manage { position: relative; flex: 0 0 auto; }
+    .ca-manage summary { list-style: none; }
+    .ca-manage summary::-webkit-details-marker { display: none; }
+    .ca-menu {
+        position: absolute;
+        z-index: 40;
+        top: calc(100% + 7px);
+        right: 0;
+        width: 150px;
+        padding: 7px;
+        border: 1px solid var(--ca-line);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 14px 30px rgba(15,23,42,.16);
+    }
+    .ca-menu.open-up { top: auto; bottom: calc(100% + 7px); }
+    .ca-menu button { width: 100%; padding: 9px 10px; border: 0; border-radius: 6px; background: #fff; color: #334155; text-align: left; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
+    .ca-menu button:hover, .ca-menu button:focus { background: var(--ca-surface); }
+    .ca-menu .danger { color: #b91c1c; }
+    .ca-empty { padding: 48px 24px; border: 1px dashed #cbd5e1; border-radius: 8px; color: var(--ca-muted); text-align: center; }
+    .ca-pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 18px; color: var(--ca-muted); font-size: .76rem; font-weight: 700; }
+    .ca-pages { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ca-page-link { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 10px; border: 1px solid var(--ca-line); border-radius: 7px; background: #fff; color: #334155; text-decoration: none; }
+    .ca-page-link.active { border-color: var(--ca-blue); background: var(--ca-blue); color: #fff; }
+    .ca-page-link.disabled { background: var(--ca-surface); color: #94a3b8; pointer-events: none; }
+    .ca-modal {
+        position: fixed;
+        z-index: 3000;
+        inset: 0;
         display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 22px;
+        background: rgba(15,23,42,.64);
+    }
+    .ca-modal.show { display: flex; }
+    .ca-dialog {
+        display: flex;
         flex-direction: column;
-        gap: 12px;
+        width: min(660px, 100%);
+        max-height: 90vh;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 30px 80px rgba(15,23,42,.3);
     }
-
-    @media (max-width: 1024px) {
-        .hub-grid { grid-template-columns: 1fr; }
-        .hub-header { flex-direction: column; align-items: flex-start; gap: 24px; }
-        .hub-filter-area { width: 100%; align-items: flex-start; }
-        .grade-select { width: 100%; }
+    .ca-dialog-small { width: min(480px, 100%); }
+    .ca-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; border-bottom: 1px solid var(--ca-line); }
+    .ca-modal-head h2 { margin: 0; color: var(--ca-blue); font-size: 1.1rem; font-weight: 800; }
+    .ca-close { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: #eef2f7; color: #334155; font-size: 1.15rem; cursor: pointer; }
+    .ca-modal-body { overflow-y: auto; padding: 22px; }
+    .ca-modal-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px; border-top: 1px solid var(--ca-line); }
+    .ca-details-title { margin: 0 0 10px; color: var(--ca-blue); font-size: 1.35rem; line-height: 1.3; overflow-wrap: anywhere; }
+    .ca-details-meta { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-bottom: 20px; color: var(--ca-muted); font-size: .75rem; font-weight: 700; }
+    .ca-details-body { margin: 0; color: #475569; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .ca-attachment { display: inline-flex; align-items: center; max-width: 100%; margin-top: 20px; padding: 10px 13px; border: 1px solid var(--ca-line); border-radius: 7px; color: var(--ca-blue); font-size: .8rem; font-weight: 800; text-decoration: none; overflow-wrap: anywhere; }
+    .ca-form { display: grid; gap: 16px; }
+    .ca-field label { display: block; margin-bottom: 6px; color: #53657e; font-size: .7rem; font-weight: 800; text-transform: uppercase; }
+    .ca-help { margin: 6px 0 0; color: var(--ca-muted); font-size: .72rem; }
+    .ca-current-file { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border: 1px solid var(--ca-line); border-radius: 7px; background: var(--ca-surface); color: #475569; font-size: .78rem; overflow-wrap: anywhere; }
+    .ca-check { display: flex; align-items: center; gap: 6px; color: #b91c1c; font-size: .76rem; font-weight: 700; white-space: nowrap; }
+    .ca-delete-copy { margin: 0; color: #475569; line-height: 1.6; }
+    body.ca-modal-open { overflow: hidden; }
+    @media (max-width: 700px) {
+        .ca-page { width: min(100% - 24px, 1080px); padding-top: 20px; }
+        .ca-header { align-items: flex-start; flex-direction: column; padding: 22px 20px; }
+        .ca-header .ca-button { width: 100%; }
+        .ca-filter-form { grid-template-columns: 1fr; }
+        .ca-card { grid-template-columns: 52px minmax(0, 1fr) auto; gap: 11px; padding: 13px; }
+        .ca-file-icon { width: 52px; height: 52px; }
+        .ca-card-meta { flex-direction: column; gap: 2px; }
+        .ca-pagination { align-items: flex-start; flex-direction: column; }
+        .ca-modal { padding: 10px; }
+        .ca-dialog { max-height: 94vh; }
+        .ca-modal-head, .ca-modal-body { padding: 16px; }
+        .ca-modal-actions { padding: 13px 16px; }
     }
-    @media (max-width: 768px) {
-        .hub-wrap { padding: 20px 16px; }
-        .hub-header { padding: 20px; border-radius: 16px; }
-        .hub-title-area h1 { font-size: 1.75rem; word-break: break-word; white-space: normal; }
-        .hub-box { border-radius: 16px; }
-        .hub-box-header, .hub-box-body { padding: 16px; }
-        .ann-card { padding: 16px; }
-        .ann-meta { flex-direction: column; align-items: flex-start; gap: 8px; }
-        .ann-actions { position: static; width: 100%; justify-content: flex-end; margin-top: 12px; }
-        .ann-card-actions { flex-wrap: wrap; gap: 6px; }
-        .ann-card-footer { flex-wrap: wrap; gap: 8px; }
+    @media (max-width: 480px) {
+        .ca-tabs { display: grid; grid-template-columns: 1fr 1fr; }
+        .ca-tab { text-align: center; }
+        .ca-card { grid-template-columns: 44px minmax(0, 1fr); }
+        .ca-file-icon { width: 44px; height: 44px; }
+        .ca-manage { grid-column: 1 / -1; }
+        .ca-manage > summary { width: 100%; }
+        .ca-menu { right: auto; left: 0; width: 100%; }
+        .ca-modal-actions { flex-direction: column-reverse; }
+        .ca-modal-actions .ca-button { width: 100%; }
     }
 </style>
 {% endblock %}
 
+{% macro list_url(target_page, target_view=view_filter) -%}
+{{ url_for('teacher.teacher_class_announcements', view=target_view, search=filter_search, section_id=selected_section, page=target_page) }}
+{%- endmacro %}
+
+{% macro state_fields() %}
+<input type="hidden" name="from_page" value="announcements">
+<input type="hidden" name="return_view" value="{{ view_filter }}">
+<input type="hidden" name="return_search" value="{{ filter_search }}">
+<input type="hidden" name="return_section_id" value="{{ selected_section or '' }}">
+<input type="hidden" name="return_page" value="{{ page }}">
+{% endmacro %}
+
 {% block content %}
-<div class="hub-wrap">
-    <header class="hub-header" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 40px; background: #1a3a8f; padding: 24px 32px; border-radius: 20px; box-shadow: 0 15px 35px rgba(26, 58, 143, 0.15);">
-        <div class="hub-title-area" style="display: flex; flex-direction: column; gap: 4px;">
-            <h1 class="break-words whitespace-normal" style="margin: 0; font-size: clamp(1.5rem, 5vw, 2.2rem); font-weight: 900; color: white; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1); word-break: break-word;">Class <span style="color: #facc15;">Announcements</span></h1>
-            <p style="margin: 0; font-size: 0.85rem; font-weight: 600; color: rgba(255, 255, 255, 0.9);">Share updates, materials, or instructions with your classes.</p>
+<main class="ca-page">
+    <header class="ca-header">
+        <div>
+            <h1>Class <span>Announcements</span></h1>
+            <p>Share focused updates and learning materials with your assigned sections.</p>
         </div>
+        {% if is_branch_active_status and teacher_sections %}
+        <button type="button" class="ca-button ca-button-primary" data-open-modal="create-modal">Create Announcement</button>
+        {% endif %}
     </header>
 
-    <div class="hub-grid">
-        <!-- Left Column: Create Form -->
-        <div class="hub-col-left">
-            <div class="hub-box">
-                <div class="hub-box-header">
-                    <h2 class="hub-box-title">CREATE ANNOUNCEMENT</h2>
+    <section class="ca-controls" aria-label="Announcement filters">
+        <nav class="ca-tabs" aria-label="Announcement ownership">
+            <a class="ca-tab{% if view_filter == 'all' %} active{% endif %}" href="{{ list_url(1, 'all') }}">All Section</a>
+            <a class="ca-tab{% if view_filter == 'mine' %} active{% endif %}" href="{{ list_url(1, 'mine') }}">My Announcements</a>
+        </nav>
+        <form class="ca-filter-form" method="get" action="{{ url_for('teacher.teacher_class_announcements') }}">
+            <input type="hidden" name="view" value="{{ view_filter }}">
+            <input class="ca-input" type="search" name="search" value="{{ filter_search }}" maxlength="200" placeholder="Search title or details" aria-label="Search announcements">
+            <select class="ca-select" name="section_id" aria-label="Filter by assigned section">
+                {% for section in teacher_sections %}
+                <option value="{{ section.section_id }}" {% if section.section_id == selected_section %}selected{% endif %}>{{ section.grade_level_name }} - {{ section.section_name }}</option>
+                {% endfor %}
+            </select>
+            <button class="ca-button" type="submit">Apply</button>
+        </form>
+    </section>
+
+    <div class="ca-list-head">
+        <h2>Manage Class Announcements</h2>
+        <span class="ca-results">{{ total_announcements }} result{% if total_announcements != 1 %}s{% endif %}</span>
+    </div>
+    {% if not teacher_sections %}
+    <div class="ca-empty">No active section assignment is available for this school year.</div>
+    {% elif announcements %}
+    <section class="ca-list" aria-label="Class announcements">
+        {% for announcement in announcements %}
+        <article class="ca-card" tabindex="0" role="button" data-details-id="{{ announcement.announcement_id }}" aria-label="View {{ announcement.title }}">
+            <div class="ca-file-icon">{% if announcement.attachment %}{{ announcement.attachment.name.rsplit('.', 1)[-1][:5] }}{% else %}Note{% endif %}</div>
+            <div class="ca-card-copy">
+                <h3 class="ca-card-title">{{ announcement.title }}</h3>
+                <div class="ca-card-meta">
+                    <span>{{ announcement.section_label }}</span>
+                    <span>{{ announcement.display_name }}</span>
+                    <time>{{ announcement.created_at.strftime('%b %d, %Y at %I:%M %p') if announcement.created_at else '' }}</time>
+                    {% if announcement.attachment %}<span class="ca-attachment-mark">Attachment</span>{% endif %}
                 </div>
-                <div class="hub-box-body">
-                    {% if is_branch_active_status %}
-                    <form method="post" action="/teacher/announce" class="ann-form" id="createAnnForm" enctype="multipart/form-data">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="from_page" value="announcements">
-                        
-                        <div class="form-group">
-                            <label>Target Section</label>
-                            <select name="section_id" class="ann-input" required>
-                                <option value="">Select an assigned section</option>
-                                {% for s in teacher_sections %}
-                                <option value="{{ s.section_id }}" {% if s.section_id==selected_section %}selected{% endif %}>
-                                    {{ s.grade_level_name }} — {{ s.section_name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                {% if announcement.body %}<p class="ca-card-summary">{{ announcement.body }}</p>{% endif %}
+            </div>
+            {% if is_branch_active_status and announcement.is_owner %}
+            <details class="ca-manage" onclick="event.stopPropagation()">
+                <summary class="ca-button" aria-label="Manage {{ announcement.title }}">Manage</summary>
+                <div class="ca-menu">
+                    <button type="button" class="ca-edit-trigger" data-id="{{ announcement.announcement_id }}" data-title="{{ announcement.title|tojson|forceescape }}" data-body="{{ announcement.body|tojson|forceescape }}" data-attachment-name="{{ announcement.attachment.name|tojson|forceescape if announcement.attachment else 'null' }}">Edit</button>
+                    <button type="button" class="danger ca-delete-trigger" data-id="{{ announcement.announcement_id }}" data-title="{{ announcement.title|tojson|forceescape }}">Delete</button>
+                </div>
+            </details>
+            {% endif %}
+            <template id="ca-details-{{ announcement.announcement_id }}"
+                data-title="{{ announcement.title|tojson|forceescape }}"
+                data-body="{{ announcement.body|tojson|forceescape }}"
+                data-section="{{ announcement.section_label|tojson|forceescape }}"
+                data-author="{{ announcement.display_name|tojson|forceescape }}"
+                data-date="{{ (announcement.created_at.strftime('%b %d, %Y at %I:%M %p') if announcement.created_at else '')|tojson|forceescape }}"
+                data-attachment-name="{{ announcement.attachment.name|tojson|forceescape if announcement.attachment else 'null' }}"
+                data-attachment-url="{{ url_for('teacher.teacher_announcement_attachment', announcement_id=announcement.announcement_id)|tojson|forceescape if announcement.attachment else 'null' }}"></template>
+        </article>
+        {% endfor %}
+    </section>
+    {% else %}
+    <div class="ca-empty">{% if filter_search %}No announcements match your search in this section.{% elif view_filter == 'mine' %}You have not posted an announcement to this section yet.{% else %}No announcements are available for this section yet.{% endif %}</div>
+    {% endif %}
 
-                        <div class="form-group">
-                            <label>Announcement Title</label>
-                            <input type="text" name="title" id="title-input" class="ann-input" placeholder="[ Enter title here... ]" maxlength="150" required>
-                        </div>
+    {% if total_announcements %}
+    <div class="ca-pagination">
+        <span>Showing {{ ((page - 1) * per_page) + 1 }}-{{ [page * per_page, total_announcements]|min }} of {{ total_announcements }}</span>
+        {% if total_pages > 1 %}
+        <nav class="ca-pages" aria-label="Announcement pages">
+            <a class="ca-page-link{% if page == 1 %} disabled{% endif %}" href="{{ list_url(page - 1) }}" aria-label="Previous page">&lsaquo;</a>
+            {% for page_number in range(1, total_pages + 1) %}
+                {% if page_number == 1 or page_number == total_pages or (page_number >= page - 2 and page_number <= page + 2) %}
+                <a class="ca-page-link{% if page_number == page %} active{% endif %}" href="{{ list_url(page_number) }}">{{ page_number }}</a>
+                {% elif (page_number == 2 and page > 4) or (page_number == total_pages - 1 and page < total_pages - 3) %}
+                <span class="ca-page-link disabled">&hellip;</span>
+                {% endif %}
+            {% endfor %}
+            <a class="ca-page-link{% if page == total_pages %} disabled{% endif %}" href="{{ list_url(page + 1) }}" aria-label="Next page">&rsaquo;</a>
+        </nav>
+        {% endif %}
+    </div>
+    {% endif %}
+</main>
 
-                        <div class="form-group">
-                            <label>Details (Optional)</label>
-                            <textarea name="body" class="ann-textarea" placeholder="[ Write details, instructions, or links here... ]" maxlength="2000"></textarea>
-                        </div>
-
-                        <div class="form-actions">
-                            <label class="btn-attach" style="margin: 0;">
-                                <input type="file" name="attachment" id="attachmentInput" style="display: none;" accept=".jpeg, .jpg, .png, .pdf, .doc, .docx" onchange="showFileName(this)">
-                                Attach File
-                            </label>
-                            <div id="fileNameDisplay" class="file-name-display"></div>
-                            <button type="submit" class="btn-submit">Post Announcement</button>
-                        </div>
-                    </form>
-                    {% else %}
-                    <p style="color: #64748b; font-weight: 600;">Branch is currently inactive. You cannot post announcements.</p>
-                    {% endif %}
+{% if is_branch_active_status and teacher_sections %}
+<div class="ca-modal" id="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
+    <div class="ca-dialog">
+        <header class="ca-modal-head">
+            <h2 id="create-modal-title">Create Announcement</h2>
+            <button type="button" class="ca-close" data-close-modal aria-label="Close">&times;</button>
+        </header>
+        <form method="post" action="{{ url_for('teacher.teacher_announce') }}" enctype="multipart/form-data" class="ca-modal-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {{ state_fields() }}
+            <div class="ca-modal-body">
+                <div class="ca-form">
+                    <div class="ca-field">
+                        <label for="create-section">Target Section</label>
+                        <select class="ca-select" id="create-section" name="section_id" required>
+                            {% for section in teacher_sections %}
+                            <option value="{{ section.section_id }}" {% if section.section_id == selected_section %}selected{% endif %}>{{ section.grade_level_name }} - {{ section.section_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="ca-field">
+                        <label for="create-title">Announcement Title</label>
+                        <input class="ca-input" id="create-title" name="title" maxlength="150" required>
+                    </div>
+                    <div class="ca-field">
+                        <label for="create-body">Details (Optional)</label>
+                        <textarea class="ca-textarea" id="create-body" name="body" maxlength="2000"></textarea>
+                    </div>
+                    <div class="ca-field">
+                        <label for="create-attachment">Attachment (Optional)</label>
+                        <input class="ca-input" id="create-attachment" name="attachment" type="file" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                        <p class="ca-help">JPG, PNG, PDF, DOC, or DOCX. Maximum 10 MB.</p>
+                    </div>
                 </div>
             </div>
-        </div>
+            <footer class="ca-modal-actions">
+                <button type="button" class="ca-button" data-close-modal>Cancel</button>
+                <button type="submit" class="ca-button ca-button-primary">Post Announcement</button>
+            </footer>
+        </form>
+    </div>
+</div>
+{% endif %}
 
-        <!-- Right Column: Feed -->
-        <div class="hub-col-right">
-            <div class="hub-box">
-                <div class="hub-box-header">
-                    <h2 class="hub-box-title">ANNOUNCEMENT FEED</h2>
-                    <div class="hub-filter-area" style="flex-direction: row; align-items: center; gap: 12px;">
-                        <label style="margin: 0;">FILTER FEED BY SECTION:</label>
-                        <form method="get" action="/teacher/class-announcements" id="gradeFilterForm">
-                            <select name="section_id" class="grade-select" style="min-width: 200px; padding: 10px 14px; font-size: 0.9rem;" onchange="this.form.submit()">
-                                {% for s in teacher_sections %}
-                                <option value="{{ s.section_id }}" {% if s.section_id==selected_section %}selected{% endif %}>
-                                    {{ s.grade_level_name }} — {{ s.section_name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </form>
-                    </div>
-                </div>
-                <div class="hub-box-body">
-                    {% if announcements %}
-                    <div class="ann-list">
-                        {% for a in announcements %}
-                        <div class="ann-card" id="ann-card-{{ a.announcement_id }}">
-                            <div id="ann-view-{{ a.announcement_id }}">
-                                <div class="ann-card-head" onclick="toggleAnnDetails({{ a.announcement_id }})" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                                    <div style="display: flex; gap: 12px; align-items: center; flex: 1; min-width: 0;">
-                                        <div class="ann-icon">
-                                            <svg width="20" height="20" fill="none" stroke="#4f46e5" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div class="ann-card-title">{{ a.title }}</div>
-                                            <div class="ann-card-meta">
-                                                Posted by: {{ a.display_name }} &bull; {{ a.created_at.strftime('%b %d, %I:%M %p') if a.created_at else '' }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="ann-toggle-icon" id="ann-toggle-{{ a.announcement_id }}">
-                                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                
-                                <div class="ann-card-details" id="ann-details-{{ a.announcement_id }}" style="display: none; padding-top: 16px; border-top: 1px solid #e2e8f0; margin-top: 12px;">
-                                    {% if a.body %}
-                                    <div class="ann-card-body">{{ a.body }}</div>
-                                    {% endif %}
-                                    
-                                    {% if a.attachment %}
-                                    <div style="margin-bottom: 12px;">
-                                        <a href="{{ url_for('teacher.teacher_announcement_attachment', announcement_id=a.announcement_id) }}" target="_blank" class="attachment-badge">
-                                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg> 
-                                            View Attachment: {{ a.attachment.name }}
-                                        </a>
-                                    </div>
-                                    {% endif %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const parseData = (value) => {
+        if (!value || value === "null") return null;
+        try { return JSON.parse(value); } catch (_) { return value; }
+    };
+    let activeModal = null;
+    let returnFocus = null;
 
-                                    <div class="ann-card-footer">
-                                        <div class="ann-card-actions">
-                                            {% if is_branch_active_status and a.is_owner %}
-                                            <button type="button" class="btn-text-action btn-edit" data-id="{{ a.announcement_id }}"
-                                                data-title="{{ a.title | e }}" data-body="{{ (a.body or '') | e }}"
-                                                onclick="openEditAnn(this)">[ Edit ]</button>
-                                            <form method="post" action="/teacher/announce/{{ a.announcement_id }}/delete"
-                                                onsubmit="return confirm('Delete this announcement?')" style="margin:0;">
-                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <input type="hidden" name="grade_level" value="{{ selected_grade }}">
-                                                <input type="hidden" name="from_page" value="announcements">
-                                                <button type="submit" class="btn-text-action btn-del">[ Delete ]</button>
-                                            </form>
-                                            {% endif %}
-                                        </div>
-                                        
-                                        <div class="ann-tag" style="display: flex; align-items: center;">
-                                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
-                                            {% if a.grade_level and ':' in a.grade_level %}
-                                                {% set tag_parts = a.grade_level.split(':') %}
-                                                {% for s in teacher_sections %}
-                                                    {% if s.section_id|string == tag_parts[1] %}
-                                                        {{ s.grade_level_name }} - {{ s.section_name }}
-                                                    {% endif %}
-                                                {% endfor %}
-                                            {% else %}
-                                                All Assigned Sections
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+    function closeMenus(except) {
+        document.querySelectorAll(".ca-manage[open]").forEach((menu) => {
+            if (menu !== except) {
+                menu.open = false;
+                menu.closest(".ca-card")?.classList.remove("menu-open");
+            }
+        });
+    }
 
-                            <!-- Edit Form -->
-                            <form method="post" action="/teacher/announce/{{ a.announcement_id }}/edit" class="ann-edit-form"
-                                id="ann-edit-{{ a.announcement_id }}" enctype="multipart/form-data">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="grade_level" value="{{ selected_grade }}">
-                                <input type="hidden" name="from_page" value="announcements">
-                                <input type="text" name="title" class="ann-input" id="ann-edit-title-{{ a.announcement_id }}"
-                                    maxlength="150" required placeholder="Title">
-                                <textarea name="body" class="ann-textarea" id="ann-edit-body-{{ a.announcement_id }}"
-                                    maxlength="2000" placeholder="Optional details..." style="min-height:70px; margin-bottom: 12px;"></textarea>
-                                
-                                {% if a.attachment %}
-                                <div style="background: #f8fafc; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e2e8f0; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <strong>Current Attachment:</strong> {{ a.attachment.name }}
-                                    </div>
-                                    <label style="cursor: pointer; color: #ef4444; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 4px;">
-                                        <input type="checkbox" name="remove_attachment" value="true" onchange="enableSaveBtn('{{ a.announcement_id }}')"> Remove
-                                    </label>
-                                </div>
-                                {% endif %}
-                                
-                                <label class="btn-attach" style="margin: 0 0 12px 0; width: fit-content; padding: 6px 12px; font-size: 0.85rem;">
-                                    <input type="file" name="attachment" id="edit-attachmentInput-{{ a.announcement_id }}" style="display: none;" accept=".jpeg, .jpg, .png, .pdf, .doc, .docx" onchange="showEditFileName(this, '{{ a.announcement_id }}')">
-                                    Upload New Attachment
-                                </label>
-                                <div id="edit-fileNameDisplay-{{ a.announcement_id }}" class="file-name-display" style="text-align: left; margin-top: -8px; margin-bottom: 12px;"></div>
+    function positionMenu(menu) {
+        const dropdown = menu.querySelector(".ca-menu");
+        if (!dropdown) return;
+        dropdown.classList.remove("open-up");
+        const availableBelow = window.innerHeight - menu.getBoundingClientRect().bottom;
+        if (availableBelow < dropdown.offsetHeight + 18) dropdown.classList.add("open-up");
+    }
 
-                                <div style="display:flex; justify-content:flex-end; gap:8px;">
-                                    <button type="submit" class="btn-submit" id="ann-btn-save-{{ a.announcement_id }}" style="padding: 8px 16px;" disabled>Save Changes</button>
-                                    <button type="button" class="btn-attach" data-id="{{ a.announcement_id }}"
-                                        onclick="closeEditAnn(this)">Cancel</button>
-                                </div>
-                            </form>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div style="text-align:center; padding: 40px; color: #94a3b8; font-weight: 600;">
-                        No announcements found for this section.
-                    </div>
-                    {% endif %}
-                </div>
+    document.querySelectorAll(".ca-manage").forEach((menu) => {
+        menu.addEventListener("toggle", () => {
+            const card = menu.closest(".ca-card");
+            if (menu.open) {
+                closeMenus(menu);
+                card?.classList.add("menu-open");
+                requestAnimationFrame(() => positionMenu(menu));
+            } else {
+                card?.classList.remove("menu-open");
+            }
+        });
+    });
+
+    function openModal(modal, trigger) {
+        if (!modal) return;
+        if (activeModal) closeModal(false);
+        returnFocus = trigger || document.activeElement;
+        activeModal = modal;
+        modal.classList.add("show");
+        document.body.classList.add("ca-modal-open");
+        requestAnimationFrame(() => modal.querySelector("input, select, textarea, button, a")?.focus());
+    }
+
+    function closeModal(restoreFocus = true) {
+        if (!activeModal) return;
+        const previousFocus = returnFocus;
+        activeModal.classList.remove("show");
+        activeModal = null;
+        returnFocus = null;
+        document.body.classList.remove("ca-modal-open");
+        if (restoreFocus) previousFocus?.focus();
+    }
+
+    document.querySelectorAll("[data-open-modal]").forEach((button) => {
+        button.addEventListener("click", () => openModal(document.getElementById(button.dataset.openModal), button));
+    });
+    document.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", () => closeModal()));
+    document.querySelectorAll(".ca-modal").forEach((modal) => {
+        modal.addEventListener("mousedown", (event) => {
+            if (event.target === modal) closeModal();
+        });
+    });
+
+    function openDetails(card) {
+        const source = document.getElementById(`ca-details-${card.dataset.detailsId}`);
+        if (!source) return;
+        const title = parseData(source.dataset.title) || "";
+        const body = parseData(source.dataset.body) || "";
+        const attachmentName = parseData(source.dataset.attachmentName);
+        const attachmentUrl = parseData(source.dataset.attachmentUrl);
+        document.getElementById("details-title").textContent = title;
+        document.getElementById("details-body").textContent = body || "No additional details.";
+        document.getElementById("details-section").textContent = parseData(source.dataset.section) || "";
+        document.getElementById("details-author").textContent = parseData(source.dataset.author) || "";
+        document.getElementById("details-date").textContent = parseData(source.dataset.date) || "";
+        const link = document.getElementById("details-attachment");
+        link.hidden = !(attachmentName && attachmentUrl);
+        if (!link.hidden) {
+            link.href = attachmentUrl;
+            link.textContent = `Open attachment: ${attachmentName}`;
+            link.target = "_blank";
+            link.rel = "noopener";
+        }
+        openModal(document.getElementById("details-modal"), card);
+    }
+
+    document.querySelectorAll(".ca-card").forEach((card) => {
+        card.addEventListener("click", (event) => {
+            if (!event.target.closest(".ca-manage")) openDetails(card);
+        });
+        card.addEventListener("keydown", (event) => {
+            if ((event.key === "Enter" || event.key === " ") && event.target === card) {
+                event.preventDefault();
+                openDetails(card);
+            }
+        });
+    });
+
+    const editForm = document.getElementById("edit-form");
+    const editTitle = document.getElementById("edit-title");
+    const editBody = document.getElementById("edit-body");
+    const editFile = document.getElementById("edit-attachment");
+    const removeFile = document.getElementById("remove-attachment");
+    const editSave = document.getElementById("edit-save");
+    let editBaseline = null;
+
+    function updateEditState() {
+        if (!editForm || !editBaseline) return;
+        const changed = editTitle.value !== editBaseline.title
+            || editBody.value !== editBaseline.body
+            || Boolean(editFile.files.length)
+            || removeFile.checked;
+        editSave.disabled = !changed;
+    }
+
+    document.querySelectorAll(".ca-edit-trigger").forEach((button) => {
+        button.addEventListener("click", () => {
+            closeMenus();
+            const attachmentName = parseData(button.dataset.attachmentName);
+            const title = parseData(button.dataset.title) || "";
+            const body = parseData(button.dataset.body) || "";
+            editForm.action = `/teacher/announce/${button.dataset.id}/edit`;
+            editTitle.value = title;
+            editBody.value = body;
+            editFile.value = "";
+            removeFile.checked = false;
+            document.getElementById("current-file-wrap").hidden = !attachmentName;
+            document.getElementById("current-file-name").textContent = attachmentName || "";
+            editBaseline = { title, body };
+            updateEditState();
+            openModal(document.getElementById("edit-modal"), button);
+        });
+    });
+    [editTitle, editBody, editFile, removeFile].forEach((control) => {
+        control?.addEventListener(control?.type === "file" || control?.type === "checkbox" ? "change" : "input", updateEditState);
+    });
+
+    const deleteForm = document.getElementById("delete-form");
+    document.querySelectorAll(".ca-delete-trigger").forEach((button) => {
+        button.addEventListener("click", () => {
+            closeMenus();
+            deleteForm.action = `/teacher/announce/${button.dataset.id}/delete`;
+            document.getElementById("delete-title").textContent = parseData(button.dataset.title) || "this announcement";
+            openModal(document.getElementById("delete-modal"), button);
+        });
+    });
+
+    document.querySelectorAll(".ca-modal-form, #delete-form").forEach((form) => {
+        form.addEventListener("submit", () => {
+            form.querySelectorAll('button[type="submit"]').forEach((button) => {
+                button.disabled = true;
+                button.textContent = "Please wait...";
+            });
+        });
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!event.target.closest(".ca-manage")) closeMenus();
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        if (activeModal) closeModal();
+        else closeMenus();
+    });
+});
+</script>
+
+<div class="ca-modal" id="details-modal" role="dialog" aria-modal="true" aria-labelledby="details-title">
+    <div class="ca-dialog">
+        <header class="ca-modal-head">
+            <h2>Announcement Details</h2>
+            <button type="button" class="ca-close" data-close-modal aria-label="Close">&times;</button>
+        </header>
+        <div class="ca-modal-body">
+            <h3 class="ca-details-title" id="details-title"></h3>
+            <div class="ca-details-meta">
+                <span id="details-section"></span>
+                <span id="details-author"></span>
+                <time id="details-date"></time>
             </div>
+            <p class="ca-details-body" id="details-body"></p>
+            <a class="ca-attachment" id="details-attachment" href="#" hidden>Open attachment</a>
         </div>
     </div>
 </div>
 
-<script>
-    function showFileName(input) {
-        const display = document.getElementById('fileNameDisplay');
-        if (input.files && input.files.length > 0) {
-            display.textContent = input.files[0].name;
-            display.style.display = 'block';
-        } else {
-            display.style.display = 'none';
-        }
-    }
+{% if is_branch_active_status %}
+<div class="ca-modal" id="edit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+    <div class="ca-dialog">
+        <header class="ca-modal-head">
+            <h2 id="edit-modal-title">Edit Announcement</h2>
+            <button type="button" class="ca-close" data-close-modal aria-label="Close">&times;</button>
+        </header>
+        <form method="post" enctype="multipart/form-data" id="edit-form" class="ca-modal-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {{ state_fields() }}
+            <div class="ca-modal-body">
+                <div class="ca-form">
+                    <div class="ca-field">
+                        <label for="edit-title">Announcement Title</label>
+                        <input class="ca-input" id="edit-title" name="title" maxlength="150" required>
+                    </div>
+                    <div class="ca-field">
+                        <label for="edit-body">Details (Optional)</label>
+                        <textarea class="ca-textarea" id="edit-body" name="body" maxlength="2000"></textarea>
+                    </div>
+                    <div class="ca-field" id="current-file-wrap">
+                        <label>Current Attachment</label>
+                        <div class="ca-current-file">
+                            <span id="current-file-name"></span>
+                            <label class="ca-check"><input type="checkbox" name="remove_attachment" value="true" id="remove-attachment"> Remove</label>
+                        </div>
+                    </div>
+                    <div class="ca-field">
+                        <label for="edit-attachment">Replace Attachment</label>
+                        <input class="ca-input" id="edit-attachment" name="attachment" type="file" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                        <p class="ca-help">Leave blank to keep the current file. Maximum 10 MB.</p>
+                    </div>
+                </div>
+            </div>
+            <footer class="ca-modal-actions">
+                <button type="button" class="ca-button" data-close-modal>Cancel</button>
+                <button type="submit" class="ca-button ca-button-primary" id="edit-save" disabled>Save Changes</button>
+            </footer>
+        </form>
+    </div>
+</div>
 
-    function showEditFileName(input, id) {
-        const display = document.getElementById(`edit-fileNameDisplay-${id}`);
-        const saveBtn = document.getElementById(`ann-btn-save-${id}`);
-        if (input.files && input.files.length > 0) {
-            display.textContent = input.files[0].name;
-            display.style.display = 'block';
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.style.opacity = '1';
-                saveBtn.style.cursor = 'pointer';
-            }
-        } else {
-            display.style.display = 'none';
-        }
-    }
-
-    function enableSaveBtn(id) {
-        const saveBtn = document.getElementById(`ann-btn-save-${id}`);
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.style.opacity = '1';
-            saveBtn.style.cursor = 'pointer';
-        }
-    }
-
-    function toggleAnnDetails(id) {
-        const details = document.getElementById(`ann-details-${id}`);
-        const icon = document.getElementById(`ann-toggle-${id}`);
-        if (details.style.display === 'none') {
-            details.style.display = 'block';
-            icon.classList.add('open');
-        } else {
-            details.style.display = 'none';
-            icon.classList.remove('open');
-        }
-    }
-
-    function openEditAnn(btn) {
-        const id = btn.getAttribute('data-id');
-        const title = btn.getAttribute('data-title');
-        const body = btn.getAttribute('data-body');
-
-        document.getElementById(`ann-view-${id}`).style.display = 'none';
-        document.getElementById(`ann-edit-${id}`).style.display = 'flex';
-        
-        const titleInput = document.getElementById(`ann-edit-title-${id}`);
-        const bodyInput = document.getElementById(`ann-edit-body-${id}`);
-        const saveBtn = document.getElementById(`ann-btn-save-${id}`);
-        
-        titleInput.value = title;
-        bodyInput.value = body;
-        
-        // Initial state: disabled because nothing changed yet
-        saveBtn.disabled = true;
-        saveBtn.style.opacity = '0.5';
-        saveBtn.style.cursor = 'not-allowed';
-        
-        const checkChanges = () => {
-            if (titleInput.value !== title || bodyInput.value !== body) {
-                saveBtn.disabled = false;
-                saveBtn.style.opacity = '1';
-                saveBtn.style.cursor = 'pointer';
-            } else {
-                saveBtn.disabled = true;
-                saveBtn.style.opacity = '0.5';
-                saveBtn.style.cursor = 'not-allowed';
-            }
-        };
-        
-        titleInput.addEventListener('input', checkChanges);
-        bodyInput.addEventListener('input', checkChanges);
-    }
-
-    function closeEditAnn(btn) {
-        const id = btn.getAttribute('data-id');
-        document.getElementById(`ann-view-${id}`).style.display = 'block';
-        document.getElementById(`ann-edit-${id}`).style.display = 'none';
-    }
-</script>
+<div class="ca-modal" id="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+    <div class="ca-dialog ca-dialog-small">
+        <header class="ca-modal-head">
+            <h2 id="delete-modal-title">Delete Announcement?</h2>
+            <button type="button" class="ca-close" data-close-modal aria-label="Close">&times;</button>
+        </header>
+        <div class="ca-modal-body">
+            <p class="ca-delete-copy">This will permanently delete <strong id="delete-title"></strong>. This action cannot be undone.</p>
+        </div>
+        <form method="post" id="delete-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {{ state_fields() }}
+            <footer class="ca-modal-actions">
+                <button type="button" class="ca-button" data-close-modal>Cancel</button>
+                <button type="submit" class="ca-button ca-button-danger" id="delete-confirm">Delete Announcement</button>
+            </footer>
+        </form>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
