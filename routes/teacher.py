@@ -1,5 +1,5 @@
 import re
-from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify, send_file
+from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify, send_file, abort
 from db import get_db_connection, get_break_times_config
 from utils.send_email import send_email
 import psycopg2.extras
@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import pytz
 import shutil
 import uuid
+import zipfile
 from werkzeug.utils import secure_filename
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
@@ -341,6 +342,143 @@ def _get_active_school_year(cur, branch_id):
     if isinstance(row, tuple):
         return row[0]
     return row["year_id"]
+
+
+CLASS_ANNOUNCEMENT_EXTENSIONS = {"jpeg", "jpg", "png", "pdf", "doc", "docx"}
+CLASS_ANNOUNCEMENT_MAX_FILE_SIZE = 10 * 1024 * 1024
+
+
+def _class_announcement_sections(cur, teacher_id, branch_id, year_id):
+    """Return active assignments for one teacher, branch, and school year."""
+    cur.execute("""
+        SELECT DISTINCT s.section_id, s.section_name,
+               g.name AS grade_level_name
+        FROM section_teachers st
+        JOIN sections s ON s.section_id = st.section_id
+        JOIN grade_levels g ON g.id = s.grade_level_id
+        WHERE st.teacher_id = %s
+          AND s.branch_id = %s
+          AND st.year_id = %s
+          AND s.year_id = %s
+          AND COALESCE(st.is_archived, FALSE) = FALSE
+        ORDER BY g.name, s.section_name
+    """, (teacher_id, branch_id, year_id, year_id))
+    return cur.fetchall() or []
+
+
+def _class_announcement_section_map(cur, teacher_id, branch_id, year_id):
+    return {
+        int(row["section_id"]): row
+        for row in _class_announcement_sections(cur, teacher_id, branch_id, year_id)
+    }
+
+
+def _parse_class_announcement_attachment(body):
+    if not body or "[ATTACHMENT|" not in body:
+        return body or "", None
+    start_idx = body.rfind("[ATTACHMENT|")
+    if start_idx < 0 or not body.endswith("]"):
+        return body, None
+    parts = body[start_idx + 12:-1].split("|", 1)
+    if len(parts) != 2:
+        return body, None
+    return body[:start_idx].strip(), {"path": parts[0], "name": parts[1]}
+
+
+def _validate_class_announcement_file(file_obj):
+    """Validate size, extension, and recognizable content without trusting MIME."""
+    safe_name = secure_filename(file_obj.filename or "")
+    ext = safe_name.rsplit(".", 1)[-1].lower() if "." in safe_name else ""
+    if ext not in CLASS_ANNOUNCEMENT_EXTENSIONS:
+        return None, "Invalid file type. Allowed: JPG, PNG, PDF, DOC, DOCX."
+
+    stream = file_obj.stream
+    stream.seek(0, os.SEEK_END)
+    size = stream.tell()
+    stream.seek(0)
+    if size <= 0:
+        return None, "The attachment is empty."
+    if size > CLASS_ANNOUNCEMENT_MAX_FILE_SIZE:
+        return None, "Attachment is too large. Maximum size is 10 MB."
+
+    header = stream.read(16)
+    stream.seek(0)
+    valid = False
+    if ext in {"jpg", "jpeg"}:
+        valid = header.startswith(b"\xff\xd8\xff")
+    elif ext == "png":
+        valid = header.startswith(b"\x89PNG\r\n\x1a\n")
+    elif ext == "pdf":
+        valid = header.startswith(b"%PDF-")
+    elif ext == "doc":
+        valid = header.startswith(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1")
+    elif ext == "docx":
+        try:
+            with zipfile.ZipFile(stream) as archive:
+                names = set(archive.namelist())
+                valid = "[Content_Types].xml" in names and any(
+                    name.startswith("word/") for name in names
+                )
+        except (zipfile.BadZipFile, OSError):
+            valid = False
+        finally:
+            stream.seek(0)
+
+    if not valid:
+        return None, "Attachment content does not match the selected file type."
+    return ext, None
+
+
+def _save_class_announcement_file(file_obj, ext):
+    filename = f"classann_{uuid.uuid4().hex}.{ext}"
+    upload_dir = os.path.join(os.getcwd(), "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    file_obj.save(os.path.join(upload_dir, filename))
+    return filename
+
+
+def _student_class_announcement_context(cur, branch_id, year_id):
+    account_id = session.get("student_account_id")
+    enrollment_id = session.get("enrollment_id")
+    if account_id:
+        cur.execute("""
+            SELECT active_e.section_id, active_e.grade_level
+            FROM student_accounts sa
+            JOIN enrollments current_e ON current_e.enrollment_id = sa.enrollment_id
+            JOIN enrollments active_e
+              ON active_e.student_first_name = current_e.student_first_name
+             AND COALESCE(active_e.student_middle_name, '') =
+                 COALESCE(current_e.student_middle_name, '')
+             AND active_e.student_last_name = current_e.student_last_name
+            WHERE sa.account_id = %s
+              AND active_e.branch_id = %s
+              AND active_e.year_id = %s
+            ORDER BY active_e.enrollment_id DESC
+            LIMIT 1
+        """, (account_id, branch_id, year_id))
+    elif enrollment_id:
+        cur.execute("""
+            SELECT section_id, grade_level
+            FROM enrollments
+            WHERE enrollment_id = %s
+              AND branch_id = %s
+              AND year_id = %s
+            LIMIT 1
+        """, (enrollment_id, branch_id, year_id))
+    else:
+        return None
+    return cur.fetchone()
+
+
+def _announcement_target_matches(section_id, grade_level, target):
+    if ":" in target:
+        return target.rsplit(":", 1)[-1] == str(section_id)
+    target_full, target_short = _normalize_grade(target)
+    grade_full, grade_short = _normalize_grade(grade_level or "")
+    return bool(
+        {target_full.lower(), target_short.lower()}
+        & {grade_full.lower(), grade_short.lower()}
+    )
 
 
 def _sync_matching_options_for_exam(cur, exam_id, user_id, branch_id, year_id):
@@ -888,62 +1026,47 @@ def teacher_class_announcements():
         cur.close()
         db.close()
 
-    # Fetch specific sections assigned to this teacher
-    db = get_db_connection()
-    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    try:
-        year_id = _get_active_school_year(cur, branch_id)
-        cur.execute("""
-            SELECT DISTINCT
-                s.section_id,
-                s.section_name,
-                g.name AS grade_level_name
-            FROM section_teachers st
-            JOIN sections s     ON st.section_id = s.section_id
-            JOIN grade_levels g ON s.grade_level_id = g.id
-            WHERE st.teacher_id = %s AND s.branch_id = %s AND s.year_id = %s
-            ORDER BY g.name, s.section_name
-        """, (user_id, branch_id, year_id or 0))
-        teacher_sections = cur.fetchall() or []
-    finally:
-        cur.close()
-        db.close()
-
-
-
     selected_grade = (request.args.get("grade") or teacher_grade or "").strip()
     selected_section = request.args.get("section_id", type=int)
-    if not selected_section and teacher_sections:
-        selected_section = teacher_sections[0]["section_id"]
-        
     announcements = []
 
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        query = """
-            SELECT a.announcement_id, a.title, a.body,
-                   a.created_at, u.username AS posted_by,
-                   u.full_name, u.gender, a.grade_level
-            FROM teacher_announcements a
-            JOIN users u ON u.user_id = a.teacher_user_id
-            WHERE a.branch_id = %s
-        """
-        params = [branch_id]
+        year_id = _get_active_school_year(cur, branch_id)
+        teacher_sections = (
+            _class_announcement_sections(cur, user_id, branch_id, year_id)
+            if year_id else []
+        )
+        section_map = {int(row["section_id"]): row for row in teacher_sections}
+        if selected_section is not None and selected_section not in section_map:
+            flash("You are not assigned to that section for the active school year.", "error")
+            selected_section = teacher_sections[0]["section_id"] if teacher_sections else None
+        elif selected_section is None and teacher_sections:
+            selected_section = teacher_sections[0]["section_id"]
 
-        if selected_section:
-            # Match specifically by section ID (hack using grade_level column format 'GradeName:SectionID')
-            query += " AND a.grade_level LIKE '%%:' || %s"
-            params.append(str(selected_section))
-        elif selected_grade:
+        raw_ann = []
+        if year_id and selected_section:
+            selected_grade = section_map[int(selected_section)]["grade_level_name"]
             grade_full, grade_short = _normalize_grade(selected_grade)
-            query += " AND (a.grade_level ILIKE %s OR a.grade_level ILIKE %s)"
-            params.append(grade_full)
-            params.append(grade_short)
-
-        query += " ORDER BY a.created_at DESC"
-        cur.execute(query, params)
-        raw_ann = cur.fetchall() or []
+            cur.execute("""
+                SELECT a.announcement_id, a.title, a.body,
+                       a.created_at, a.teacher_user_id,
+                       u.username AS posted_by,
+                       u.full_name, u.gender, a.grade_level
+                FROM teacher_announcements a
+                JOIN users u ON u.user_id = a.teacher_user_id
+                WHERE a.branch_id = %s
+                  AND (
+                      a.grade_level LIKE '%%:' || %s
+                      OR (
+                          a.grade_level NOT LIKE '%%:%%'
+                          AND (a.grade_level ILIKE %s OR a.grade_level ILIKE %s)
+                      )
+                  )
+                ORDER BY a.created_at DESC, a.announcement_id DESC
+            """, (branch_id, str(selected_section), grade_full, grade_short))
+            raw_ann = cur.fetchall() or []
         
         import pytz
         manila_tz = pytz.timezone("Asia/Manila")
@@ -960,18 +1083,8 @@ def teacher_class_announcements():
                 else:
                     a["created_at"] = dt.astimezone(manila_tz)
             
-            # Parse attachment if exists
-            a["attachment"] = None
-            if a.get("body") and "[ATTACHMENT|" in a["body"]:
-                body_text = a["body"]
-                start_idx = body_text.rfind("[ATTACHMENT|")
-                if start_idx != -1:
-                    tag_content = body_text[start_idx+12:-1]  # skip [ATTACHMENT| and ]
-                    parts = tag_content.split("|")
-                    if len(parts) == 2:
-                        a["attachment"] = {"path": parts[0], "name": parts[1]}
-                        # Remove the tag from the body
-                        a["body"] = body_text[:start_idx].strip()
+            a["body"], a["attachment"] = _parse_class_announcement_attachment(a.get("body"))
+            a["is_owner"] = a.get("teacher_user_id") == user_id
                     
             announcements.append(a)
     finally:
@@ -1052,29 +1165,6 @@ def teacher_announce():
     # Base grade for redirection
     grade = (request.form.get("grade_level") or "").strip()
     
-    # Resolve grade level name from section_id if provided
-    grade_to_save = ""
-    if target_section_id:
-        db = get_db_connection()
-        cur = db.cursor()
-        cur.execute("""
-            SELECT g.name 
-            FROM sections s 
-            JOIN grade_levels g ON s.grade_level_id = g.id 
-            WHERE s.section_id = %s
-        """, (target_section_id,))
-        row = cur.fetchone()
-        if row:
-            # Store as "GradeName:SectionID" to support section-specific targeting without schema change
-            grade_to_save = f"{row[0]}:{target_section_id}"
-            if not grade:
-                grade = row[0]
-        cur.close()
-        db.close()
-    
-    if not grade_to_save:
-        grade_to_save = grade
-
     if from_page == "announcements":
         back_url = url_for("teacher.teacher_class_announcements") + (f"?grade={grade}" if grade else "")
     else:
@@ -1083,38 +1173,8 @@ def teacher_announce():
     if not title:
         flash("Announcement title is required.", "error")
         return redirect(back_url)
-    if not grade:
-        flash("Please select your grade level first.", "error")
-        return redirect(url_for("teacher.teacher_dashboard"))
-
-    # Handle file upload
-    attachment_metadata = ""
-    attachment = request.files.get("attachment")
-    if attachment and attachment.filename:
-        filename = secure_filename(attachment.filename)
-        ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-        if ext in ['jpeg', 'jpg', 'png', 'pdf', 'doc', 'docx']:
-            # Fallback for filenames that are stripped by secure_filename
-            if not filename or filename == ext:
-                filename = f"ann_attach_{uuid.uuid4().hex[:8]}.{ext}"
-            else:
-                filename = f"{uuid.uuid4().hex[:8]}_{filename}"
-            
-            upload_dir = os.path.join(os.getcwd(), "uploads")
-            os.makedirs(upload_dir, exist_ok=True)
-            file_path = os.path.join(upload_dir, filename)
-            attachment.save(file_path)
-            attachment_metadata = f"\n\n[ATTACHMENT|/uploads/{filename}|{attachment.filename}]"
-        else:
-            flash("Invalid file type. Allowed: JPG, PNG, PDF, DOC, DOCX", "error")
-            return redirect(back_url)
-
-    # Append metadata to body if present
-    if attachment_metadata:
-        body = (body + attachment_metadata).strip()
-
     db  = get_db_connection()
-    cur = db.cursor()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         # year-safety: get the active school year for this branch
         year_id = _get_active_school_year(cur, branch_id)
@@ -1122,13 +1182,42 @@ def teacher_announce():
             flash("No active school year.", "error")
             return redirect(back_url)
 
+        try:
+            target_section_id = int(target_section_id)
+        except (TypeError, ValueError):
+            flash("Please select one of your assigned sections.", "error")
+            return redirect(back_url)
+
+        section = _class_announcement_section_map(
+            cur, user_id, branch_id, year_id
+        ).get(target_section_id)
+        if not section:
+            flash("You are not authorized to post to that section.", "error")
+            return redirect(back_url)
+
+        grade = section["grade_level_name"]
+        grade_to_save = f"{grade}:{target_section_id}"
+
+        attachment = request.files.get("attachment")
+        if attachment and attachment.filename:
+            ext, upload_error = _validate_class_announcement_file(attachment)
+            if upload_error:
+                flash(upload_error, "error")
+                return redirect(back_url)
+            filename = _save_class_announcement_file(attachment, ext)
+            original_name = os.path.basename(attachment.filename).replace("|", "_")
+            body = (
+                body + f"\n\n[ATTACHMENT|/uploads/{filename}|{original_name}]"
+            ).strip()
+
         cur.execute("""
             INSERT INTO teacher_announcements 
-                (teacher_user_id, branch_id, year_id, grade_level, title, body)
-            VALUES (%s, %s, %s, %s, %s, %s)
+                (teacher_user_id, branch_id, grade_level, title, body)
+            VALUES (%s, %s, %s, %s, %s)
             RETURNING announcement_id
-        """, (user_id, branch_id, year_id, grade_to_save, title, body or None))
-        ann_id = cur.fetchone()[0]
+        """, (user_id, branch_id, grade_to_save, title, body or None))
+        ann_row = cur.fetchone()
+        ann_id = ann_row["announcement_id"]
 
         # Send notifications only to students enrolled in this year
         if re.match(r'^\d+$', grade.strip()):
@@ -1221,8 +1310,10 @@ def teacher_announce_delete(announcement_id):
 
         cur.execute("""
             DELETE FROM teacher_announcements
-            WHERE announcement_id = %s AND teacher_user_id = %s
-        """, (announcement_id, user_id))
+            WHERE announcement_id = %s
+              AND teacher_user_id = %s
+              AND branch_id = %s
+        """, (announcement_id, user_id, branch_id))
         db.commit()
         if cur.rowcount:
             flash("Announcement deleted.", "success")
@@ -1260,27 +1351,9 @@ def teacher_announce_edit(announcement_id):
         flash("Title cannot be empty.", "error")
         return redirect(back_url)
 
-    # Handle file upload
     new_attachment = request.files.get("attachment")
     remove_attachment = request.form.get("remove_attachment") == "true"
     new_attachment_metadata = None
-
-    if new_attachment and new_attachment.filename:
-        filename = secure_filename(new_attachment.filename)
-        ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-        if ext in ['jpeg', 'jpg', 'png', 'pdf', 'doc', 'docx']:
-            if not filename or filename == ext:
-                filename = f"ann_attach_{uuid.uuid4().hex[:8]}.{ext}"
-            else:
-                filename = f"{uuid.uuid4().hex[:8]}_{filename}"
-            upload_dir = os.path.join(os.getcwd(), "uploads")
-            os.makedirs(upload_dir, exist_ok=True)
-            file_path = os.path.join(upload_dir, filename)
-            new_attachment.save(file_path)
-            new_attachment_metadata = f"\n\n[ATTACHMENT|/uploads/{filename}|{new_attachment.filename}]"
-        else:
-            flash("Invalid file type. Allowed: JPG, PNG, PDF, DOC, DOCX", "error")
-            return redirect(back_url)
 
     db  = get_db_connection()
     cur = db.cursor()
@@ -1292,13 +1365,28 @@ def teacher_announce_edit(announcement_id):
             return redirect(back_url)
 
         # Get existing body to preserve attachment if not removed/replaced
-        cur.execute("SELECT body FROM teacher_announcements WHERE announcement_id = %s AND teacher_user_id = %s", (announcement_id, user_id))
+        cur.execute("""
+            SELECT body FROM teacher_announcements
+            WHERE announcement_id = %s
+              AND teacher_user_id = %s
+              AND branch_id = %s
+        """, (announcement_id, user_id, branch_id))
         row = cur.fetchone()
         if not row:
             flash("Announcement not found or not yours.", "error")
             return redirect(back_url)
         
         old_body_raw = row[0] or ""
+        if new_attachment and new_attachment.filename:
+            ext, upload_error = _validate_class_announcement_file(new_attachment)
+            if upload_error:
+                flash(upload_error, "error")
+                return redirect(back_url)
+            filename = _save_class_announcement_file(new_attachment, ext)
+            original_name = os.path.basename(new_attachment.filename).replace("|", "_")
+            new_attachment_metadata = (
+                f"\n\n[ATTACHMENT|/uploads/{filename}|{original_name}]"
+            )
         old_attachment_tag = ""
         if "[ATTACHMENT|" in old_body_raw:
             start_idx = old_body_raw.rfind("[ATTACHMENT|")
@@ -1316,8 +1404,10 @@ def teacher_announce_edit(announcement_id):
         cur.execute("""
             UPDATE teacher_announcements
                SET title = %s, body = %s
-             WHERE announcement_id = %s AND teacher_user_id = %s
-        """, (title, final_body or None, announcement_id, user_id))
+             WHERE announcement_id = %s
+               AND teacher_user_id = %s
+               AND branch_id = %s
+        """, (title, final_body or None, announcement_id, user_id, branch_id))
         db.commit()
         if cur.rowcount:
             flash("Announcement updated.", "success")
@@ -1334,6 +1424,84 @@ def teacher_announce_edit(announcement_id):
 
 
 # ── ARCHIVE/UNARCHIVE ROUTES ────────────────────────────────
+
+@teacher_bp.route("/teacher/class-announcements/<int:announcement_id>/attachment")
+def teacher_announcement_attachment(announcement_id):
+    role = session.get("role")
+    if role not in {"teacher", "student"}:
+        abort(403)
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT announcement_id, teacher_user_id, branch_id,
+                   grade_level, body
+            FROM teacher_announcements
+            WHERE announcement_id = %s
+        """, (announcement_id,))
+        announcement = cur.fetchone()
+        if not announcement:
+            abort(404)
+
+        unused_body, attachment = _parse_class_announcement_attachment(
+            announcement.get("body")
+        )
+        if not attachment or not attachment["path"].startswith("/uploads/"):
+            abort(404)
+
+        branch_id = announcement["branch_id"]
+        active_year_id = _get_active_school_year(cur, branch_id)
+        if not active_year_id:
+            abort(403)
+
+        allowed = False
+        target = announcement.get("grade_level") or ""
+        if role == "teacher" and session.get("branch_id") == branch_id:
+            teacher_id = session.get("user_id")
+            if announcement["teacher_user_id"] == teacher_id:
+                allowed = True
+            else:
+                sections = _class_announcement_sections(
+                    cur, teacher_id, branch_id, active_year_id
+                )
+                allowed = any(
+                    _announcement_target_matches(
+                        row["section_id"], row["grade_level_name"], target
+                    )
+                    for row in sections
+                )
+        elif role == "student":
+            enrollment = _student_class_announcement_context(
+                cur, branch_id, active_year_id
+            )
+            if enrollment:
+                allowed = _announcement_target_matches(
+                    enrollment["section_id"], enrollment["grade_level"], target
+                )
+
+        if not allowed:
+            abort(403)
+
+        filename = os.path.basename(attachment["path"])
+        if filename != attachment["path"].rsplit("/", 1)[-1]:
+            abort(404)
+        upload_root = os.path.abspath(os.path.join(os.getcwd(), "uploads"))
+        file_path = os.path.abspath(os.path.join(upload_root, filename))
+        if (
+            not file_path.startswith(upload_root + os.sep)
+            or not os.path.isfile(file_path)
+        ):
+            abort(404)
+        return send_file(
+            file_path,
+            download_name=os.path.basename(attachment["name"]),
+            as_attachment=False,
+        )
+    finally:
+        cur.close()
+        db.close()
+
 
 @teacher_bp.route("/teacher/activities/<int:activity_id>/archive", methods=["POST"])
 def archive_activity(activity_id):

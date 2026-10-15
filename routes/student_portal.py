@@ -255,7 +255,7 @@ def dashboard():
                 grade_short = _m2.group(1) if _m2 else grade_full
 
             cursor.execute("""
-                SELECT a.title, a.body, a.created_at,
+                SELECT a.announcement_id, a.title, a.body, a.created_at,
                        u.username AS posted_by, u.full_name, u.gender
                 FROM teacher_announcements a
                 JOIN users u ON u.user_id = a.teacher_user_id
@@ -267,7 +267,7 @@ def dashboard():
                           AND (a.grade_level ILIKE %(grade_full)s OR a.grade_level ILIKE %(grade_short)s)
                       )
                   )
-                ORDER BY a.created_at DESC
+                ORDER BY a.created_at DESC, a.announcement_id DESC
                 LIMIT 20
             """, {
                 "branch_id":   branch_id,

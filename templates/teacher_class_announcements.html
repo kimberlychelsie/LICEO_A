@@ -186,6 +186,9 @@
     
     .attachment-badge {
         display: inline-flex;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        word-break: break-word;
         align-items: center;
         gap: 6px;
         background: #f1f5f9;
@@ -244,6 +247,8 @@
 
     .ann-card {
         border: 1px solid #e2e8f0;
+        min-width: 0;
+        overflow: hidden;
         border-radius: 16px;
         padding: 24px;
         background: #fff;
@@ -267,6 +272,8 @@
 
     .ann-card-title {
         font-weight: 900;
+        overflow-wrap: anywhere;
+        word-break: break-word;
         font-size: 1.25rem;
         color: #1a3a8f;
         line-height: 1.2;
@@ -282,6 +289,8 @@
 
     .ann-card-body {
         font-size: 0.95rem;
+        overflow-wrap: anywhere;
+        word-break: break-word;
         color: #475569;
         line-height: 1.6;
         white-space: pre-wrap;
@@ -381,8 +390,8 @@
                         
                         <div class="form-group">
                             <label>Target Section</label>
-                            <select name="section_id" class="ann-input">
-                                <option value="">(Option: All Assigned Sections)</option>
+                            <select name="section_id" class="ann-input" required>
+                                <option value="">Select an assigned section</option>
                                 {% for s in teacher_sections %}
                                 <option value="{{ s.section_id }}" {% if s.section_id==selected_section %}selected{% endif %}>
                                     {{ s.grade_level_name }} — {{ s.section_name }}
@@ -442,7 +451,7 @@
                         <div class="ann-card" id="ann-card-{{ a.announcement_id }}">
                             <div id="ann-view-{{ a.announcement_id }}">
                                 <div class="ann-card-head" onclick="toggleAnnDetails({{ a.announcement_id }})" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                                    <div style="display: flex; gap: 12px; align-items: center; flex: 1;">
+                                    <div style="display: flex; gap: 12px; align-items: center; flex: 1; min-width: 0;">
                                         <div class="ann-icon">
                                             <svg width="20" height="20" fill="none" stroke="#4f46e5" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -469,7 +478,7 @@
                                     
                                     {% if a.attachment %}
                                     <div style="margin-bottom: 12px;">
-                                        <a href="{{ a.attachment.path }}" target="_blank" class="attachment-badge">
+                                        <a href="{{ url_for('teacher.teacher_announcement_attachment', announcement_id=a.announcement_id) }}" target="_blank" class="attachment-badge">
                                             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg> 
                                             View Attachment: {{ a.attachment.name }}
                                         </a>
@@ -478,7 +487,7 @@
 
                                     <div class="ann-card-footer">
                                         <div class="ann-card-actions">
-                                            {% if is_branch_active_status %}
+                                            {% if is_branch_active_status and a.is_owner %}
                                             <button type="button" class="btn-text-action btn-edit" data-id="{{ a.announcement_id }}"
                                                 data-title="{{ a.title | e }}" data-body="{{ (a.body or '') | e }}"
                                                 onclick="openEditAnn(this)">[ Edit ]</button>
