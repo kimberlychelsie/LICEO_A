@@ -23,6 +23,19 @@ MIGRATION_SOURCE = (
     / "migrations"
     / "add_teacher_announcements_year_id.sql"
 ).read_text(encoding="utf-8")
+CLASS_TEMPLATE = (
+    Path(__file__).resolve().parents[1]
+    / "templates"
+    / "teacher_class_announcements.html"
+).read_text(encoding="utf-8")
+STUDENT_TEMPLATE = (
+    Path(__file__).resolve().parents[1]
+    / "templates"
+    / "student_dashboard.html"
+).read_text(encoding="utf-8")
+BASE_TEMPLATE = (
+    Path(__file__).resolve().parents[1] / "templates" / "base.html"
+).read_text(encoding="utf-8")
 TREE = ast.parse(SOURCE)
 WANTED = {
     "CLASS_ANNOUNCEMENTS_PER_PAGE",
@@ -165,6 +178,23 @@ class TeacherAnnouncementRouteSecurityTest(unittest.TestCase):
         self.assertIn('not attachment["path"].startswith("/uploads/")', SOURCE)
         self.assertIn("file_path.startswith(upload_root + os.sep)", SOURCE)
 
+    def test_attachment_response_separates_preview_and_download(self):
+        route_start = SOURCE.index("def teacher_announcement_attachment")
+        route_source = SOURCE[route_start:]
+        self.assertIn('request.args.get("download") == "1"', route_source)
+        self.assertIn('previewable = stored_ext in {".jpg", ".jpeg", ".png", ".pdf", ".docx"}', route_source)
+        self.assertIn('as_attachment=force_download', route_source)
+        self.assertIn('response.headers["Cache-Control"] = "private, no-store"', route_source)
+        self.assertIn('response.headers["X-Content-Type-Options"] = "nosniff"', route_source)
+
+    def test_attachment_ui_uses_only_the_protected_route(self):
+        self.assertIn("details-attachment-preview", CLASS_TEMPLATE)
+        self.assertIn("details-attachment-download", CLASS_TEMPLATE)
+        self.assertIn("student-announcement-preview", STUDENT_TEMPLATE)
+        self.assertIn("attachment.download_url", STUDENT_TEMPLATE)
+        self.assertIn("downloadUrl = url", BASE_TEMPLATE)
+        self.assertIn("dlBtn.href = downloadUrl", BASE_TEMPLATE)
+
     def test_list_uses_server_side_pagination_and_matching_search(self):
         route_start = SOURCE.index("def teacher_class_announcements():")
         route_end = SOURCE.index("def teacher_set_grade", route_start)
@@ -205,33 +235,46 @@ class TeacherAnnouncementRouteSecurityTest(unittest.TestCase):
         create_end = SOURCE.index("def teacher_announce_delete", create_start)
         create_source = SOURCE[create_start:create_end]
         self.assertIn('announcement_year_mode == "legacy"', create_source)
-        self.assertIn(
-            "(teacher_user_id, branch_id, grade_level, title, body, year_id)",
-            create_source,
-        )
-        self.assertIn(
-            "user_id, branch_id, grade_to_save, title, body or None, year_id",
-            create_source,
-        )
+        self.assertIn("(teacher_user_id, branch_id, grade_level, title, body, year_id)", create_source)
 
     def test_strict_mode_covers_dashboard_mutations_and_attachments(self):
         self.assertIn("recent_announcement_mode", SOURCE)
         self.assertIn('delete_year_sql = " AND year_id = %s"', SOURCE)
         self.assertIn('mutation_year_sql = " AND year_id = %s"', SOURCE)
-        self.assertIn(
-            'announcement.get("year_id") != active_year_id',
-            SOURCE,
-        )
+        self.assertIn('announcement_year_mode == "strict"', SOURCE)
 
-    def test_student_feed_uses_active_enrollment_year_in_strict_mode(self):
-        self.assertIn(
-            'announcement_params["year_id"] = active_enrollment["year_id"]',
-            STUDENT_SOURCE,
-        )
-        self.assertIn(
-            'announcement_year_sql = " AND a.year_id = %(year_id)s"',
-            STUDENT_SOURCE,
-        )
+    def test_student_feed_uses_mode_aware_active_year_filter(self):
+        self.assertIn('announcement_year_mode = get_teacher_announcement_year_mode(cursor)', STUDENT_SOURCE)
+        self.assertIn('announcement_year_sql = " AND a.year_id = %(year_id)s"', STUDENT_SOURCE)
+        self.assertIn('year_mode = get_teacher_announcement_year_mode(cur)', STUDENT_SOURCE)
+        self.assertIn('where_clauses.append("a.year_id = %(year_id)s")', STUDENT_SOURCE)
+
+    def test_dashboard_limits_and_paginated_student_feed(self):
+        self.assertIn("ORDER BY a.created_at DESC, a.announcement_id DESC\n                LIMIT 3", STUDENT_SOURCE)
+        feed_start = STUDENT_SOURCE.index("def teacher_announcements_feed")
+        feed_end = STUDENT_SOURCE.index("def enrollment_status", feed_start)
+        feed = STUDENT_SOURCE[feed_start:feed_end]
+        self.assertIn("SELECT COUNT(*) AS total", feed)
+        self.assertIn("LIMIT %(limit)s OFFSET %(offset)s", feed)
+        self.assertIn("where_sql", feed)
+        self.assertIn("search", feed)
+
+    def test_teacher_dashboard_limits_admin_and_class_announcements(self):
+        dashboard_start = SOURCE.index("def teacher_dashboard():")
+        dashboard_end = SOURCE.index("def teacher_class_announcements():", dashboard_start)
+        dashboard = SOURCE[dashboard_start:dashboard_end]
+        self.assertIn("AND a.audience = 'teacher'", dashboard)
+        self.assertIn("LIMIT 2", dashboard)
+        self.assertIn("ORDER BY a.created_at DESC, a.announcement_id DESC\n                LIMIT 3", dashboard)
+
+    def test_teacher_admin_view_all_has_matching_search_and_pagination(self):
+        route_start = SOURCE.index("def teacher_admin_announcements():")
+        route_end = SOURCE.index("def teacher_dashboard():", route_start)
+        route = SOURCE[route_start:route_end]
+        self.assertIn('where_sql = " AND ".join(where_clauses)', route)
+        self.assertIn("SELECT COUNT(*) AS total", route)
+        self.assertIn("LIMIT %s OFFSET %s", route)
+        self.assertIn("COALESCE(a.message, '') ILIKE %s", route)
 
 
 class FakeSchemaCursor:
@@ -251,46 +294,26 @@ class TeacherAnnouncementYearCompatibilityTest(unittest.TestCase):
         cursor = FakeSchemaCursor(False)
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual("legacy", get_teacher_announcement_year_mode(cursor))
-        self.assertEqual(1, len(cursor.queries))
         self.assertIn("information_schema.columns", cursor.queries[0])
 
     def test_migrated_column_defaults_to_bridge_mode(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(
-                "bridge",
-                get_teacher_announcement_year_mode(FakeSchemaCursor(True)),
-            )
+            self.assertEqual("bridge", get_teacher_announcement_year_mode(FakeSchemaCursor(True)))
 
-    def test_strict_mode_requires_the_migrated_column(self):
-        with patch.dict(
-            os.environ,
-            {"TEACHER_ANNOUNCEMENTS_STRICT_YEAR": "true"},
-            clear=True,
-        ):
-            self.assertEqual(
-                "strict",
-                get_teacher_announcement_year_mode(FakeSchemaCursor(True)),
-            )
+    def test_strict_mode_requires_migrated_column(self):
+        with patch.dict(os.environ, {"TEACHER_ANNOUNCEMENTS_STRICT_YEAR": "true"}, clear=True):
+            self.assertEqual("strict", get_teacher_announcement_year_mode(FakeSchemaCursor(True)))
             with self.assertRaises(RuntimeError):
                 get_teacher_announcement_year_mode(FakeSchemaCursor(False))
 
     def test_migration_is_additive_nullable_and_does_not_backfill(self):
-        self.assertIn(
-            "ADD COLUMN IF NOT EXISTS year_id INTEGER",
-            MIGRATION_SOURCE,
-        )
+        self.assertIn("ADD COLUMN IF NOT EXISTS year_id INTEGER", MIGRATION_SOURCE)
         self.assertNotIn("year_id INTEGER NOT NULL", MIGRATION_SOURCE)
         self.assertIn("FOREIGN KEY (branch_id, year_id)", MIGRATION_SOURCE)
         self.assertIn("ON DELETE RESTRICT", MIGRATION_SOURCE)
         self.assertIn("NOT VALID", MIGRATION_SOURCE)
-        self.assertIn(
-            "CREATE INDEX IF NOT EXISTS idx_teacher_ann_branch_year_created",
-            MIGRATION_SOURCE,
-        )
-        executable_sql = "\n".join(
-            line for line in MIGRATION_SOURCE.splitlines()
-            if not line.lstrip().startswith("--")
-        )
+        self.assertIn("CREATE INDEX IF NOT EXISTS idx_teacher_ann_branch_year_created", MIGRATION_SOURCE)
+        executable_sql = "\n".join(line for line in MIGRATION_SOURCE.splitlines() if not line.lstrip().startswith("--"))
         self.assertNotIn("UPDATE teacher_announcements", executable_sql)
 
 

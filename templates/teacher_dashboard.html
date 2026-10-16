@@ -898,6 +898,37 @@
     </div>
     {% endif %}
 
+    <div class="section-container" style="margin-bottom: 24px;">
+        <div class="section-header">
+            <div class="section-header-wrapper">
+                <div class="section-header-icon icon-bg-blue"><i class="fas fa-chalkboard-teacher"></i></div>
+                <h2 class="section-title">Class Announcements</h2>
+            </div>
+            <a href="{{ url_for('teacher.teacher_class_announcements') }}" class="btn-view-all">
+                <span>Manage</span><i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+        <div class="activity-list">
+            {% if announcements %}
+            {% for announcement in announcements %}
+            <a href="{{ url_for('teacher.teacher_class_announcements') }}" class="teacher-announcement-card" style="text-decoration:none;">
+                <div class="teacher-announcement-content">
+                    <div class="teacher-announcement-title">{{ announcement.title }}</div>
+                    <div class="teacher-announcement-meta">
+                        <span>{{ announcement.display_name }}</span>
+                        {% if announcement.created_at %}<time datetime="{{ announcement.created_at.isoformat() }}">{{ announcement.created_at.strftime('%b %d, %Y - %I:%M %p') }}</time>{% endif %}
+                        {% if announcement.attachment %}<span><i class="fas fa-paperclip" aria-hidden="true"></i> Attachment</span>{% endif %}
+                    </div>
+                    <div class="teacher-announcement-preview">{{ announcement.body or 'No description provided.' }}</div>
+                </div>
+            </a>
+            {% endfor %}
+            {% else %}
+            <div class="teacher-announcements-state" style="min-height:90px;">No class announcements for your assigned classes.</div>
+            {% endif %}
+        </div>
+    </div>
+
     <!-- Main Content Grid -->
     <div class="content-grid">
 
@@ -1041,6 +1072,11 @@
             </div>
             <button type="button" class="modal-close" id="announcements-list-close" aria-label="Close announcements"><i class="fas fa-times" aria-hidden="true"></i></button>
         </div>
+        <form class="teacher-announcements-search" id="teacher-announcements-search" role="search">
+            <label class="sr-only" for="teacher-announcements-search-input">Search admin announcements</label>
+            <input id="teacher-announcements-search-input" type="search" maxlength="200" placeholder="Search title or content">
+            <button type="submit">Search</button>
+        </form>
         <div class="teacher-announcements-list-body" id="teacher-announcements-list-body">
             <div class="teacher-announcements-state" id="teacher-announcements-state" role="status">Loading announcements...</div>
             <div class="activity-list" id="teacher-announcements-list"></div>
@@ -1355,6 +1391,9 @@
         display: flex;
         flex-direction: column;
     }
+    .teacher-announcements-search { display:flex; gap:8px; padding:14px 20px; border-bottom:1px solid #e2e8f0; }
+    .teacher-announcements-search input { min-width:0; flex:1; padding:9px 11px; border:1px solid #cbd5e1; border-radius:7px; font:inherit; }
+    .teacher-announcements-search button { padding:9px 14px; border:0; border-radius:7px; background:#1a3a8f; color:#fff; font-weight:700; cursor:pointer; }
     .teacher-announcements-list-body {
         min-height: 180px;
         padding: 20px;
@@ -1558,6 +1597,8 @@
     (function setupTeacherAnnouncements() {
         const listModal = document.getElementById('announcements-modal');
         const listBody = document.getElementById('teacher-announcements-list-body');
+        const searchForm = document.getElementById('teacher-announcements-search');
+        const searchInput = document.getElementById('teacher-announcements-search-input');
         const list = document.getElementById('teacher-announcements-list');
         const state = document.getElementById('teacher-announcements-state');
         const pagination = document.getElementById('teacher-announcements-pagination');
@@ -1702,6 +1743,8 @@
             try {
                 const url = new URL(listModal.dataset.announcementsUrl, window.location.origin);
                 url.searchParams.set('page', Math.max(1, page));
+                const search = searchInput.value.trim();
+                if (search) url.searchParams.set('search', search);
                 const response = await fetch(url, {
                     headers: { 'Accept': 'application/json' },
                     credentials: 'same-origin',
@@ -1819,6 +1862,10 @@
 
         viewAll?.removeAttribute('onclick');
         viewAll?.addEventListener('click', openList);
+        searchForm?.addEventListener('submit', event => {
+            event.preventDefault();
+            loadPage(1);
+        });
         previous.addEventListener('click', () => {
             if (!loading && currentPage > 1) loadPage(currentPage - 1);
         });

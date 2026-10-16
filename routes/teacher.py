@@ -577,64 +577,60 @@ def teacher_admin_announcements():
     if not branch_id:
         return jsonify({"error": "No branch assigned"}), 400
 
-    page = request.args.get("page", default=1, type=int) or 1
-    page = max(1, page)
+    page = max(1, request.args.get("page", default=1, type=int) or 1)
     per_page = 10
+    search = (request.args.get("search") or "").strip()[:200]
+    where_clauses = [
+        "a.is_active = TRUE",
+        "a.branch_id = %s",
+        "a.audience = 'teacher'",
+    ]
+    params = [branch_id]
+    if search:
+        where_clauses.append(
+            "(a.title ILIKE %s OR COALESCE(a.message, '') ILIKE %s)"
+        )
+        pattern = f"%{search}%"
+        params.extend([pattern, pattern])
+    where_sql = " AND ".join(where_clauses)
 
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cur.execute("""
-            SELECT COUNT(*) AS total
-            FROM announcements a
-            WHERE a.is_active = TRUE
-              AND a.branch_id = %s
-              AND a.audience = 'teacher'
-        """, (branch_id,))
+        cur.execute(
+            f"SELECT COUNT(*) AS total FROM announcements a WHERE {where_sql}",
+            params,
+        )
         total = cur.fetchone()["total"]
         total_pages = (total + per_page - 1) // per_page
-
-        if total_pages:
-            page = min(page, total_pages)
-        else:
-            page = 1
-
+        page = min(page, total_pages) if total_pages else 1
         offset = (page - 1) * per_page
-        cur.execute("""
+        cur.execute(f"""
             SELECT a.announcement_id AS id, a.title, a.message,
                    (a.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS created_at_local,
                    a.image_url, b.branch_name
             FROM announcements a
             LEFT JOIN branches b ON b.branch_id = a.branch_id
-            WHERE a.is_active = TRUE
-              AND a.branch_id = %s
-              AND a.audience = 'teacher'
+            WHERE {where_sql}
             ORDER BY a.created_at DESC, a.announcement_id DESC
             LIMIT %s OFFSET %s
-        """, (branch_id, per_page, offset))
+        """, [*params, per_page, offset])
         rows = cur.fetchall() or []
 
         announcements = []
         for row in rows:
             created_at = row["created_at_local"]
             announcements.append({
-                "id": row["id"],
-                "title": row["title"],
-                "message": row["message"],
-                "image_url": row["image_url"],
+                "id": row["id"], "title": row["title"],
+                "message": row["message"], "image_url": row["image_url"],
                 "branch_name": row["branch_name"],
                 "created_at": created_at.isoformat() if created_at else None,
                 "published_at": created_at.strftime("%b %d, %Y - %I:%M %p") if created_at else None,
             })
-
         return jsonify({
-            "announcements": announcements,
-            "page": page,
-            "per_page": per_page,
-            "total": total,
-            "total_pages": total_pages,
-            "has_next": page < total_pages,
-            "has_previous": page > 1,
+            "announcements": announcements, "page": page,
+            "per_page": per_page, "total": total, "total_pages": total_pages,
+            "has_next": page < total_pages, "has_previous": page > 1,
         })
     except Exception:
         return jsonify({"error": "Could not load announcements. Please try again."}), 500
@@ -871,7 +867,8 @@ def teacher_dashboard():
                 WHERE a.branch_id = %(branch_id)s
                   {announcement_year_sql}
                   AND ({where_clause})
-                ORDER BY a.created_at DESC
+                ORDER BY a.created_at DESC, a.announcement_id DESC
+                LIMIT 3
             """, params)
             raw_ann = cur.fetchall() or []
             
@@ -879,6 +876,9 @@ def teacher_dashboard():
                 a = dict(a)
                 prefix = "Ms. " if a.get("gender") == "female" else "Mr. " if a.get("gender") == "male" else ""
                 a["display_name"] = prefix + (a.get("full_name") or a.get("posted_by") or "Teacher")
+                a["body"], a["attachment"] = _parse_class_announcement_attachment(
+                    a.get("body")
+                )
                 announcements.append(a)
 
     finally:
@@ -1640,11 +1640,35 @@ def teacher_announcement_attachment(announcement_id):
             or not os.path.isfile(file_path)
         ):
             abort(404)
-        return send_file(
+        download_name = os.path.basename(attachment["name"])
+        stored_ext = os.path.splitext(filename)[1].lower()
+        display_ext = os.path.splitext(download_name)[1].lower()
+        content_types = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".pdf": "application/pdf",
+            ".doc": "application/msword",
+            ".docx": (
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
+        }
+        if stored_ext not in content_types or display_ext != stored_ext:
+            abort(404)
+
+        previewable = stored_ext in {".jpg", ".jpeg", ".png", ".pdf", ".docx"}
+        force_download = request.args.get("download") == "1" or not previewable
+        response = send_file(
             file_path,
-            download_name=os.path.basename(attachment["name"]),
-            as_attachment=False,
+            mimetype=content_types[stored_ext],
+            download_name=download_name,
+            as_attachment=force_download,
+            conditional=True,
         )
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
     finally:
         cur.close()
         db.close()

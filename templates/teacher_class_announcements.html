@@ -195,7 +195,8 @@
     .ca-details-title { margin: 0 0 10px; color: var(--ca-blue); font-size: 1.35rem; line-height: 1.3; overflow-wrap: anywhere; }
     .ca-details-meta { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-bottom: 20px; color: var(--ca-muted); font-size: .75rem; font-weight: 700; }
     .ca-details-body { margin: 0; color: #475569; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .ca-attachment { display: inline-flex; align-items: center; max-width: 100%; margin-top: 20px; padding: 10px 13px; border: 1px solid var(--ca-line); border-radius: 7px; color: var(--ca-blue); font-size: .8rem; font-weight: 800; text-decoration: none; overflow-wrap: anywhere; }
+    .ca-attachment-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .ca-attachment { display: inline-flex; align-items: center; max-width: 100%; padding: 10px 13px; border: 1px solid var(--ca-line); border-radius: 7px; background: #fff; color: var(--ca-blue); font: inherit; font-size: .8rem; font-weight: 800; text-decoration: none; overflow-wrap: anywhere; cursor: pointer; }
     .ca-form { display: grid; gap: 16px; }
     .ca-field label { display: block; margin-bottom: 6px; color: #53657e; font-size: .7rem; font-weight: 800; text-transform: uppercase; }
     .ca-help { margin: 6px 0 0; color: var(--ca-muted); font-size: .72rem; }
@@ -462,13 +463,22 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("details-section").textContent = parseData(source.dataset.section) || "";
         document.getElementById("details-author").textContent = parseData(source.dataset.author) || "";
         document.getElementById("details-date").textContent = parseData(source.dataset.date) || "";
-        const link = document.getElementById("details-attachment");
-        link.hidden = !(attachmentName && attachmentUrl);
-        if (!link.hidden) {
-            link.href = attachmentUrl;
-            link.textContent = `Open attachment: ${attachmentName}`;
-            link.target = "_blank";
-            link.rel = "noopener";
+        const actions = document.getElementById("details-attachment-actions");
+        const preview = document.getElementById("details-attachment-preview");
+        const download = document.getElementById("details-attachment-download");
+        const attachmentExt = (attachmentName || "").split(".").pop().toLowerCase();
+        const previewable = ["jpg", "jpeg", "png", "pdf", "docx"].includes(attachmentExt);
+        actions.hidden = !(attachmentName && attachmentUrl);
+        preview.hidden = !previewable;
+        if (!actions.hidden) {
+            const downloadUrl = attachmentUrl + "?download=1";
+            preview.textContent = "Preview: " + attachmentName;
+            preview.onclick = () => openPreview(attachmentUrl, attachmentName, downloadUrl);
+            download.href = downloadUrl;
+            download.textContent = "Download: " + attachmentName;
+        } else {
+            preview.onclick = null;
+            download.removeAttribute("href");
         }
         openModal(document.getElementById("details-modal"), card);
     }
@@ -568,7 +578,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 <time id="details-date"></time>
             </div>
             <p class="ca-details-body" id="details-body"></p>
-            <a class="ca-attachment" id="details-attachment" href="#" hidden>Open attachment</a>
+            <div class="ca-attachment-actions" id="details-attachment-actions" hidden>
+                <button class="ca-attachment" id="details-attachment-preview" type="button">Preview attachment</button>
+                <a class="ca-attachment" id="details-attachment-download" href="#">Download attachment</a>
+            </div>
         </div>
     </div>
 </div>

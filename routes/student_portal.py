@@ -285,7 +285,7 @@ def dashboard():
                       )
                   )
                 ORDER BY a.created_at DESC, a.announcement_id DESC
-                LIMIT 20
+                LIMIT 3
             """, announcement_params)
             raw_ann = cursor.fetchall() or []
 
@@ -526,6 +526,165 @@ def dashboard():
         cursor.close()
         db.close()
 
+
+def _student_announcement_scope(cur):
+    """Return the logged-in student's authorized active-year announcement scope."""
+    account_id = session.get("student_account_id")
+    enrollment_id = session.get("enrollment_id")
+    if account_id:
+        cur.execute("""
+            SELECT e.branch_id, e.section_id, e.grade_level, e.year_id
+            FROM student_accounts sa
+            JOIN enrollments current_e ON current_e.enrollment_id = sa.enrollment_id
+            JOIN school_years sy
+              ON sy.branch_id = current_e.branch_id AND sy.is_active = TRUE
+            JOIN enrollments e
+              ON e.student_first_name = current_e.student_first_name
+             AND COALESCE(e.student_middle_name, '') = COALESCE(current_e.student_middle_name, '')
+             AND e.student_last_name = current_e.student_last_name
+             AND e.branch_id = current_e.branch_id
+             AND e.year_id = sy.year_id
+            WHERE sa.account_id = %s
+            ORDER BY e.enrollment_id DESC
+            LIMIT 1
+        """, (account_id,))
+    elif enrollment_id:
+        cur.execute("""
+            SELECT e.branch_id, e.section_id, e.grade_level, e.year_id
+            FROM enrollments e
+            JOIN school_years sy
+              ON sy.branch_id = e.branch_id
+             AND sy.year_id = e.year_id
+             AND sy.is_active = TRUE
+            WHERE e.enrollment_id = %s
+            LIMIT 1
+        """, (enrollment_id,))
+    else:
+        return None
+    row = cur.fetchone()
+    if not row or not row.get("section_id"):
+        return None
+
+    raw_grade = (row.get("grade_level") or "").strip()
+    import re as _re
+    if _re.match(r"^\d+$", raw_grade):
+        grade_short = raw_grade
+        grade_full = "Grade " + raw_grade
+    else:
+        grade_full = raw_grade
+        match = _re.match(r"^Grade\s+(\d+)$", grade_full, _re.IGNORECASE)
+        grade_short = match.group(1) if match else grade_full
+    return {
+        "branch_id": row["branch_id"],
+        "section_id": str(row["section_id"]),
+        "grade_full": grade_full,
+        "grade_short": grade_short,
+        "year_id": row["year_id"],
+    }
+
+
+@student_portal_bp.route("/student/teacher-announcements")
+def teacher_announcements_feed():
+    if not _require_student():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    page = max(1, request.args.get("page", default=1, type=int) or 1)
+    search = (request.args.get("search") or "").strip()[:200]
+    per_page = 10
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        scope = _student_announcement_scope(cur)
+        if not scope:
+            return jsonify({
+                "announcements": [], "page": 1, "per_page": per_page,
+                "total": 0, "total_pages": 0,
+                "has_previous": False, "has_next": False,
+            })
+
+        year_mode = get_teacher_announcement_year_mode(cur)
+        where_clauses = [
+            "a.branch_id = %(branch_id)s",
+            """(
+                a.grade_level LIKE '%%:' || %(section_id)s
+                OR (
+                    NOT a.grade_level LIKE '%%:%%'
+                    AND (
+                        a.grade_level ILIKE %(grade_full)s
+                        OR a.grade_level ILIKE %(grade_short)s
+                    )
+                )
+            )""",
+        ]
+        if year_mode == "strict":
+            where_clauses.append("a.year_id = %(year_id)s")
+        if search:
+            where_clauses.append(
+                "(a.title ILIKE %(search)s OR COALESCE(a.body, '') ILIKE %(search)s)"
+            )
+            scope["search"] = f"%{search}%"
+        where_sql = " AND ".join(where_clauses)
+
+        cur.execute(
+            f"SELECT COUNT(*) AS total FROM teacher_announcements a WHERE {where_sql}",
+            scope,
+        )
+        total = cur.fetchone()["total"]
+        total_pages = (total + per_page - 1) // per_page
+        page = min(page, total_pages) if total_pages else 1
+        scope.update({"limit": per_page, "offset": (page - 1) * per_page})
+        cur.execute(f"""
+            SELECT a.announcement_id, a.title, a.body, a.created_at,
+                   u.username AS posted_by, u.full_name, u.gender
+            FROM teacher_announcements a
+            JOIN users u ON u.user_id = a.teacher_user_id
+            WHERE {where_sql}
+            ORDER BY a.created_at DESC, a.announcement_id DESC
+            LIMIT %(limit)s OFFSET %(offset)s
+        """, scope)
+
+        announcements = []
+        for row in cur.fetchall() or []:
+            row = dict(row)
+            body = row.get("body") or ""
+            attachment = None
+            match = __import__("re").search(
+                r"\[ATTACHMENT\|([^|]+)\|([^\]]+)\]\s*$", body
+            )
+            if match:
+                attachment = {
+                    "name": match.group(2),
+                    "preview_url": url_for(
+                        "teacher.teacher_announcement_attachment",
+                        announcement_id=row["announcement_id"],
+                    ),
+                }
+                attachment["download_url"] = attachment["preview_url"] + "?download=1"
+                body = body[:match.start()].strip()
+            prefix = "Ms. " if row.get("gender") == "female" else (
+                "Mr. " if row.get("gender") == "male" else ""
+            )
+            created_at = row.get("created_at")
+            announcements.append({
+                "id": row["announcement_id"],
+                "title": row.get("title") or "Announcement",
+                "body": body,
+                "author": prefix + (row.get("full_name") or row.get("posted_by") or "Teacher"),
+                "created_at": created_at.isoformat() if created_at else None,
+                "published_at": created_at.strftime("%b %d, %Y - %I:%M %p") if created_at else None,
+                "attachment": attachment,
+            })
+        return jsonify({
+            "announcements": announcements, "page": page,
+            "per_page": per_page, "total": total, "total_pages": total_pages,
+            "has_previous": page > 1, "has_next": page < total_pages,
+        })
+    except Exception:
+        logger.exception("Could not load student teacher announcements")
+        return jsonify({"error": "Could not load announcements."}), 500
+    finally:
+        cur.close()
+        db.close()
 
 @student_portal_bp.route("/student/enrollment-status")
 def enrollment_status():
