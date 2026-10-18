@@ -1432,7 +1432,7 @@
 <!-- ══════════ QUICK ACCESS BAR ══════════ -->
 
 <div class="hp-qa">
-  <a class="hp-qa-item" href="javascript:void(0)" onclick="openEnrollModal()">
+  <a class="hp-qa-item" href="/?enroll=1" onclick="openEnrollModal(event)">
     <span class="qa-ic">
       <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2295,8 +2295,8 @@
 </section>
 
 <!-- ══════════ ENROLL MODAL ══════════ -->
-<div class="enroll-modal-overlay" id="enrollModalOverlay">
-  <div class="enroll-modal">
+<div class="enroll-modal-overlay" id="enrollModalOverlay" aria-hidden="true">
+  <div class="enroll-modal" role="dialog" aria-modal="true" aria-labelledby="enrollModalTitle">
     <button class="btn-modal-close-icon" onclick="closeEnrollModal()" aria-label="Close">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2305,7 +2305,7 @@
       </svg>
     </button>
     <div class="enroll-modal-header">
-      <h3 class="enroll-modal-title">Enroll Now</h3>
+      <h3 class="enroll-modal-title" id="enrollModalTitle">Enroll Now</h3>
       <p class="enroll-modal-desc">Select the campus you wish to enroll in to proceed.</p>
     </div>
 
@@ -2351,6 +2351,77 @@
 <script>
   function goToBranch(url) { if (url) window.location.href = url; }
 
+  var selectedEnrollmentUrl = '';
+  var enrollModalTrigger = null;
+  var enrollPreviousBodyOverflow = '';
+
+  function openEnrollModal(event) {
+    if (event) event.preventDefault();
+
+    var overlay = document.getElementById('enrollModalOverlay');
+    var select = document.getElementById('enrollModalSelect');
+    if (!overlay || !select) return;
+
+    enrollModalTrigger = event && event.currentTarget ? event.currentTarget : document.activeElement;
+    enrollPreviousBodyOverflow = document.body.style.overflow;
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    window.setTimeout(function () { select.focus(); }, 0);
+  }
+
+  function closeEnrollModal() {
+    var overlay = document.getElementById('enrollModalOverlay');
+    var select = document.getElementById('enrollModalSelect');
+    var confirmBox = document.getElementById('enrollConfirmBox');
+    var proceedButton = document.getElementById('enrollProceedBtn');
+
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = enrollPreviousBodyOverflow;
+    selectedEnrollmentUrl = '';
+    if (select) select.value = '';
+    if (confirmBox) confirmBox.style.display = 'none';
+    if (proceedButton) proceedButton.classList.remove('loading');
+
+    if (enrollModalTrigger && typeof enrollModalTrigger.focus === 'function') {
+      enrollModalTrigger.focus();
+    }
+    enrollModalTrigger = null;
+  }
+
+  function handleModalSelectChange(url) {
+    var select = document.getElementById('enrollModalSelect');
+    var confirmBox = document.getElementById('enrollConfirmBox');
+    var confirmText = document.getElementById('enrollConfirmText');
+    selectedEnrollmentUrl = url || '';
+
+    if (!select || !confirmBox || !confirmText || !selectedEnrollmentUrl) {
+      if (confirmBox) confirmBox.style.display = 'none';
+      return;
+    }
+
+    var selectedOption = select.options[select.selectedIndex];
+    var branchName = selectedOption ? selectedOption.getAttribute('data-name') : '';
+    confirmText.textContent = 'Continue enrollment at ' + branchName + '?';
+    confirmBox.style.display = 'block';
+  }
+
+  function proceedEnrollment() {
+    var select = document.getElementById('enrollModalSelect');
+    var proceedButton = document.getElementById('enrollProceedBtn');
+    if (!select || !selectedEnrollmentUrl) return;
+
+    var isListedBranch = Array.prototype.some.call(select.options, function (option) {
+      return option.value === selectedEnrollmentUrl;
+    });
+    if (!isListedBranch) return;
+
+    if (proceedButton) proceedButton.classList.add('loading');
+    window.location.assign(selectedEnrollmentUrl);
+  }
+
 
 
   // Scroll fade-up ──
@@ -2367,6 +2438,19 @@
   })();
 
   document.addEventListener('DOMContentLoaded', function () {
+    var enrollOverlay = document.getElementById('enrollModalOverlay');
+    if (enrollOverlay) {
+      enrollOverlay.addEventListener('click', function (event) {
+        if (event.target === enrollOverlay) closeEnrollModal();
+      });
+    }
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && enrollOverlay && enrollOverlay.classList.contains('active')) {
+        closeEnrollModal();
+      }
+    });
+
     // Check if we came from another page wanting to enroll
     if (window.location.search.includes('enroll=1') || window.location.hash === '#branches') {
       openEnrollModal();
