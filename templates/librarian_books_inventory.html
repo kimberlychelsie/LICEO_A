@@ -168,7 +168,7 @@
         border: none;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
         display: grid;
-        grid-template-columns: 1fr 240px auto;
+        grid-template-columns: minmax(260px, 1fr) repeat(3, minmax(160px, 210px)) auto;
         gap: 20px;
         align-items: flex-end;
     }
@@ -217,6 +217,10 @@
         overflow: hidden;
     }
 
+    .grade-section:not([open]) .grade-header {
+        border-bottom-color: transparent;
+    }
+
     .grade-header {
         padding: 24px 32px;
         background: #f8fafc;
@@ -224,6 +228,18 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 16px;
+        list-style: none;
+        cursor: pointer;
+    }
+
+    .grade-header::-webkit-details-marker {
+        display: none;
+    }
+
+    .grade-header:focus-visible {
+        outline: 3px solid rgba(59, 130, 246, 0.35);
+        outline-offset: -3px;
     }
 
     .grade-header h2 {
@@ -233,6 +249,7 @@
         display: flex;
         align-items: center;
         gap: 12px;
+        margin: 0;
     }
 
     .grade-badge {
@@ -242,6 +259,25 @@
         padding: 4px 10px;
         border-radius: 99px;
         letter-spacing: 0.02em;
+    }
+
+    .grade-summary-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--lib-muted);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .grade-chevron {
+        width: 18px;
+        height: 18px;
+        transition: transform 0.2s ease;
+    }
+
+    .grade-section[open] .grade-chevron {
+        transform: rotate(180deg);
     }
 
     /* ── Table Styling ── */
@@ -368,6 +404,72 @@
     .btn-restock:hover {
         color: var(--lib-success);
         border-color: var(--lib-success);
+    }
+
+    .inventory-manage-trigger {
+        min-width: 92px;
+        height: 38px;
+        padding: 0 13px;
+        border: 1px solid var(--lib-border);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--lib-primary);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        cursor: pointer;
+    }
+
+    .inventory-manage-trigger:hover,
+    .inventory-manage-trigger[aria-expanded="true"] {
+        border-color: var(--lib-primary);
+        background: #eff6ff;
+    }
+
+    .book-manage-menu {
+        position: fixed;
+        z-index: 1100;
+        width: 176px;
+        padding: 7px;
+        border: 1px solid var(--lib-border);
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 16px 34px rgba(15, 23, 42, .18);
+    }
+
+    .book-manage-menu[hidden] { display: none; }
+    .book-manage-menu form { margin: 0; }
+
+    .book-manage-action {
+        width: 100%;
+        min-height: 38px;
+        padding: 9px 11px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--lib-text);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .book-manage-action:hover,
+    .book-manage-action:focus-visible {
+        background: #f1f5f9;
+        outline: none;
+    }
+
+    .book-manage-action.danger { color: #dc2626; }
+    .book-manage-divider {
+        height: 1px;
+        margin: 5px 3px;
+        background: var(--lib-border);
     }
 
     /* ── Global Spinner ── */
@@ -833,6 +935,18 @@
     </div>
 </div>
 
+<div class="book-manage-menu" id="bookManageMenu" role="menu" hidden>
+    <button type="button" class="book-manage-action" id="manageEditBook" role="menuitem">Edit Book</button>
+    <button type="button" class="book-manage-action" id="manageRestockBook" role="menuitem">Add Stock</button>
+    <div class="book-manage-divider"></div>
+    <form method="POST" id="manageDeleteBookForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="book-manage-action danger" id="manageDeleteBook" role="menuitem">
+            Delete Book
+        </button>
+    </form>
+</div>
+
 <div class="loading-spinner" id="globalSpinner">
     <div
         style="width: 44px; height: 44px; border: 4px solid #e2e8f0; border-top-color: var(--lib-primary); border-radius: 50%; animation: spin 0.8s linear infinite;">
@@ -874,19 +988,19 @@
     {% set outs = stats.out_stock | default(0) | int %}
 
     <div class="summary-grid">
-        <a href="{{ url_for('librarian.books_inventory') }}" class="stat-card stat-all {% if not status_filter %}active{% endif %}">
+        <a href="{{ url_for('librarian.books_inventory', search=search or None, level=level_filter or None, grade=grade_filter or None) }}" class="stat-card stat-all {% if not status_filter %}active{% endif %}">
             <span class="stat-label">All Titles</span>
-            <span class="stat-value">{{ items|length }}</span>
+            <span class="stat-value">{{ stats.total_items | default(0) }}</span>
         </a>
-        <a href="{{ url_for('librarian.books_inventory') }}?status=well" class="stat-card stat-well {% if status_filter == 'well' %}active{% endif %}">
+        <a href="{{ url_for('librarian.books_inventory', status='well', search=search or None, level=level_filter or None, grade=grade_filter or None) }}" class="stat-card stat-well {% if status_filter == 'well' %}active{% endif %}">
             <span class="stat-label">Well Stocked</span>
             <span class="stat-value">{{ wells }}</span>
         </a>
-        <a href="{{ url_for('librarian.books_inventory') }}?status=low" class="stat-card stat-low {% if status_filter == 'low' %}active{% endif %}">
+        <a href="{{ url_for('librarian.books_inventory', status='low', search=search or None, level=level_filter or None, grade=grade_filter or None) }}" class="stat-card stat-low {% if status_filter == 'low' %}active{% endif %}">
             <span class="stat-label">Low Stock</span>
             <span class="stat-value">{{ lows }}</span>
         </a>
-        <a href="{{ url_for('librarian.books_inventory') }}?status=out" class="stat-card stat-out {% if status_filter == 'out' %}active{% endif %}">
+        <a href="{{ url_for('librarian.books_inventory', status='out', search=search or None, level=level_filter or None, grade=grade_filter or None) }}" class="stat-card stat-out {% if status_filter == 'out' %}active{% endif %}">
             <span class="stat-label">Out of Stock</span>
             <span class="stat-value">{{ outs }}</span>
         </a>
@@ -894,7 +1008,6 @@
 
     <!-- ── Filter Console ── -->
     <form method="GET" id="invFilterForm">
-        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
         <div class="filter-card">
             <div class="filter-group">
                 <label class="filter-label">Quick Search</label>
@@ -903,17 +1016,39 @@
             </div>
             <div class="filter-group">
                 <label class="filter-label">Academic Level</label>
-                <select name="grade" id="invGrade" class="filter-input">
-                    <option value="">All Grade Levels</option>
-                    {% for g in grades %}
+                <select name="level" id="invLevel" class="filter-input">
+                    <option value="">All Academic Levels</option>
+                    <option value="pre-elementary" {% if level_filter == 'pre-elementary' %}selected{% endif %}>Pre-Elementary</option>
+                    <option value="elementary" {% if level_filter == 'elementary' %}selected{% endif %}>Elementary</option>
+                    <option value="jhs" {% if level_filter == 'jhs' %}selected{% endif %}>Junior High School</option>
+                    <option value="shs" {% if level_filter == 'shs' %}selected{% endif %}>Senior High School</option>
+                    <option value="unassigned" {% if level_filter == 'unassigned' %}selected{% endif %}>Unassigned</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Grade</label>
+                <select name="grade" id="invGrade" class="filter-input" {% if level_filter == 'unassigned' %}disabled{% endif %}>
+                    <option value="">All Grades</option>
+                    {% if not level_filter %}
+                    <option value="__unassigned__" {% if grade_filter == '__unassigned__' %}selected{% endif %}>Unassigned</option>
+                    {% endif %}
+                    {% for g in grade_options %}
                     <option value="{{ g }}" {% if grade_filter==g %}selected{% endif %}>{{ g }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="filter-group">
-                {% if search or grade_filter %}
-                <a href="{{ url_for('librarian.books_inventory') }}{% if status_filter %}?status={{ status_filter }}{% endif %}"
-                    class="btn-action btn-secondary">Clear</a>
+                <label class="filter-label">Stock Status</label>
+                <select name="status" id="invStatus" class="filter-input">
+                    <option value="" {% if not status_filter %}selected{% endif %}>All Status</option>
+                    <option value="well" {% if status_filter == 'well' %}selected{% endif %}>Well Stocked</option>
+                    <option value="low" {% if status_filter == 'low' %}selected{% endif %}>Low Stock</option>
+                    <option value="out" {% if status_filter == 'out' %}selected{% endif %}>Out of Stock</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                {% if search or level_filter or grade_filter or status_filter %}
+                <a href="{{ url_for('librarian.books_inventory') }}" class="btn-action btn-secondary">Clear</a>
                 {% endif %}
             </div>
         </div>
@@ -922,16 +1057,22 @@
     <!-- ── Inventory Content ── -->
     {% if items %}
 
-    {% set grouped = items | groupby('grade_level') %}
-
-    {% for grade, books in grouped %}
-    <div class="grade-section">
-        <div class="grade-header">
+    {% for group in grade_groups %}
+    {% set grade = group.grade %}
+    {% set books = group.books %}
+    <details class="grade-section" {% if search or grade_filter or grade_groups|length == 1 %}open{% endif %}>
+        <summary class="grade-header">
             <h2>
-                {{ grade or 'General Collection' }}
+                {{ grade }}
                 <span class="grade-badge">{{ books|length }} Title{{ 's' if books|length != 1 }}</span>
             </h2>
-        </div>
+            <span class="grade-summary-meta">
+                <svg class="grade-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </span>
+        </summary>
 
         <div class="table-wrap">
             <table class="inv-table">
@@ -964,7 +1105,8 @@
                         data-avail="{{ avail }}"
                         data-color="{{ cover_color }}"
                         data-initial="{{ initials }}"
-                        data-image="{{ b.image_url or '' }}">
+                        data-image="{{ b.image_url or '' }}"
+                        data-delete-url="{{ url_for('librarian.book_delete', item_id=b.item_id, search=search or None, level=level_filter or None, grade=grade_filter or None, status=status_filter or None) }}">
                         <td>
                             <div class="book-cover-wrap">
                                 {% if b.image_url %}
@@ -1003,33 +1145,22 @@
                                     {% endif %}
                         </td>
                         <td style="text-align: center;" onclick="event.stopPropagation()">
-                            <div class="action-btns" style="justify-content: center;">
-                                <button class="btn-icon" title="Edit Book"
-                                    onclick="openEditModal(this.closest('tr'))">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                                        stroke-linejoin="round">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                    </svg>
-                                </button>
-                                <button class="btn-icon btn-restock" title="Add Stock"
-                                    onclick="openRestockModal(this.closest('tr'))">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                                        stroke-linejoin="round">
-                                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    </svg>
-                                </button>
-                            </div>
+                            <button type="button" class="inventory-manage-trigger"
+                                aria-haspopup="menu" aria-expanded="false" aria-controls="bookManageMenu">
+                                Manage
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round" aria-hidden="true">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-    </div>
+    </details>
     {% endfor %}
 
 
@@ -1054,16 +1185,19 @@
 <script>
     const filterForm = document.getElementById('invFilterForm');
 
+    const levelSel = document.getElementById('invLevel');
     const gradeSel = document.getElementById('invGrade');
+    const statusSel = document.getElementById('invStatus');
     const searchInp = document.getElementById('invSearch');
     const spinner = document.getElementById('globalSpinner');
 
-    if (gradeSel) {
-        gradeSel.addEventListener('change', () => {
+    [levelSel, gradeSel, statusSel].forEach(select => {
+        if (!select) return;
+        select.addEventListener('change', () => {
             spinner.classList.add('active');
             filterForm.submit();
         });
-    }
+    });
 
     if (searchInp) {
         let searchTimeout;
@@ -1094,6 +1228,88 @@
     const modalAvail    = document.getElementById('modalAvail');
     const modalEditBtn  = document.getElementById('modalEditBtn');
     const modalRestockBtn = document.getElementById('modalRestockBtn');
+    const manageMenu = document.getElementById('bookManageMenu');
+    const manageDeleteForm = document.getElementById('manageDeleteBookForm');
+    let manageRow = null;
+    let manageTrigger = null;
+
+    function closeBookManageMenu({ restoreFocus = false } = {}) {
+        if (!manageMenu || manageMenu.hidden) return;
+        manageMenu.hidden = true;
+        manageTrigger?.setAttribute('aria-expanded', 'false');
+        if (restoreFocus) manageTrigger?.focus();
+        manageRow = null;
+        manageTrigger = null;
+    }
+
+    function openBookManageMenu(trigger) {
+        if (!manageMenu) return;
+        if (manageTrigger === trigger && !manageMenu.hidden) {
+            closeBookManageMenu({ restoreFocus: true });
+            return;
+        }
+        closeBookManageMenu();
+        manageTrigger = trigger;
+        manageRow = trigger.closest('tr');
+        trigger.setAttribute('aria-expanded', 'true');
+        manageMenu.hidden = false;
+        manageMenu.style.visibility = 'hidden';
+
+        const rect = trigger.getBoundingClientRect();
+        const menuWidth = manageMenu.offsetWidth;
+        const menuHeight = manageMenu.offsetHeight;
+        const gap = 6;
+        const left = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8));
+        const openUp = window.innerHeight - rect.bottom < menuHeight + gap
+            && rect.top > menuHeight + gap;
+        const top = openUp ? rect.top - menuHeight - gap : rect.bottom + gap;
+        manageMenu.style.left = left + 'px';
+        manageMenu.style.top = Math.max(8, top) + 'px';
+        manageMenu.style.visibility = '';
+        manageMenu.querySelector('.book-manage-action')?.focus();
+    }
+
+    document.querySelectorAll('.inventory-manage-trigger').forEach(trigger => {
+        trigger.addEventListener('click', event => {
+            event.stopPropagation();
+            openBookManageMenu(trigger);
+        });
+    });
+
+    document.getElementById('manageEditBook')?.addEventListener('click', () => {
+        const row = manageRow;
+        closeBookManageMenu();
+        if (row) openEditModal(row);
+    });
+
+    document.getElementById('manageRestockBook')?.addEventListener('click', () => {
+        const row = manageRow;
+        closeBookManageMenu();
+        if (row) openRestockModal(row);
+    });
+
+    manageDeleteForm?.addEventListener('submit', event => {
+        if (!manageRow) {
+            event.preventDefault();
+            return;
+        }
+        const title = manageRow.dataset.title || 'this book';
+        if (!window.confirm('Delete "' + title + '" from the active inventory? Historical records will be preserved.')) {
+            event.preventDefault();
+            return;
+        }
+        manageDeleteForm.action = manageRow.dataset.deleteUrl;
+        document.getElementById('manageDeleteBook').disabled = true;
+        spinner?.classList.add('active');
+    });
+
+    document.addEventListener('click', event => {
+        if (!event.target.closest('#bookManageMenu, .inventory-manage-trigger')) {
+            closeBookManageMenu();
+        }
+    });
+    window.addEventListener('resize', () => closeBookManageMenu());
+    window.addEventListener('scroll', () => closeBookManageMenu(), true);
 
     function openModal(row) {
         const title    = row.dataset.title;
@@ -1230,6 +1446,10 @@
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
+            if (!manageMenu.hidden) {
+                closeBookManageMenu({ restoreFocus: true });
+                return;
+            }
             closeModal();
             editModal.classList.remove('open');
             restockModal.classList.remove('open');

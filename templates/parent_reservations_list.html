@@ -533,6 +533,7 @@
                         <th>Status</th>
                         <th style="text-align: right;">Qty</th>
                         <th style="text-align: right;">Total Amount</th>
+                        <th style="text-align: right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="ordersTableBody">
@@ -612,16 +613,28 @@
                             <span class="unified-badge badge-unpaid">Unpaid Tuition</span>
                             {% endif %}
                             {% endif %}
+                            {% if r.ref_type == 'RES' and r.inventory_policy == 'PAYMENT_FIRST' and st == 'RESERVED' %}
+                            <div class="status-sub">FULL PAYMENT REQUIRED - STOCK NOT HELD</div>
+                            {% endif %}
                         </td>
                         <td style="text-align: right; font-weight: 700;">{{ r.total_qty }}</td>
                         <td style="text-align: right; font-weight: 900; color: var(--sd-primary);">
                             ₱{{ "{:,.2f}".format(r.total_amount|float) }}
                         </td>
+                        <td style="text-align: right;">
+                            {% if r.ref_type == 'RES' and (r.status or '')|upper == 'RESERVED' %}
+                            <form method="post" action="{{ url_for('student.cancel_reservation', reservation_id=r.ref_id) }}"
+                                onsubmit="return confirm('Cancel this unpaid reservation?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" style="border: 1px solid #fecaca; background: #fff; color: #b91c1c; border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 0.78rem; font-weight: 800; cursor: pointer; white-space: nowrap;">Cancel</button>
+                            </form>
+                            {% else %}<span style="color: var(--sd-muted);">&mdash;</span>{% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                     <!-- No search results row -->
                     <tr id="noOrdersFoundRow" style="display: none;">
-                        <td colspan="8" style="text-align: center; padding: 48px 16px; color: var(--sd-muted);">
+                        <td colspan="9" style="text-align: center; padding: 48px 16px; color: var(--sd-muted);">
                             <div style="font-size: 1.8rem; margin-bottom: 8px;">🔍</div>
                             <div style="font-weight: 700; font-size: 1rem; color: var(--sd-text);">No matching orders
                                 found</div>

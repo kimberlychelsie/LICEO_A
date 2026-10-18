@@ -878,16 +878,25 @@
         </svg> Student Queue</h2>
     </div>
 
-    <div class="modal-filter-bar" style="border-bottom: 1px solid var(--border); padding: 14px 24px;">
-      <input type="text" id="queueSearch" placeholder="Search student name or username...">
-      <select id="queueStatusFilter">
-        <option value="">All Statuses</option>
-        <option value="PAID">Paid / Ready for Release</option>
-        <option value="RESERVED">Reserved (Unpaid)</option>
-        <option value="CLAIMED">Claimed</option>
-        <option value="CANCELLED">Cancelled</option>
+    <form class="modal-filter-bar" id="queueFilterForm" method="GET"
+      action="{{ url_for('librarian.releases') }}"
+      style="border-bottom: 1px solid var(--border); padding: 14px 24px;">
+      <input type="hidden" name="tab" value="queue">
+      <input type="search" id="queueSearch" name="queue_search" value="{{ queue_search }}"
+        placeholder="Search student name, username, grade, or book...">
+      <select id="queueStatusFilter" name="queue_status" aria-label="Filter reservations by status">
+        <option value="" {% if not queue_status %}selected{% endif %}>All Statuses</option>
+        <option value="PAID" {% if queue_status == 'PAID' %}selected{% endif %}>Paid / Ready for Release</option>
+        <option value="RESERVED" {% if queue_status == 'RESERVED' %}selected{% endif %}>Reserved (Unpaid)</option>
+        <option value="CLAIMED" {% if queue_status == 'CLAIMED' %}selected{% endif %}>Claimed</option>
+        <option value="CANCELLED" {% if queue_status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
       </select>
-    </div>
+      <button type="submit" class="btn btn-primary" style="padding:10px 16px;">Search</button>
+      {% if queue_search or queue_status %}
+      <a href="{{ url_for('librarian.releases', tab='queue') }}" class="btn"
+        style="padding:10px 16px;text-decoration:none;">Clear</a>
+      {% endif %}
+    </form>
 
     <div class="table-responsive">
       {% if reservation_rows %}
@@ -997,7 +1006,7 @@
           <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
           <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
         </svg><br>
-        No pending items in queue.
+        {% if queue_search or queue_status %}No reservations match the selected filters.{% else %}No reservations in the queue yet.{% endif %}
       </div>
       {% endif %}
     </div>
@@ -1007,7 +1016,7 @@
     <div style="display: flex; justify-content: center; align-items: center; gap: 16px; padding: 20px; border-top: 1px solid var(--border); background: #f8faff;">
         <div style="display: flex; gap: 8px;">
             {% if page > 1 %}
-            <a href="?tab=queue&page={{ page - 1 }}" class="btn" style="padding: 8px 16px; font-size: 0.85rem; background: #fff; border: 1px solid var(--border); color: var(--text); text-decoration: none; border-radius: 8px;">&laquo; Previous</a>
+            <a href="{{ url_for('librarian.releases', tab='queue', page=page - 1, queue_status=queue_status or None, queue_search=queue_search or None) }}" class="btn" style="padding: 8px 16px; font-size: 0.85rem; background: #fff; border: 1px solid var(--border); color: var(--text); text-decoration: none; border-radius: 8px;">&laquo; Previous</a>
             {% else %}
             <span class="btn" style="padding: 8px 16px; font-size: 0.85rem; background: #f1f5f9; border: 1px solid var(--border); color: var(--muted); opacity: 0.6; cursor: not-allowed; border-radius: 8px;">&laquo; Previous</span>
             {% endif %}
@@ -1017,7 +1026,7 @@
             </span>
 
             {% if page < total_queue_pages %}
-            <a href="?tab=queue&page={{ page + 1 }}" class="btn" style="padding: 8px 16px; font-size: 0.85rem; background: #fff; border: 1px solid var(--border); color: var(--text); text-decoration: none; border-radius: 8px;">Next &raquo;</a>
+            <a href="{{ url_for('librarian.releases', tab='queue', page=page + 1, queue_status=queue_status or None, queue_search=queue_search or None) }}" class="btn" style="padding: 8px 16px; font-size: 0.85rem; background: #fff; border: 1px solid var(--border); color: var(--text); text-decoration: none; border-radius: 8px;">Next &raquo;</a>
             {% else %}
             <span class="btn" style="padding: 8px 16px; font-size: 0.85rem; background: #f1f5f9; border: 1px solid var(--border); color: var(--muted); opacity: 0.6; cursor: not-allowed; border-radius: 8px;">Next &raquo;</span>
             {% endif %}
@@ -1227,22 +1236,10 @@
   });
 
   // ── Queue Filter ─────────────────────────────────────────────
-  function applyQueueFilters() {
-    const q = (document.getElementById('queueSearch')?.value || '').trim().toLowerCase();
-    const status = document.getElementById('queueStatusFilter')?.value || '';
-
-    document.querySelectorAll('#queueTbody tr').forEach(tr => {
-      const rowStatus = tr.dataset.status || '';
-      const rowSearch = tr.dataset.search || '';
-
-      const statusOk = !status || rowStatus === status;
-      const searchOk = !q || rowSearch.includes(q);
-
-      tr.style.display = (statusOk && searchOk) ? '' : 'none';
-    });
-  }
-  document.getElementById('queueSearch')?.addEventListener('input', applyQueueFilters);
-  document.getElementById('queueStatusFilter')?.addEventListener('change', applyQueueFilters);
+  // Status changes submit at page 1; search submits with Enter or the Search button.
+  document.getElementById('queueStatusFilter')?.addEventListener('change', () => {
+    document.getElementById('queueFilterForm')?.requestSubmit();
+  });
 
   // ── Recent Releases — grade filter ─────────────────────────────
   let activeRelGrade = '';

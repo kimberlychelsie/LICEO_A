@@ -9,6 +9,34 @@ import psycopg2.extras
 import pandas as pd
 from openpyxl.styles import Font, Fill, Alignment, PatternFill, Border, Side
 from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, size_price_map, price_for_size
+from utils.reservation_security import (
+    MONEY_EPSILON,
+    ReservationSecurityError,
+    deduct_reserved_inventory,
+    get_verified_direct_settlement,
+    lock_reservation,
+    lock_reservation_for_cancellation,
+    release_reserved_inventory,
+    require_verified_direct_settlement,
+)
+from utils.payment_first_reservations import (
+    PAYMENT_FIRST_POLICY,
+    PaymentFirstError,
+    PaymentFirstInventoryUnavailable,
+    get_reservation_policy,
+    payment_first_enabled,
+    payment_first_schema_ready,
+    require_payment_first_schema,
+)
+from utils.payment_first_payments import (
+    get_payment_first_availability,
+    process_payment_first_batch,
+)
+from utils.payment_first_events import (
+    record_newly_unavailable,
+    record_unavailable_reservations,
+)
+from utils.payment_first_lifecycle import cancel_inventory, claim_inventory
 
 cashier_bp = Blueprint("cashier", __name__)
 
@@ -37,6 +65,87 @@ def generate_receipt_number():
     return f"OR-{today}-{random_part}"
 
 
+def _persist_shortage_notifications(branch_id, reservation_ids):
+    if not reservation_ids:
+        return
+    connection = get_db_connection()
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        record_unavailable_reservations(
+            cursor,
+            branch_id=branch_id,
+            reservation_ids=reservation_ids,
+        )
+        connection.commit()
+    except Exception:
+        connection.rollback()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def _persist_newly_unavailable_notifications(branch_id, reservation_ids):
+    if not reservation_ids:
+        return
+    connection = get_db_connection()
+    cursor = connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        record_newly_unavailable(
+            cursor,
+            branch_id=branch_id,
+            paid_reservation_ids=reservation_ids,
+        )
+        connection.commit()
+    except Exception:
+        connection.rollback()
+    finally:
+        cursor.close()
+        connection.close()
+
+
+def _payment_first_receipt_payload(result, bill_state):
+    student_name = " ".join(filter(None, [
+        result.get("student_first_name"),
+        result.get("student_middle_name"),
+        result.get("student_last_name"),
+    ]))
+    guardian_name = " ".join(filter(None, [
+        result.get("guardian_first_name"),
+        result.get("guardian_middle_name"),
+        result.get("guardian_last_name"),
+    ]))
+    paid_at = _to_manila_naive(result.get("created_at"))
+    return {
+        "payment_id": result["transaction_id"],
+        "transaction_id": result["transaction_id"],
+        "receipt_number": result["receipt_number"],
+        "payment_date": paid_at.strftime("%B %d, %Y | %I:%M %p") if paid_at else "",
+        "amount": float(result["total_amount"]),
+        "payment_method": str(result["payment_method"]).upper(),
+        "student_name": student_name,
+        "guardian_name": guardian_name,
+        "grade_level": result.get("grade_level", ""),
+        "enrollment_no": result.get("branch_enrollment_no", ""),
+        "branch_name": result.get("branch_name", ""),
+        "branch_location": result.get("location", ""),
+        "bill_total": float(bill_state["total_amount"]),
+        "bill_paid": float(bill_state["amount_paid"]),
+        "bill_balance": float(bill_state["balance"]),
+        "received_by": result.get("received_by_name", ""),
+        "notes": result.get("notes") or "",
+        "items": [
+            {
+                "desc": (
+                    f"RES-{item['reservation_id']:04d}: {item['item_name']} "
+                    f"(x{item['qty']})"
+                ),
+                "amount": float(item["line_total"]),
+            }
+            for item in result.get("items", [])
+        ],
+    }
+
+
 def _require_cashier():
     return session.get("role") == "cashier"
 
@@ -49,6 +158,72 @@ def _get_active_year_id(cursor, branch_id):
     """, (branch_id,))
     res = cursor.fetchone()
     return res["year_id"] if res else None
+
+
+def _validate_specific_payment_target(cursor, bill, target_type, target_id, amount):
+    """Lock and validate a payment target using trusted ownership and balances."""
+    if target_type not in {"tuition", "other", "reservation", "uniform_order"}:
+        raise ValueError("Invalid payment target.")
+
+    if target_type in {"tuition", "other"}:
+        if target_id is not None:
+            raise ValueError("This payment target must not include an item ID.")
+        fee_field = "tuition_fee" if target_type == "tuition" else "other_fees"
+        cursor.execute(
+            "SELECT COALESCE(SUM(amount), 0) AS paid FROM payments "
+            "WHERE bill_id = %s AND target_type = %s",
+            (bill["bill_id"], target_type),
+        )
+        remaining = max(
+            Decimal("0"),
+            Decimal(str(bill.get(fee_field) or 0))
+            - Decimal(str(cursor.fetchone()["paid"] or 0)),
+        )
+    elif target_type == "reservation":
+        if target_id is None:
+            raise ValueError("Reservation payment target is required.")
+        reservation = lock_reservation(cursor, target_id, bill["branch_id"])
+        settlement = get_verified_direct_settlement(cursor, reservation)
+        if settlement["enrollment_id"] != bill["enrollment_id"]:
+            raise ValueError("Reservation does not belong to this bill.")
+        if reservation["status"] in ("CANCELLED", "CLAIMED"):
+            raise ValueError("This reservation no longer accepts payments.")
+        remaining = settlement["remaining"]
+    else:
+        if target_id is None:
+            raise ValueError("Uniform order payment target is required.")
+        cursor.execute(
+            """
+            SELECT order_id, total_amount FROM uniform_orders
+            WHERE order_id = %s AND branch_id = %s AND enrollment_id = %s
+              AND (bill_id IS NULL OR bill_id = %s)
+              AND LOWER(COALESCE(order_status, '')) <> 'cancelled'
+            FOR UPDATE
+            """,
+            (target_id, bill["branch_id"], bill["enrollment_id"], bill["bill_id"]),
+        )
+        order = cursor.fetchone()
+        if not order:
+            raise ValueError("Uniform order not found or access denied.")
+        cursor.execute(
+            """
+            SELECT COALESCE(SUM(amount), 0) AS paid_amount FROM payments
+            WHERE target_type = 'uniform_order' AND target_id = %s
+              AND bill_id = %s AND branch_id = %s AND enrollment_id = %s
+            """,
+            (target_id, bill["bill_id"], bill["branch_id"], bill["enrollment_id"]),
+        )
+        paid_amount = cursor.fetchone()["paid_amount"] or 0
+        remaining = max(
+            Decimal("0"),
+            Decimal(str(order["total_amount"] or 0)) - Decimal(str(paid_amount)),
+        )
+
+    if remaining <= MONEY_EPSILON:
+        raise ValueError("This payment target is already fully settled.")
+    if amount - remaining > MONEY_EPSILON:
+        raise ValueError(f"Payment exceeds the target balance ({remaining:,.2f}).")
+    return remaining
 
 def _recalculate_bill(cursor, bill_id):
     """
@@ -110,6 +285,18 @@ def _recalculate_bill(cursor, bill_id):
     ))
 
     reservation_details = cursor.fetchall() or []
+    if payment_first_schema_ready(cursor) and reservation_details:
+        cursor.execute(
+            """SELECT reservation_id, inventory_policy
+               FROM reservations WHERE reservation_id = ANY(%s)""",
+            ([row["reservation_id"] for row in reservation_details],),
+        )
+        policy_map = {
+            row["reservation_id"]: row.get("inventory_policy")
+            for row in (cursor.fetchall() or [])
+        }
+        for row in reservation_details:
+            row["inventory_policy"] = policy_map.get(row["reservation_id"])
 
     # -------------------------------------------------
     # UNIFORM ORDERS
@@ -300,6 +487,8 @@ def _recalculate_bill(cursor, bill_id):
     # GENERAL POOL -> BOOK RESERVATIONS
     # -------------------------------------------------
     for res in reservation_details:
+        if res.get("inventory_policy") == PAYMENT_FIRST_POLICY:
+            continue
         if pool > 0 and res["balance"] > 0:
             allocated = min(
                 res["balance"],
@@ -309,21 +498,17 @@ def _recalculate_bill(cursor, bill_id):
             res["balance"] -= allocated
             pool -= allocated
 
-        if res["balance"] <= 0:
-            if (res.get("status") or "").upper() != "PAID":
-                cursor.execute("""
-                    UPDATE reservations
-                    SET status = 'PAID'
-                    WHERE reservation_id = %s
-                """, (res["reservation_id"],))
-
-        else:
-            if (res.get("status") or "").upper() == "PAID":
-                cursor.execute("""
-                    UPDATE reservations
-                    SET status = 'RESERVED'
-                    WHERE reservation_id = %s
-                """, (res["reservation_id"],))
+        # General-pool allocation is not durable settlement evidence. Only a
+        # trusted direct reservation payment may create a new PAID transition.
+        if (res.get("status") or "").upper() == "RESERVED":
+            trusted = lock_reservation(cursor, res["reservation_id"], bill["branch_id"])
+            settlement = get_verified_direct_settlement(cursor, trusted)
+            if settlement["is_settled"]:
+                cursor.execute(
+                    """UPDATE reservations SET status = 'PAID', paid_at = NOW()
+                       WHERE reservation_id = %s AND branch_id = %s AND status = 'RESERVED'""",
+                    (res["reservation_id"], bill["branch_id"]),
+                )
 
     # -------------------------------------------------
     # CURRENT OUTSTANDING
@@ -1034,6 +1219,102 @@ def view_bill(bill_id):
             ORDER BY r.reservation_id ASC
         """, (bill["enrollment_id"], bill["enrollment_id"]))
         reservation_details = cursor.fetchall()
+        payment_first_ready = payment_first_schema_ready(cursor)
+        payment_transactions = []
+        if payment_first_ready:
+            payments = [
+                payment for payment in payments
+                if not payment.get("transaction_id")
+            ]
+            cursor.execute(
+                """SELECT pt.*,
+                          COALESCE(
+                              NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''),
+                              NULLIF(TRIM(u.full_name), ''),
+                              u.username
+                          ) AS received_by_name
+                   FROM payment_transactions pt
+                   LEFT JOIN users u ON u.user_id = pt.received_by
+                   WHERE pt.bill_id = %s
+                   ORDER BY pt.created_at DESC""",
+                (bill_id,),
+            )
+            for transaction in cursor.fetchall() or []:
+                cursor.execute(
+                    """SELECT p.target_id AS reservation_id, p.amount,
+                              ii.item_name, ri.qty
+                       FROM payments p
+                       JOIN reservation_items ri
+                         ON ri.reservation_id = p.target_id
+                       JOIN inventory_items ii ON ii.item_id = ri.item_id
+                       WHERE p.transaction_id = %s
+                         AND p.target_type = 'reservation'
+                       ORDER BY p.target_id""",
+                    (transaction["transaction_id"],),
+                )
+                transaction["breakdown_items"] = [
+                    {
+                        "desc": (
+                            f"Book RES-{item['reservation_id']:04d}: "
+                            f"{item['item_name']} (x{item['qty']})"
+                        ),
+                        "amount": float(item["amount"]),
+                    }
+                    for item in (cursor.fetchall() or [])
+                ]
+                transaction["payment_id"] = -int(transaction["transaction_id"])
+                transaction["payment_date"] = transaction["created_at"]
+                transaction["amount"] = transaction["total_amount"]
+                transaction["target_type"] = "reservation_batch"
+                payment_transactions.append(transaction)
+            payments.extend(payment_transactions)
+            payments.sort(
+                key=lambda row: row.get("payment_date") or datetime.min,
+                reverse=True,
+            )
+        policies = {}
+        if payment_first_ready and reservation_details:
+            cursor.execute(
+                """SELECT reservation_id, inventory_policy
+                   FROM reservations WHERE reservation_id = ANY(%s)""",
+                ([row["reservation_id"] for row in reservation_details],),
+            )
+            policies = {
+                row["reservation_id"]: row.get("inventory_policy")
+                for row in (cursor.fetchall() or [])
+            }
+        for reservation in reservation_details:
+            reservation["inventory_policy"] = policies.get(
+                reservation["reservation_id"]
+            )
+        payment_first_ids = [
+            row["reservation_id"]
+            for row in reservation_details
+            if row.get("inventory_policy") == PAYMENT_FIRST_POLICY
+        ]
+        availability = (
+            get_payment_first_availability(
+                cursor,
+                payment_first_ids,
+                bill["branch_id"],
+            )
+            if payment_first_ready and payment_first_ids
+            else {}
+        )
+        for reservation in reservation_details:
+            stock = availability.get(reservation["reservation_id"])
+            reservation["available_qty"] = (
+                stock["available_qty"] if stock else None
+            )
+            reservation["is_currently_payable"] = (
+                stock["is_currently_payable"] if stock else True
+            )
+        has_payment_first_due = any(
+            row.get("inventory_policy") == PAYMENT_FIRST_POLICY
+            and Decimal(str(row.get("paid_amount") or 0))
+                < Decimal(str(row.get("reservation_total") or 0))
+            for row in reservation_details
+        )
 
         # Uniform pre-orders: ALL non-cancelled orders directly linked to this bill
         cursor.execute("""
@@ -1230,18 +1511,26 @@ def view_bill(bill_id):
 
         # Distribute remaining pool to Reservations
         for res in reservation_details:
+            if res.get("inventory_policy") == PAYMENT_FIRST_POLICY:
+                continue
             if pool > 0 and res["balance"] > 0:
                 allocated = min(res["balance"], pool)
                 pool -= allocated
                 res["balance"] -= allocated
                 
-            # Sync Paid status if balance reached 0
-            if res["balance"] <= 0 and res.get("status") != "PAID":
-                cursor.execute("UPDATE reservations SET status = 'PAID' WHERE reservation_id = %s", (res["reservation_id"],))
-                res["status"] = "PAID"
-            elif res["balance"] > 0 and res.get("status") == "PAID":
-                cursor.execute("UPDATE reservations SET status = 'RESERVED' WHERE reservation_id = %s", (res["reservation_id"],))
-                res["status"] = "RESERVED"
+            # Do not infer settlement from the dynamic general-payment pool.
+            # Existing PAID rows remain legacy-unverified; only trusted direct
+            # reservation payments can create a new PAID transition.
+            if res.get("status") == "RESERVED":
+                trusted = lock_reservation(cursor, res["reservation_id"], bill["branch_id"])
+                settlement = get_verified_direct_settlement(cursor, trusted)
+                if settlement["is_settled"]:
+                    cursor.execute(
+                        """UPDATE reservations SET status = 'PAID', paid_at = NOW()
+                           WHERE reservation_id = %s AND branch_id = %s AND status = 'RESERVED'""",
+                        (res["reservation_id"], bill["branch_id"]),
+                    )
+                    res["status"] = "PAID"
                 
         db.commit()
 
@@ -1254,6 +1543,19 @@ def view_bill(bill_id):
             bill.get("other_balance", Decimal(0)) +
             sum(uo.get("balance", Decimal(0)) for uo in uniform_order_details) +
             sum(res.get("balance", Decimal(0)) for res in reservation_details)
+        )
+        waiting_stock_total = sum(
+            res.get("balance", Decimal(0))
+            for res in reservation_details
+            if res.get("inventory_policy") == PAYMENT_FIRST_POLICY
+            and not res.get("is_currently_payable", False)
+        )
+        payable_now = max(Decimal("0"), items_outstanding - waiting_stock_total)
+        has_payment_first_payable = any(
+            res.get("inventory_policy") == PAYMENT_FIRST_POLICY
+            and res.get("balance", Decimal(0)) > 0
+            and res.get("is_currently_payable", False)
+            for res in reservation_details
         )
 
         cursor.execute("SELECT COALESCE(SUM(amount), 0) AS total_paid FROM payments WHERE bill_id = %s", (bill_id,))
@@ -1274,6 +1576,8 @@ def view_bill(bill_id):
         bill["amount_paid"] = calc_paid
         bill["balance"] = calc_balance
         bill["status"] = calc_status
+        bill["payable_now"] = payable_now
+        bill["waiting_stock_total"] = waiting_stock_total
 
         # Persist to DB (only amount_paid, balance, status — not total which can vary)
         cursor.execute("""
@@ -1318,8 +1622,13 @@ def view_bill(bill_id):
             p_amount = Decimal(str(p["amount"] or 0))
             p_breakdown = []
             
+            # Parent transactions already contain their authoritative itemized
+            # child-payment breakdown. Do not run them through legacy pooling.
+            if p["target_type"] == "reservation_batch":
+                p_breakdown = p.get("breakdown_items", [])
+
             # 1. If tuition payment
-            if p["target_type"] == "tuition":
+            elif p["target_type"] == "tuition":
                 allocated = min(rem_tuition, p_amount)
                 rem_tuition -= allocated
                 p_breakdown.append({"desc": "Tuition & Mandatory Fees", "amount": float(allocated)})
@@ -1407,6 +1716,10 @@ def view_bill(bill_id):
             reservation_details=reservation_details,
             uniform_order_details=uniform_order_details,
             branch_admin_name=branch_admin_name,
+            payment_first_active=payment_first_enabled() and payment_first_ready,
+            has_payment_first_due=has_payment_first_due,
+            has_payment_first_payable=has_payment_first_payable,
+            payment_idempotency_key=secrets.token_hex(24),
         )
     finally:
         cursor.close()
@@ -1487,6 +1800,20 @@ def process_payment(bill_id):
             )
 
         if request.method == "POST":
+            # Serialize payment validation and insertion for this bill.
+            cursor.execute("""
+                SELECT b.*
+                FROM billing b
+                JOIN enrollments e ON e.enrollment_id = b.enrollment_id
+                WHERE b.bill_id = %s AND e.branch_id = %s
+                FOR UPDATE OF b
+            """, (bill_id, session.get("branch_id")))
+            locked_bill = cursor.fetchone()
+            if not locked_bill:
+                flash("Bill not found", "error")
+                return redirect("/cashier")
+            bill.update(locked_bill)
+
             amount = Decimal(
                 request.form.get("amount", "0") or "0"
             )
@@ -1508,11 +1835,14 @@ def process_payment(bill_id):
                 ""
             )
 
-            target_id = (
-                int(target_id_str)
-                if target_id_str.strip()
-                else None
-            )
+            try:
+                target_id = int(target_id_str) if target_id_str.strip() else None
+            except (TypeError, ValueError):
+                message = "Invalid payment target."
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return jsonify({"success": False, "error": message}), 400
+                flash(message, "error")
+                return redirect(url_for("cashier.process_payment", bill_id=bill_id))
 
             # ==========================================
             # VALIDATION
@@ -1573,8 +1903,105 @@ def process_payment(bill_id):
                     )
                 )
 
+            shortage_ids = []
             try:
                 payment_ids = []
+                allowed_targets = {
+                    "general", "tuition", "other", "reservation",
+                    "reservation_batch", "uniform_order",
+                }
+                if target_type not in allowed_targets:
+                    raise ValueError("Invalid payment target.")
+                if target_type == "general":
+                    if target_id is not None:
+                        raise ValueError("General payments must not include a target ID.")
+                    if payment_first_schema_ready(cursor):
+                        cursor.execute(
+                            """SELECT EXISTS (
+                                   SELECT 1 FROM reservations r
+                                   JOIN reservation_items ri
+                                     ON ri.reservation_id = r.reservation_id
+                                   WHERE r.branch_id = %s
+                                     AND r.enrollment_id = %s
+                                     AND r.status = 'RESERVED'
+                                     AND r.inventory_policy = %s
+                               ) AS has_payment_first_due""",
+                            (
+                                bill["branch_id"],
+                                bill["enrollment_id"],
+                                PAYMENT_FIRST_POLICY,
+                            ),
+                        )
+                        if cursor.fetchone()["has_payment_first_due"]:
+                            raise ValueError(
+                                "Use the book payment controls for pending "
+                                "payment-first reservations before a general payment."
+                            )
+                elif target_type not in {"reservation", "reservation_batch"}:
+                    _validate_specific_payment_target(
+                        cursor, bill, target_type, target_id, amount
+                    )
+
+                payment_first_ids = []
+                if target_type == "reservation_batch":
+                    try:
+                        payment_first_ids = [
+                            int(value) for value in
+                            request.form.get("reservation_ids", "").split(",")
+                            if value.strip()
+                        ]
+                    except ValueError:
+                        raise ValueError("Invalid reservation selection.")
+                elif target_type == "reservation" and target_id is not None:
+                    if (
+                        payment_first_schema_ready(cursor)
+                        and get_reservation_policy(
+                            cursor, target_id, bill["branch_id"]
+                        ) == PAYMENT_FIRST_POLICY
+                    ):
+                        payment_first_ids = [target_id]
+                    else:
+                        _validate_specific_payment_target(
+                            cursor, bill, target_type, target_id, amount
+                        )
+
+                if payment_first_ids:
+                    if not payment_first_enabled():
+                        raise PaymentFirstError(
+                            "Payment-first book processing is currently disabled."
+                        )
+                    require_payment_first_schema(cursor)
+                    shortage_ids = list(payment_first_ids)
+                    result = process_payment_first_batch(
+                        cursor,
+                        bill=bill,
+                        reservation_ids=payment_first_ids,
+                        amount=amount,
+                        payment_method=payment_method,
+                        notes=notes,
+                        received_by=session.get("user_id"),
+                        idempotency_key=request.form.get("idempotency_key", ""),
+                    )
+                    bill_state = _recalculate_bill(cursor, bill_id)
+                    payload = _payment_first_receipt_payload(result, bill_state)
+                    db.commit()
+                    _persist_newly_unavailable_notifications(
+                        bill["branch_id"],
+                        payment_first_ids,
+                    )
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        return jsonify({
+                            "success": True,
+                            "receipt": payload,
+                            "next_idempotency_key": secrets.token_hex(24),
+                        })
+                    flash(
+                        f"Book payment recorded. Receipt: {payload['receipt_number']}",
+                        "success",
+                    )
+                    return redirect(url_for("cashier.view_bill", bill_id=bill_id))
+                if target_type == "reservation_batch":
+                    raise ValueError("Select at least one book reservation.")
 
                 # ======================================
                 # PAY BALANCE / GENERAL
@@ -2355,6 +2782,11 @@ def process_payment(bill_id):
 
             except Exception as e:
                 db.rollback()
+                if isinstance(e, PaymentFirstInventoryUnavailable):
+                    _persist_shortage_notifications(
+                        bill["branch_id"],
+                        e.reservation_ids or shortage_ids,
+                    )
 
                 if (
                     request.headers.get(
@@ -2362,10 +2794,15 @@ def process_payment(bill_id):
                     )
                     == "XMLHttpRequest"
                 ):
+                    status_code = (
+                        409 if isinstance(e, PaymentFirstInventoryUnavailable)
+                        else 400 if isinstance(e, (PaymentFirstError, ValueError))
+                        else 500
+                    )
                     return jsonify({
                         "success": False,
                         "error": str(e)
-                    }), 500
+                    }), status_code
 
                 flash(
                     f"Failed to process payment: "
@@ -3216,38 +3653,16 @@ def cashier_reservation_view(reservation_id):
 
 @cashier_bp.route("/cashier/orders/books/<int:reservation_id>/mark-paid", methods=["POST"])
 def cashier_mark_paid(reservation_id):
+    """Legacy endpoint retained as fail-closed; payments must create payment records."""
     if not _require_cashier():
         return redirect(url_for("auth.login"))
-
-    branch_id = session.get("branch_id")
-    if not is_branch_active(branch_id):
-        flash("This branch is currently deactivated. Changes to reservations are not allowed.", "error")
-        return redirect(url_for("cashier.cashier_reservation_view", reservation_id=reservation_id))
-    conn = get_db_connection()
-    cur = None
-    try:
-        cur = conn.cursor()
-        cur.execute("""
-            UPDATE reservations
-            SET status = 'PAID', paid_at = NOW()
-            WHERE reservation_id = %s AND branch_id = %s AND status = 'RESERVED'
-        """, (reservation_id, branch_id))
-        conn.commit()
-    except Exception:
-        try:
-            conn.rollback()
-        except Exception:
-            pass
-        raise
-    finally:
-        if cur:
-            try:
-                cur.close()
-            except Exception:
-                pass
-        conn.close()
-
-    return redirect(url_for("cashier.cashier_reservation_view", reservation_id=reservation_id))
+    flash(
+        "Status-only payment confirmation is disabled. Record the payment through the billing page.",
+        "error",
+    )
+    return redirect(
+        url_for("cashier.cashier_reservation_view", reservation_id=reservation_id)
+    )
 
 
 @cashier_bp.route("/cashier/orders/books/<int:reservation_id>/mark-claimed", methods=["POST"])
@@ -3259,70 +3674,39 @@ def cashier_mark_claimed(reservation_id):
     if not is_branch_active(branch_id):
         flash("This branch is currently deactivated. Changes to reservations are not allowed.", "error")
         return redirect(url_for("cashier.cashier_reservation_view", reservation_id=reservation_id))
+
     conn = get_db_connection()
-    cur = None
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cur = conn.cursor()
-
-        cur.execute("""
-            SELECT status
-            FROM reservations
-            WHERE reservation_id = %s AND branch_id = %s
-            FOR UPDATE
-        """, (reservation_id, branch_id))
-        r = cur.fetchone()
-        if not r:
-            raise Exception("Reservation not found.")
-        if r[0] not in ("PAID", "RESERVED"):
-            raise Exception("Reservation must be RESERVED or PAID.")
-
-        cur.execute("SELECT item_id, qty FROM reservation_items WHERE reservation_id = %s", (reservation_id,))
-        lines = cur.fetchall() or []
-
-        for item_id, qty in lines:
-            cur.execute("""
-                SELECT stock_total, reserved_qty
-                FROM inventory_items
-                WHERE item_id = %s AND branch_id = %s
-                FOR UPDATE
-            """, (item_id, branch_id))
-            it = cur.fetchone()
-            if not it:
-                raise Exception("Item not found.")
-
-            stock_total, reserved_qty = int(it[0] or 0), int(it[1] or 0)
-
-            if qty > reserved_qty or qty > stock_total:
-                raise Exception("Stock mismatch.")
-
-            # ✅ FIX: include branch_id in WHERE to avoid updating other branches
-            cur.execute("""
-                UPDATE inventory_items
-                SET stock_total = stock_total - %s,
-                    reserved_qty = reserved_qty - %s
-                WHERE item_id = %s AND branch_id = %s
-            """, (qty, qty, item_id, branch_id))
-
-        cur.execute("""
+        reservation = lock_reservation(cur, reservation_id, branch_id)
+        if reservation["status"] != "PAID":
+            raise ReservationSecurityError("Only a PAID reservation can be claimed.")
+        claim_inventory(
+            cur,
+            reservation,
+            legacy_settlement=require_verified_direct_settlement,
+            legacy_deduct=deduct_reserved_inventory,
+        )
+        cur.execute(
+            """
             UPDATE reservations
             SET status = 'CLAIMED', claimed_at = NOW()
-            WHERE reservation_id = %s AND branch_id = %s
-        """, (reservation_id, branch_id))
-
+            WHERE reservation_id = %s AND branch_id = %s AND status = 'PAID'
+            """,
+            (reservation_id, branch_id),
+        )
+        if cur.rowcount != 1:
+            raise ReservationSecurityError("Reservation was already claimed or changed.")
         conn.commit()
-
+        flash("Reservation claimed and inventory released.", "success")
+    except (ReservationSecurityError, ValueError) as exc:
+        conn.rollback()
+        flash(str(exc), "error")
     except Exception:
-        try:
-            conn.rollback()
-        except Exception:
-            pass
+        conn.rollback()
         raise
     finally:
-        if cur:
-            try:
-                cur.close()
-            except Exception:
-                pass
+        cur.close()
         conn.close()
 
     return redirect(url_for("cashier.cashier_reservation_view", reservation_id=reservation_id))
@@ -3338,37 +3722,19 @@ def cashier_cancel_reservation(reservation_id):
         flash("This branch is currently deactivated. Changes to reservations are not allowed.", "error")
         return redirect(url_for("cashier.cashier_reservation_view", reservation_id=reservation_id))
     conn = get_db_connection()
-    cur = None
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cur = conn.cursor()
+        reservation = lock_reservation_for_cancellation(cur, reservation_id, branch_id)
 
-        cur.execute("""
-            SELECT status
-            FROM reservations
-            WHERE reservation_id = %s AND branch_id = %s
-            FOR UPDATE
-        """, (reservation_id, branch_id))
-        r = cur.fetchone()
-        if not r:
-            raise Exception("Reservation not found.")
-        if r[0] != "RESERVED":
-            raise Exception("Only RESERVED can be cancelled.")
-
-        cur.execute("SELECT item_id, qty FROM reservation_items WHERE reservation_id = %s", (reservation_id,))
-        lines = cur.fetchall() or []
-
-        for item_id, qty in lines:
-            cur.execute("""
-                UPDATE inventory_items
-                SET reserved_qty = GREATEST(reserved_qty - %s, 0)
-                WHERE item_id = %s AND branch_id = %s
-            """, (qty, item_id, branch_id))
+        cancel_inventory(cur, reservation, release_reserved_inventory)
 
         cur.execute("""
             UPDATE reservations
             SET status = 'CANCELLED', cancelled_at = NOW()
-            WHERE reservation_id = %s AND branch_id = %s
+            WHERE reservation_id = %s AND branch_id = %s AND status = 'RESERVED'
         """, (reservation_id, branch_id))
+        if cur.rowcount != 1:
+            raise ReservationSecurityError("Reservation was already cancelled or changed.")
 
         # --- UPDATE BILLING IF EXISTS ---
         # 1. Calculate removal totals and find enrollment_id
@@ -3425,18 +3791,14 @@ def cashier_cancel_reservation(reservation_id):
 
         conn.commit()
 
+    except ReservationSecurityError as exc:
+        conn.rollback()
+        flash(str(exc), "error")
     except Exception:
-        try:
-            conn.rollback()
-        except Exception:
-            pass
+        conn.rollback()
         raise
     finally:
-        if cur:
-            try:
-                cur.close()
-            except Exception:
-                pass
+        cur.close()
         conn.close()
 
     return redirect(url_for("cashier.cashier_reservation_view", reservation_id=reservation_id))

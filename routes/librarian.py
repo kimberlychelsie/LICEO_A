@@ -1,17 +1,64 @@
 from flask import Blueprint, render_template, request, redirect, session, flash, url_for, jsonify, Response
 from db import get_db_connection
 import psycopg2.extras
+from decimal import Decimal, InvalidOperation
+from utils.reservation_security import (
+    ReservationSecurityError,
+    deduct_reserved_inventory,
+    lock_reservation,
+    require_verified_direct_settlement,
+)
+from utils.payment_first_events import resolve_available_events
+from utils.payment_first_lifecycle import claim_inventory
 
 librarian_bp = Blueprint("librarian", __name__)
 
 GRADES = [
     "Nursery", "Kinder",
     "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6",
-    "Grade 7", "Grade 8", "Grade 9", "Grade 10"
+    "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"
 ]
+
+INVENTORY_ACADEMIC_LEVELS = {
+    "pre-elementary": ("Nursery", "Kinder"),
+    "elementary": tuple(f"Grade {grade}" for grade in range(1, 7)),
+    "jhs": tuple(f"Grade {grade}" for grade in range(7, 11)),
+    "shs": ("Grade 11", "Grade 12"),
+}
 
 def _require_librarian():
     return session.get("role") == "librarian"
+
+
+def _parse_positive_price(raw_value):
+    try:
+        amount = Decimal(str(raw_value).strip())
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    if not amount.is_finite() or amount <= Decimal("0"):
+        return None
+    try:
+        rounded = amount.quantize(Decimal("0.01"))
+    except InvalidOperation:
+        return None
+    return rounded if rounded == amount else None
+
+
+def _filter_release_queue_rows(rows, status="", search=""):
+    normalized_status = (status or "").strip().upper()
+    search_term = (search or "").strip().casefold()
+    filtered = []
+    for row in rows:
+        if normalized_status and (row.get("status") or "").upper() != normalized_status:
+            continue
+        searchable = " ".join(
+            str(row.get(field) or "")
+            for field in ("full_name", "username", "grade_level", "reserved_books")
+        ).casefold()
+        if search_term and search_term not in searchable:
+            continue
+        filtered.append(row)
+    return filtered
 
 def _to_manila_naive(dt_value):
     if not dt_value:
@@ -40,6 +87,8 @@ CASE
     WHEN grade_level = 'Grade 8'  THEN 9
     WHEN grade_level = 'Grade 9'  THEN 10
     WHEN grade_level = 'Grade 10' THEN 11
+    WHEN grade_level = 'Grade 11' THEN 12
+    WHEN grade_level = 'Grade 12' THEN 13
     ELSE 99
 END
 """
@@ -209,8 +258,26 @@ def books_inventory():
         return redirect("/")
 
     search = (request.args.get("search") or "").strip()
+    level_filter = (request.args.get("level") or "").strip().lower()
     grade_filter = (request.args.get("grade") or "").strip()
     status_filter = (request.args.get("status") or "").strip().lower()  # all | low | out | well
+
+    valid_levels = set(INVENTORY_ACADEMIC_LEVELS) | {"unassigned"}
+    if level_filter not in valid_levels:
+        level_filter = ""
+    if status_filter not in {"", "low", "out", "well"}:
+        status_filter = ""
+
+    grade_options = list(INVENTORY_ACADEMIC_LEVELS.get(level_filter, GRADES))
+    if level_filter == "unassigned":
+        grade_options = []
+    valid_grades = set(GRADES) | {"__unassigned__"}
+    if grade_filter not in valid_grades:
+        grade_filter = ""
+    if level_filter in INVENTORY_ACADEMIC_LEVELS and grade_filter and grade_filter not in grade_options:
+        grade_filter = ""
+    if level_filter == "unassigned":
+        grade_filter = "__unassigned__"
 
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -218,9 +285,14 @@ def books_inventory():
         where = ["branch_id = %s", "is_active = TRUE", "UPPER(category) = 'BOOK'"]
         params = [branch_id]
 
-        if grade_filter:
+        if grade_filter == "__unassigned__":
+            where.append("(grade_level IS NULL OR BTRIM(grade_level) = '')")
+        elif grade_filter:
             where.append("grade_level = %s")
             params.append(grade_filter)
+        elif level_filter in INVENTORY_ACADEMIC_LEVELS:
+            where.append("grade_level = ANY(%s)")
+            params.append(list(INVENTORY_ACADEMIC_LEVELS[level_filter]))
 
         if search:
             where.append("(item_name ILIKE %s OR COALESCE(size_label,'') ILIKE %s)")
@@ -258,6 +330,19 @@ def books_inventory():
 
         items = cur.fetchall() or []
 
+        grade_rank = {grade: index for index, grade in enumerate(GRADES)}
+        grouped_items = {}
+        for item in items:
+            grade = (item.get("grade_level") or "").strip() or "Unassigned"
+            grouped_items.setdefault(grade, []).append(item)
+        grade_groups = [
+            {"grade": grade, "books": grouped_items[grade]}
+            for grade in sorted(
+                grouped_items,
+                key=lambda value: (grade_rank.get(value, 999), value.lower()),
+            )
+        ]
+
         # ---- Global STATS (always from full unfiltered set) ----
         cur.execute("""
             SELECT
@@ -285,7 +370,10 @@ def books_inventory():
         "librarian_books_inventory.html",
         items=items,
         grades=GRADES,
+        grade_options=grade_options,
+        grade_groups=grade_groups,
         search=search,
+        level_filter=level_filter,
         grade_filter=grade_filter,
         status_filter=status_filter,
         stats=stats
@@ -306,11 +394,15 @@ def book_add():
         grade_level = (request.form.get("grade_level") or "").strip()
         publisher   = (request.form.get("publisher")   or "").strip()
         title       = (request.form.get("title")       or "").strip()
-        price       = (request.form.get("price")       or "0").strip()
+        price_raw   = (request.form.get("price")       or "").strip()
+        price       = _parse_positive_price(price_raw)
         image_url   = (request.form.get("image_url")   or "").strip() or None
 
         if not (grade_level and publisher and title):
             flash("Missing required fields.", "error")
+            return redirect(url_for("librarian.book_add"))
+        if price is None:
+            flash("Unit price must be greater than PHP 0.00 and use at most two decimal places.", "error")
             return redirect(url_for("librarian.book_add"))
 
         db = get_db_connection()
@@ -387,11 +479,15 @@ def book_edit(item_id):
             grade_level = (request.form.get("grade_level") or "").strip()
             publisher   = (request.form.get("publisher")   or "").strip()
             title       = (request.form.get("title")       or "").strip()
-            price       = (request.form.get("price")       or "0").strip()
+            price_raw   = (request.form.get("price")       or "").strip()
+            price       = _parse_positive_price(price_raw)
             image_url   = (request.form.get("image_url")   or "").strip() or None
 
             if not (grade_level and publisher and title):
                 flash("Missing required fields.", "error")
+                return redirect(url_for("librarian.book_edit", item_id=item_id))
+            if price is None:
+                flash("Unit price must be greater than PHP 0.00 and use at most two decimal places.", "error")
                 return redirect(url_for("librarian.book_edit", item_id=item_id))
 
             cur2 = db.cursor()
@@ -478,6 +574,11 @@ def book_restock(item_id):
                     SET stock_total = stock_total + %s
                     WHERE item_id=%s AND branch_id=%s AND UPPER(category)='BOOK'
                 """, (add_val, item_id, branch_id))
+                resolve_available_events(
+                    cur,
+                    branch_id=branch_id,
+                    item_id=item_id,
+                )
                 db.commit()
                 flash("Restocked successfully!", "success")
                 return redirect(url_for("librarian.books_inventory"))
@@ -567,6 +668,13 @@ def releases():
         return redirect("/")
 
     grade_filter = (request.args.get("grade") or "").strip()
+    active_tab = (request.args.get("tab") or "queue").strip().lower()
+    if active_tab not in {"queue", "history"}:
+        active_tab = "queue"
+    queue_status = (request.args.get("queue_status") or "").strip().upper()
+    if queue_status not in {"PAID", "RESERVED", "CLAIMED", "CANCELLED"}:
+        queue_status = ""
+    queue_search = (request.args.get("queue_search") or "").strip()
 
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -697,13 +805,11 @@ def releases():
             return redirect(url_for("librarian.releases"))
 
         # Pagination setup
-        page = 1
         try:
-            page = int(request.args.get("page", 1))
-        except ValueError:
+            page = max(1, int(request.args.get("page", 1)))
+        except (TypeError, ValueError):
             page = 1
         limit = 10
-        offset = (page - 1) * limit
 
         # ── Reservation rows for Student Queue tab ──
         cur.execute("""
@@ -774,14 +880,22 @@ def releases():
         """, (branch_id,))
         all_reservations = cur.fetchall() or []
         
-        # Paginate reservation rows for queue
-        total_queue = len(all_reservations)
-        total_queue_pages = (total_queue + limit - 1) // limit
-        reservation_rows = all_reservations[offset:offset+limit]
-
         for row in all_reservations:
             if row.get("created_at"):
                 row["created_at"] = _to_manila_naive(row["created_at"])
+
+        # Filter before pagination so matches on later pages are never hidden.
+        filtered_reservations = _filter_release_queue_rows(
+            all_reservations,
+            status=queue_status,
+            search=queue_search,
+        )
+        total_queue = len(filtered_reservations)
+        total_queue_pages = (total_queue + limit - 1) // limit
+        if active_tab == "queue":
+            page = min(page, max(1, total_queue_pages))
+        queue_offset = (page - 1) * limit
+        reservation_rows = filtered_reservations[queue_offset:queue_offset + limit]
 
         # Status counts
         status_counts = {"PAID": 0, "RESERVED": 0, "CLAIMED": 0, "CANCELLED": 0}
@@ -812,7 +926,10 @@ def releases():
 
         total_history = len(all_releases)
         total_history_pages = (total_history + limit - 1) // limit
-        releases_rows = all_releases[offset:offset+limit]
+        if active_tab == "history":
+            page = min(page, max(1, total_history_pages))
+        history_offset = (page - 1) * limit
+        releases_rows = all_releases[history_offset:history_offset + limit]
 
         for rr in all_releases:
             if rr.get("created_at"):
@@ -832,10 +949,6 @@ def releases():
         cur.close()
         db.close()
 
-    active_tab = request.args.get("tab", "queue")
-    if active_tab not in ["queue", "history"]:
-        active_tab = "queue"
-
     return render_template(
         "librarian_releases.html",
         books=books,
@@ -845,6 +958,8 @@ def releases():
         grades=GRADES,
         grade_filter=grade_filter,
         active_tab=active_tab,
+        queue_search=queue_search,
+        queue_status=queue_status,
         page=page,
         total_queue_pages=total_queue_pages,
         total_history_pages=total_history_pages,
@@ -1004,24 +1119,64 @@ def book_delete(item_id):
         return redirect("/")
 
     db = get_db_connection()
-    cur = db.cursor()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        # Check if it has stock before allowing delete?
-        # For now, just mark is_active=FALSE
+        cur.execute("""
+            SELECT item_id, item_name, reserved_qty, is_active
+            FROM inventory_items
+            WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'BOOK'
+            FOR UPDATE
+        """, (item_id, branch_id))
+        book = cur.fetchone()
+        if not book or not book["is_active"]:
+            flash("Book not found or already removed.", "error")
+            db.rollback()
+            return redirect(url_for("librarian.books_inventory"))
+
+        if int(book["reserved_qty"] or 0) > 0:
+            flash("This book cannot be removed while stock is reserved.", "error")
+            db.rollback()
+            return redirect(url_for("librarian.books_inventory"))
+
+        cur.execute("""
+            SELECT 1
+            FROM reservation_items ri
+            JOIN reservations r ON r.reservation_id = ri.reservation_id
+            WHERE ri.item_id = %s
+              AND r.branch_id = %s
+              AND r.status IN ('RESERVED', 'PAID')
+            LIMIT 1
+        """, (item_id, branch_id))
+        if cur.fetchone():
+            flash("This book cannot be removed while it has an active reservation.", "error")
+            db.rollback()
+            return redirect(url_for("librarian.books_inventory"))
+
         cur.execute("""
             UPDATE inventory_items
             SET is_active = FALSE
-            WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'BOOK'
+            WHERE item_id = %s
+              AND branch_id = %s
+              AND UPPER(category) = 'BOOK'
+              AND is_active = TRUE
         """, (item_id, branch_id))
+        if cur.rowcount != 1:
+            raise ValueError("Book was already removed or changed.")
         db.commit()
-        flash("Book removed from inventory.", "success")
+        flash("Book removed from the active inventory.", "success")
     except Exception as e:
         db.rollback()
         flash(f"Failed to delete book: {e}", "error")
     finally:
         cur.close()
         db.close()
-    return redirect(url_for("librarian.books_inventory"))
+    return redirect(url_for(
+        "librarian.books_inventory",
+        search=(request.args.get("search") or None),
+        level=(request.args.get("level") or None),
+        grade=(request.args.get("grade") or None),
+        status=(request.args.get("status") or None),
+    ))
 
 @librarian_bp.route("/librarian/reservations")
 def librarian_reservations():
@@ -1040,83 +1195,73 @@ def mark_reservation_claimed(reservation_id):
 
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
     try:
-        # Check reservation
-        cur.execute("""
-            SELECT status, enrollment_id, student_user_id
-            FROM reservations
-            WHERE reservation_id = %s AND branch_id = %s
-            FOR UPDATE
-        """, (reservation_id, branch_id))
-        res = cur.fetchone()
+        reservation = lock_reservation(cur, reservation_id, branch_id)
+        if reservation["status"] != "PAID":
+            raise ReservationSecurityError("Only a PAID reservation can be released.")
+        settlement = claim_inventory(
+            cur,
+            reservation,
+            legacy_settlement=require_verified_direct_settlement,
+            legacy_deduct=deduct_reserved_inventory,
+        )
 
-        if not res:
-            flash("Reservation not found.", "error")
-            return redirect(url_for("librarian.releases", tab="queue"))
-
-        if res["status"] != "PAID":
-            flash("Books can only be released if the reservation is PAID.", "error")
-            return redirect(url_for("librarian.releases", tab="queue"))
-
-        # Fetch student name
-        student_name = None
-        if res["enrollment_id"]:
-            cur.execute("SELECT CONCAT_WS(' ', student_first_name, student_middle_name, student_last_name) AS sname FROM enrollments WHERE enrollment_id = %s", (res["enrollment_id"],))
-            srow = cur.fetchone()
-            if srow:
-                student_name = srow["sname"]
-        elif res["student_user_id"]:
-            cur.execute("SELECT username FROM users WHERE user_id = %s", (res["student_user_id"],))
-            urow = cur.fetchone()
-            if urow:
-                student_name = urow["username"]
-
-        # Update reservation status to CLAIMED
-        cur.execute("""
-            UPDATE reservations
-            SET status = 'CLAIMED'
-            WHERE reservation_id = %s
-        """, (reservation_id,))
-
-        # Fetch items
-        cur.execute("""
+        cur.execute(
+            """
             SELECT item_id, qty, size_label, unit_price
             FROM reservation_items
             WHERE reservation_id = %s
-        """, (reservation_id,))
-        items = cur.fetchall()
+            """,
+            (reservation_id,),
+        )
+        items = cur.fetchall() or []
+        if not items:
+            raise ReservationSecurityError("Reservation has no books to release.")
 
-        if items:
-            # Create a book_release record
-            cur.execute("""
-                INSERT INTO book_releases (branch_id, enrollment_id, student_name, released_by_user_id)
+        cur.execute(
+            """
+            SELECT CONCAT_WS(' ', student_first_name, student_middle_name, student_last_name) AS sname
+            FROM enrollments WHERE enrollment_id = %s
+            """,
+            (settlement["enrollment_id"],),
+        )
+        student = cur.fetchone()
+        student_name = student["sname"] if student else None
+
+        cur.execute(
+            """
+            INSERT INTO book_releases (branch_id, enrollment_id, student_name, released_by_user_id)
+            VALUES (%s, %s, %s, %s) RETURNING release_id
+            """,
+            (branch_id, settlement["enrollment_id"], student_name, session.get("user_id")),
+        )
+        release_id = cur.fetchone()["release_id"]
+        for item in items:
+            cur.execute(
+                """
+                INSERT INTO book_release_items (release_id, item_id, qty, unit_price)
                 VALUES (%s, %s, %s, %s)
-                RETURNING release_id
-            """, (branch_id, res["enrollment_id"], student_name, session.get("user_id")))
-            release_id = cur.fetchone()["release_id"]
+                """,
+                (release_id, item["item_id"], item["qty"], item["unit_price"]),
+            )
 
-            for item in items:
-                # Insert release item
-                cur.execute("""
-                    INSERT INTO book_release_items (release_id, item_id, qty, unit_price)
-                    VALUES (%s, %s, %s, %s)
-                """, (release_id, item["item_id"], item["qty"], item["unit_price"]))
-
-                # Update inventory items
-                # The items were reserved, so we decrease both reserved_qty and stock_total.
-                cur.execute("""
-                    UPDATE inventory_items
-                    SET reserved_qty = GREATEST(0, reserved_qty - %s),
-                        stock_total = GREATEST(0, stock_total - %s)
-                    WHERE item_id = %s AND branch_id = %s
-                """, (item["qty"], item["qty"], item["item_id"], branch_id))
-
+        cur.execute(
+            """
+            UPDATE reservations SET status = 'CLAIMED', claimed_at = NOW()
+            WHERE reservation_id = %s AND branch_id = %s AND status = 'PAID'
+            """,
+            (reservation_id, branch_id),
+        )
+        if cur.rowcount != 1:
+            raise ReservationSecurityError("Reservation was already claimed or changed.")
         db.commit()
         flash("Books successfully released for the reservation.", "success")
-    except Exception as e:
+    except (ReservationSecurityError, ValueError) as exc:
         db.rollback()
-        flash(f"Error marking reservation as claimed: {e}", "error")
+        flash(str(exc), "error")
+    except Exception as exc:
+        db.rollback()
+        flash(f"Error marking reservation as claimed: {exc}", "error")
     finally:
         cur.close()
         db.close()
@@ -1124,11 +1269,10 @@ def mark_reservation_claimed(reservation_id):
     return redirect(url_for("librarian.releases", tab="queue"))
 
 
-# ─────────────────────────────────────────────────────────────
-#  LIBRARIAN REPORTS
-# ─────────────────────────────────────────────────────────────
+# Librarian report helpers use aliases to avoid colliding with route variables.
 from datetime import date as _date, timedelta as _timedelta
 import pytz as _pytz
+
 
 def _get_manila_today_lib():
     ph_tz = _pytz.timezone("Asia/Manila")

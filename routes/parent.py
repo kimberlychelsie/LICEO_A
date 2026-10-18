@@ -3,6 +3,7 @@ from db import get_db_connection
 from werkzeug.security import generate_password_hash
 import logging
 import psycopg2.extras
+from utils.payment_first_reservations import payment_first_schema_ready
 
 from decimal import Decimal
 from datetime import datetime
@@ -1354,7 +1355,7 @@ def parent_reservations_list():
                 LEFT JOIN inventory_items ii ON ii.item_id = ri.item_id
                 LEFT JOIN enrollments e ON e.enrollment_id = r.enrollment_id
                 WHERE (r.enrollment_id = ANY(%s) OR r.reserved_by_user_id = %s)
-                  AND UPPER(COALESCE(r.status, '')) NOT IN ('CANCELLED', 'REJECTED')
+                  AND UPPER(COALESCE(r.status, '')) <> 'REJECTED'
                   AND EXISTS (
                       SELECT 1 FROM reservation_items ri2
                       JOIN inventory_items ii2 ON ii2.item_id = ri2.item_id
@@ -1380,6 +1381,20 @@ def parent_reservations_list():
                     "student_name": student_name or "Child",
                     "grade_level": res.get("grade_level") or "N/A"
                 })
+
+            book_rows = [row for row in rows if row["ref_type"] == "RES"]
+            if payment_first_schema_ready(cursor) and book_rows:
+                cursor.execute(
+                    """SELECT reservation_id, inventory_policy
+                       FROM reservations WHERE reservation_id = ANY(%s)""",
+                    ([row["ref_id"] for row in book_rows],),
+                )
+                policies = {
+                    row["reservation_id"]: row.get("inventory_policy")
+                    for row in (cursor.fetchall() or [])
+                }
+                for row in book_rows:
+                    row["inventory_policy"] = policies.get(row["ref_id"])
 
             # 2. Uniform Orders
             cursor.execute("""

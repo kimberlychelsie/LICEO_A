@@ -652,8 +652,8 @@
                 <div class="value">₱{{ "{:,.2f}".format(bill.amount_paid) }}</div>
             </div>
             <div class="kpi-well balance">
-                <div class="label">Balance Due</div>
-                <div class="value">₱{{ "{:,.2f}".format(bill.balance) }}</div>
+                <div class="label">Payable Now</div>
+                <div class="value">₱{{ "{:,.2f}".format(bill.payable_now) }}</div>
             </div>
         </div>
 
@@ -699,16 +699,49 @@
                             "%04d"|format(res.reservation_id) }}]</span>
                         <strong>{{ res.item_names or "Book/Material Reservation" }}</strong>
                         <div style="font-size:0.7rem; color:var(--cashier-muted); font-weight:700; margin-top:2px;">
-                            Books & Materials · Price: ₱{{ "{:,.2f}".format(res.reservation_total) }}
+                            Books & Materials
                         </div>
                     </td>
                     <td style="text-align: right;">₱{{ "{:,.2f}".format(res.balance) }}</td>
                     <td style="text-align: right;">
+                        {% if res.inventory_policy == 'PAYMENT_FIRST' %}
+                        {% if payment_first_active %}
+                        {% if res.is_currently_payable %}
+                        <label style="display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:800;color:var(--cashier-primary);cursor:pointer;">
+                            <input type="checkbox" class="payment-first-book"
+                                value="{{ res.reservation_id }}"
+                                data-amount="{{ res.balance }}"
+                                data-name="{{ res.item_names|e }}">
+                            Select
+                        </label>
+                        {% else %}
+                        <span style="display:inline-flex;align-items:center;font-size:.72rem;color:#b45309;font-weight:800;white-space:nowrap;">
+                            Waiting for Restock
+                        </span>
+                        {% endif %}
+                        {% else %}
+                        <span style="font-size:.72rem;color:var(--cashier-muted);font-weight:700;">Processing disabled</span>
+                        {% endif %}
+                        {% else %}
                         <button type="button" class="btn-pay-modal" data-target-type="reservation" data-target-id="{{ res.reservation_id }}" data-target-amount="{{ res.balance }}" data-target-name="Reservation #{{ res.reservation_id }}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; border: none; font-weight: 700; cursor: pointer;">Pay Item</button>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endif %}
                 {% endfor %}
+                {% if payment_first_active and has_payment_first_payable %}
+                <tr>
+                    <td colspan="2" style="padding:10px 16px;font-size:.72rem;color:var(--cashier-muted);font-weight:700;">
+                        Full payment required per book.
+                    </td>
+                    <td style="padding:10px 16px;text-align:right;">
+                        <button type="button" id="paySelectedBooks"
+                            style="padding:7px 10px;font-size:.72rem;border-radius:6px;background:var(--cashier-primary);color:#fff;border:0;font-weight:800;cursor:pointer;white-space:nowrap;">
+                            Pay Selected
+                        </button>
+                    </td>
+                </tr>
+                {% endif %}
 
                 {% for uo in uniform_order_details %}
                 {% if uo.balance > 0 and uo.payment_status != 'Paid' %}
@@ -767,11 +800,15 @@
                 {% endif %}
 
                 <tr class="row-total">
-                    <td>REMAINING BALANCE</td>
+                    <td>CURRENTLY PAYABLE</td>
                     <td style="text-align: right; color: var(--cashier-primary); font-weight: 900;">₱{{
-                        "{:,.2f}".format(bill.balance) }}</td>
+                        "{:,.2f}".format(bill.payable_now) }}</td>
                     <td style="text-align: right;">
-                        <button type="button" class="btn-pay-modal" data-target-type="general" data-target-amount="{{ bill.balance }}" data-target-name="Full Remaining Balance" style="padding: 6px 14px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-success); color: white; border: none; font-weight: 800; cursor: pointer; white-space: nowrap;">Pay Balance</button>
+                        {% if not has_payment_first_due %}
+                        {% if bill.payable_now > 0 %}
+                        <button type="button" class="btn-pay-modal" data-target-type="general" data-target-amount="{{ bill.payable_now }}" data-target-name="Full Currently Payable Balance" style="padding: 6px 14px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-success); color: white; border: none; font-weight: 800; cursor: pointer; white-space: nowrap;">Pay Balance</button>
+                        {% endif %}
+                        {% endif %}
                     </td>
                 </tr>
             </tbody>
@@ -812,7 +849,7 @@
                                 <div style="display: inline-flex; align-items: center; gap: 6px;">
                                     {% if p.target_type == 'uniform_order' %}
                                         <span class="badge" style="background: rgba(26, 58, 143, 0.1); color: var(--cashier-primary);">Uniform</span>
-                                    {% elif p.target_type == 'reservation' %}
+                                    {% elif p.target_type in ['reservation', 'reservation_batch'] %}
                                         <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #b45309;">Book</span>
                                     {% elif p.target_type == 'tuition' %}
                                         <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--cashier-success);">Tuition</span>
@@ -1204,6 +1241,9 @@ function toggleUoPieces(orderId) {
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="target_type" id="modalTargetType" value="general">
             <input type="hidden" name="target_id" id="modalTargetId" value="">
+            <input type="hidden" name="reservation_ids" id="modalReservationIds" value="">
+            <input type="hidden" name="idempotency_key" id="paymentIdempotencyKey"
+                value="{{ payment_idempotency_key }}">
 
             <div class="form-group">
                 <label>Payment Amount (₱) *</label>
@@ -1249,6 +1289,7 @@ function toggleUoPieces(orderId) {
         const form = document.getElementById('paymentForm');
         const typeInput = document.getElementById('modalTargetType');
         const idInput = document.getElementById('modalTargetId');
+        const reservationIdsInput = document.getElementById('modalReservationIds');
         const amountInput = document.getElementById('modalAmountInput');
         const nameDisplay = document.getElementById('modalTargetName');
         const btnFull = document.getElementById('btnFullAmount');
@@ -1262,6 +1303,7 @@ function toggleUoPieces(orderId) {
 
                 typeInput.value = targetType;
                 idInput.value = targetId;
+                reservationIdsInput.value = '';
                 nameDisplay.textContent = targetName;
                 amountInput.value = targetAmount.toFixed(2);
                 amountInput.setAttribute('max', targetAmount.toFixed(2));
@@ -1281,6 +1323,31 @@ function toggleUoPieces(orderId) {
                 modal.classList.add('open');
             });
         });
+
+        const paySelected = document.getElementById('paySelectedBooks');
+        if (paySelected) {
+            paySelected.addEventListener('click', () => {
+                const selected = Array.from(document.querySelectorAll('.payment-first-book:checked'));
+                if (!selected.length) {
+                    alert('Select at least one book reservation.');
+                    return;
+                }
+                const total = selected.reduce((sum, box) => sum + Number(box.dataset.amount || 0), 0);
+                typeInput.value = 'reservation_batch';
+                idInput.value = '';
+                reservationIdsInput.value = selected.map(box => box.value).join(',');
+                nameDisplay.textContent = selected.length === 1
+                    ? selected[0].dataset.name
+                    : selected.length + ' selected book reservations';
+                amountInput.value = total.toFixed(2);
+                amountInput.setAttribute('max', total.toFixed(2));
+                amountInput.setAttribute('readonly', 'true');
+                amountInput.style.background = '#f8fafc';
+                amountInput.style.cursor = 'not-allowed';
+                if (btnFull) btnFull.style.display = 'none';
+                modal.classList.add('open');
+            });
+        }
 
         // Close on backdrop click
         modal.addEventListener('click', (e) => {
@@ -1317,7 +1384,11 @@ function toggleUoPieces(orderId) {
 
                 if (data.success) {
                     closePayModal();
-                    
+                    if (data.next_idempotency_key) {
+                        document.getElementById('paymentIdempotencyKey').value =
+                            data.next_idempotency_key;
+                    }
+
                     // Reuse the existing thermal receipt modal
                     const r = data.receipt;
                     const fmtN = (n) => Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -1333,7 +1404,7 @@ function toggleUoPieces(orderId) {
                     fakeBtn.dataset.balance = fmtN(r.bill_balance);
                     fakeBtn.dataset.cashier = r.received_by;
                     fakeBtn.dataset.admin = '{{ branch_admin_name }}';
-                    const items = [{ desc: nameDisplay.textContent || 'Payment', amount: r.amount }];
+                    const items = r.items || [{ desc: nameDisplay.textContent || 'Payment', amount: r.amount }];
                     fakeBtn.dataset.items = JSON.stringify(items);
                     
                     openReceiptModal(fakeBtn);

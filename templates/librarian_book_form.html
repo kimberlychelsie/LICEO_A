@@ -548,7 +548,7 @@
 
     {# ── Main form card ── #}
     <div class="form-card">
-      <form method="post" id="bookForm" novalidate>
+      <form method="post" id="bookForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-card-body">
 
@@ -597,9 +597,9 @@
               <label class="field-label" for="price">
                 Unit Price (₱) <span class="field-required">*</span>
               </label>
-              <input class="field-input" id="price" type="text" name="price" value="{{ book.price if book else '0' }}"
-                placeholder="000" required oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3)">
-              <span class="field-hint">Standard selling price for this book</span>
+              <input class="field-input" id="price" type="number" name="price" value="{{ book.price if book else '' }}"
+                placeholder="0.00" min="0.01" step="0.01" inputmode="decimal" required>
+              <span class="field-hint">Required selling price; must be greater than PHP 0.00</span>
             </div>
           </div>
 
@@ -686,15 +686,30 @@
     const grade = document.getElementById('grade_level').value.trim();
     const pub = document.getElementById('publisher').value.trim();
     const title = document.getElementById('title').value.trim();
-    const price = document.getElementById('price').value.trim();
+    const priceField = document.getElementById('price');
+    const price = Number(priceField.value);
 
-    if (!grade || !pub || !title || !price) return;
+    priceField.setCustomValidity(Number.isFinite(price) && price > 0
+      ? ''
+      : 'Enter a unit price greater than PHP 0.00.');
+    if (!grade || !pub || !title || !form.checkValidity()) {
+      e.preventDefault();
+      form.reportValidity();
+      return;
+    }
 
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.innerHTML = 'Processing…';
     }
     overlay.classList.add('active');
+  });
+
+  document.getElementById('price').addEventListener('input', function () {
+    const price = Number(this.value);
+    this.setCustomValidity(this.value && Number.isFinite(price) && price > 0
+      ? ''
+      : 'Enter a unit price greater than PHP 0.00.');
   });
 </script>
 {% endblock %}

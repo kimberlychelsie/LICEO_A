@@ -14,6 +14,18 @@ from cloudinary_helper import upload_enrollment_document
 from cloudinary_helper import LOCAL_UPLOAD_FOLDER
 from utils.send_email import send_email
 from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, price_for_size, size_price_map
+from utils.inventory_pricing import is_valid_inventory_price, require_valid_inventory_price
+from utils.reservation_security import (
+    ReservationSecurityError,
+    lock_reservation_for_cancellation,
+    release_reserved_inventory,
+)
+from utils.payment_first_reservations import (
+    create_payment_first_reservations,
+    payment_first_enabled,
+    payment_first_schema_ready,
+)
+from utils.payment_first_lifecycle import cancel_inventory
 from utils.student_identity import evaluate_student_identity_match, student_name_from_row, normalize_identity_name, normalize_identity_dob, normalize_identity_lrn, normalize_identity_email
 from utils.enrollment_text_validation import enrollment_field_spam_error, enrollment_remarks_error
 from extensions import csrf
@@ -2082,7 +2094,9 @@ def student_reservation():
     catalog_groups = []
 
     search = request.args.get('search', '').strip()
-    category_filter = request.args.get('category', '').strip()
+    category_filter = request.args.get('category', 'ALL').strip().upper()
+    if category_filter not in {'ALL', 'BOOK', 'UNIFORM'}:
+        category_filter = 'ALL'
     success_id = request.args.get('success_id', type=int)
     success_data = None
 
@@ -2256,16 +2270,14 @@ def student_reservation():
                    parent_item_id, COALESCE(is_set_piece, FALSE) AS is_set_piece
             FROM inventory_items
             WHERE branch_id = %s AND is_active = TRUE
+              AND price IS NOT NULL AND price > 0
+              AND price::text NOT IN ('NaN', 'Infinity', '-Infinity')
         """
         params = [branch_id]
 
         if search:
             query += " AND item_name ILIKE %s"
             params.append(f"%{search}%")
-
-        if category_filter:
-            query += " AND category = %s"
-            params.append(category_filter)
 
         cursor.execute(query, tuple(params))
         rows = cursor.fetchall() or []
@@ -2286,11 +2298,10 @@ def student_reservation():
                 r['item_name'], r['grade_level'], student_grade, parent_name=parent_name
             ):
                 is_uniform = str(r['category'] or "").upper() == "UNIFORM"
-                # Uniforms are pre-order — always available; books still use stock
-                if is_uniform:
-                    available = 999
-                else:
-                    available = int(r['stock_total'] or 0) - int(r['reserved_qty'] or 0)
+                available = max(
+                    int(r['stock_total'] or 0) - int(r['reserved_qty'] or 0),
+                    0,
+                )
                 
                 cursor.execute("""
                     SELECT size_id, size_label, stock_total, reserved_qty 
@@ -2299,9 +2310,14 @@ def student_reservation():
                 """, (r['item_id'],))
                 sizes_rows = cursor.fetchall() or []
 
-                # For uniforms without per-size stock rows, use catalog size_label list
+                # Without size rows, each configured size uses item-level availability.
                 if is_uniform and not sizes_rows:
-                    sizes_rows = [{"size_label": s, "stock_total": 999, "reserved_qty": 0, "size_id": None}
+                    sizes_rows = [{
+                        "size_label": s,
+                        "stock_total": r['stock_total'],
+                        "reserved_qty": r['reserved_qty'],
+                        "size_id": None,
+                    }
                                   for s in parse_size_list(r['size_label'])]
                 
                 # Sort standard clothing sizes logically
@@ -2319,12 +2335,15 @@ def student_reservation():
                 
                 sizes = []
                 for s in sizes_rows:
-                    if is_uniform:
-                        s_available = 999
-                        s_price = price_map.get(s['size_label'], float(r['price'] or 0))
-                    else:
-                        s_available = int(s['stock_total'] or 0) - int(s['reserved_qty'] or 0)
-                        s_price = float(r['price'] or 0)
+                    size_available = max(
+                        int(s['stock_total'] or 0) - int(s['reserved_qty'] or 0),
+                        0,
+                    )
+                    s_available = min(available, size_available)
+                    s_price = (
+                        price_map.get(s['size_label'], float(r['price'] or 0))
+                        if is_uniform else float(r['price'] or 0)
+                    )
                     sizes.append({
                         "size_id": s.get('size_id'),
                         "size_label": s['size_label'],
@@ -2354,18 +2373,76 @@ def student_reservation():
         catalog_groups = _build_reservation_catalog(items)
         if request.method == "POST":
             selected = []
-            for it in items:
-                key = f"qty_{it['item_id']}"
-                qty_str = (request.form.get(key) or "0").strip()
+            submitted_quantities = {}
+            submission_error = None
+            for key, values in request.form.lists():
+                if not key.startswith("qty_"):
+                    continue
+                match = re.fullmatch(r"qty_(\d+)", key)
+                if not match or len(values) != 1:
+                    submission_error = "The reservation contains duplicate or malformed item entries."
+                    break
                 try:
-                    qty = int(qty_str)
-                except Exception:
-                    qty = 0
+                    quantity = int((values[0] or "0").strip())
+                except (TypeError, ValueError):
+                    submission_error = "The reservation contains an invalid quantity."
+                    break
+                if quantity < 0 or quantity > 3:
+                    submission_error = "Reservation quantities must be between 0 and 3."
+                    break
+                if quantity > 0:
+                    item_id = int(match.group(1))
+                    if item_id in submitted_quantities:
+                        submission_error = "The reservation contains duplicate item entries."
+                        break
+                    submitted_quantities[item_id] = quantity
 
+            visible_item_ids = {int(it["item_id"]) for it in items}
+            if not submission_error and set(submitted_quantities) - visible_item_ids:
+                submission_error = (
+                    "One or more selected items are unavailable or do not have "
+                    "a valid configured price."
+                )
+            if submission_error:
+                error = submission_error
+                return render_template_safe(
+                    "student_reservation.html",
+                    items=items,
+                    catalog_groups=catalog_groups,
+                    student_grade=student_grade,
+                    branch_id=branch_id,
+                    search=search,
+                    category=category_filter,
+                    message=message,
+                    error=error
+                )
+
+            for it in items:
+                item_id = int(it["item_id"])
+                qty = submitted_quantities.get(item_id, 0)
                 if qty > 0:
-                    size_key = f"size_{it['item_id']}"
-                    size_val = (request.form.get(size_key) or "").strip()
-                    selected.append({"item_id": it["item_id"], "qty": qty, "size": size_val or None, "category": it["category"]})
+                    size_key = f"size_{item_id}"
+                    size_values = request.form.getlist(size_key)
+                    if len(size_values) > 1:
+                        error = "The reservation contains duplicate size selections."
+                        return render_template_safe(
+                            "student_reservation.html",
+                            items=items,
+                            catalog_groups=catalog_groups,
+                            student_grade=student_grade,
+                            branch_id=branch_id,
+                            search=search,
+                            category=category_filter,
+                            message=message,
+                            error=error
+                        )
+                    size_val = (size_values[0] if size_values else "").strip()
+                    selected.append({
+                        "item_id": item_id,
+                        "qty": qty,
+                        "size": size_val or None,
+                        "category": it["category"],
+                    })
 
             if not selected:
                 error = "No items selected."
@@ -2387,13 +2464,19 @@ def student_reservation():
                 # Resolve enrollment_id for the reservation
                 target_enrollment_id = enrollment_id if role == "parent" else session.get("enrollment_id")
 
+                reservation_id = None
                 reservation_ids = []
-                uniform_lines = []  # collect uniform pre-order lines → uniform_orders
+                book_lines = []
+                uniform_lines = []  # separate uniform pre-order workflow
 
-                for sel in selected:
-                    item_id = sel["item_id"]
+                # Lock and validate inventory in deterministic order before writing.
+                for sel in sorted(selected, key=lambda entry: int(entry["item_id"])):
+                    item_id = int(sel["item_id"])
                     qty = sel["qty"]
                     size = sel["size"]
+
+                    if not isinstance(qty, int) or qty <= 0:
+                        raise Exception("Invalid reservation quantity.")
 
                     cursor_tx.execute("""
                         SELECT stock_total, reserved_qty, price, size_label, item_name, category,
@@ -2401,38 +2484,48 @@ def student_reservation():
                                parent_item_id, COALESCE(is_set_piece, FALSE) AS is_set_piece
                         FROM inventory_items
                         WHERE item_id = %s AND branch_id = %s AND is_active = TRUE
+                          AND price IS NOT NULL AND price > 0
+                          AND price::text NOT IN ('NaN', 'Infinity', '-Infinity')
                         FOR UPDATE
                     """, (item_id, branch_id))
                     r = cursor_tx.fetchone()
                     if not r:
-                        raise Exception("Item not found.")
+                        raise Exception("Item is unavailable or does not have a valid configured price.")
 
-                    is_uniform = str(r.get('category') or "").upper() == "UNIFORM"
-                    stored_size = size if size else (None if is_uniform else r['size_label'])
+                    base_price = require_valid_inventory_price(
+                        r.get("price"), r.get("item_name") or "Item"
+                    )
+                    is_uniform = str(r.get("category") or "").upper() == "UNIFORM"
+                    stored_size = size if size else (None if is_uniform else r["size_label"])
 
                     if is_uniform:
-                        # Pre-order catalog — no stock hold; goes to uniform_orders (not billing yet)
                         if not stored_size:
                             raise Exception(f"Please select a size for: {r['item_name']}")
-                        step_to_use = r.get('size_price_step')
                         unit_price = price_for_size(
-                            r['price'], stored_size, r['size_label'], step_to_use
+                            base_price,
+                            stored_size,
+                            r["size_label"],
+                            r.get("size_price_step"),
                         )
-                        line_total = unit_price * qty
+                        if not is_valid_inventory_price(unit_price):
+                            raise Exception(
+                                f"{r['item_name']} does not have a valid configured price."
+                            )
                         uniform_lines.append({
                             "inventory_item_id": item_id,
                             "item_name": r["item_name"],
                             "size_label": stored_size,
                             "unit_price": unit_price,
                             "quantity": qty,
-                            "line_total": line_total,
+                            "line_total": unit_price * qty,
                         })
                         continue
 
-                    available = int(r['stock_total'] or 0) - int(r['reserved_qty'] or 0)
+                    available = int(r["stock_total"] or 0) - int(r["reserved_qty"] or 0)
                     if qty > available:
                         raise Exception(f"Not enough overall stock for: {r['item_name']}")
 
+                    size_id = None
                     if stored_size:
                         cursor_tx.execute("""
                             SELECT size_id, stock_total, reserved_qty
@@ -2440,40 +2533,95 @@ def student_reservation():
                             WHERE item_id = %s AND size_label = %s
                             FOR UPDATE
                         """, (item_id, stored_size))
-                        s_row = cursor_tx.fetchone()
-                        if s_row:
-                            s_available = int(s_row['stock_total'] or 0) - int(s_row['reserved_qty'] or 0)
-                            if qty > s_available:
-                                raise Exception(f"Not enough stock for {r['item_name']} (Size: {stored_size})")
-                            
+                        size_row = cursor_tx.fetchone()
+                        if size_row:
+                            size_available = (
+                                int(size_row["stock_total"] or 0)
+                                - int(size_row["reserved_qty"] or 0)
+                            )
+                            if qty > size_available:
+                                raise Exception(
+                                    f"Not enough stock for {r['item_name']} (Size: {stored_size})"
+                                )
+                            size_id = size_row["size_id"]
+
+                    unit_price = base_price
+                    book_lines.append({
+                        "item_id": item_id,
+                        "qty": qty,
+                        "size_label": stored_size,
+                        "size_id": size_id,
+                        "unit_price": unit_price,
+                        "line_total": unit_price * qty,
+                    })
+
+                if book_lines and payment_first_enabled():
+                    reservation_ids = create_payment_first_reservations(
+                        cursor_tx,
+                        book_lines=book_lines,
+                        student_user_id=student_user_id,
+                        branch_id=branch_id,
+                        student_grade=student_grade,
+                        reserved_by_user_id=reserved_by_user_id,
+                        enrollment_id=target_enrollment_id,
+                    )
+                    reservation_id = reservation_ids[-1]
+                elif book_lines:
+                    cursor_tx.execute("""
+                        INSERT INTO reservations (
+                            student_user_id, branch_id, student_grade_level,
+                            status, reserved_by_user_id, enrollment_id
+                        )
+                        VALUES (%s, %s, %s, 'RESERVED', %s, %s)
+                        RETURNING reservation_id
+                    """, (
+                        student_user_id,
+                        branch_id,
+                        student_grade,
+                        reserved_by_user_id,
+                        target_enrollment_id,
+                    ))
+                    reservation_id = cursor_tx.fetchone()["reservation_id"]
+                    reservation_ids = [reservation_id]
+
+                    for line in book_lines:
+                        cursor_tx.execute("""
+                            UPDATE inventory_items
+                            SET reserved_qty = reserved_qty + %s
+                            WHERE item_id = %s AND branch_id = %s
+                              AND stock_total - reserved_qty >= %s
+                        """, (
+                            line["qty"], line["item_id"], branch_id, line["qty"]
+                        ))
+                        if cursor_tx.rowcount != 1:
+                            raise Exception("Inventory changed while placing the reservation.")
+
+                        if line["size_id"] is not None:
                             cursor_tx.execute("""
                                 UPDATE inventory_item_sizes
                                 SET reserved_qty = reserved_qty + %s
                                 WHERE size_id = %s
-                            """, (qty, s_row['size_id']))
+                                  AND stock_total - reserved_qty >= %s
+                            """, (line["qty"], line["size_id"], line["qty"]))
+                            if cursor_tx.rowcount != 1:
+                                raise Exception(
+                                    "Size inventory changed while placing the reservation."
+                                )
 
-                    cursor_tx.execute("""
-                        UPDATE inventory_items
-                        SET reserved_qty = reserved_qty + %s
-                        WHERE item_id = %s AND branch_id = %s
-                    """, (qty, item_id, branch_id))
-
-                    unit_price = float(r['price'] or 0)
-                    line_total = unit_price * qty
-
-                    # Books / stocked items → reservations
-                    cursor_tx.execute("""
-                        INSERT INTO reservations (student_user_id, branch_id, student_grade_level, status, reserved_by_user_id, enrollment_id)
-                        VALUES (%s, %s, %s, 'RESERVED', %s, %s)
-                        RETURNING reservation_id
-                    """, (student_user_id, branch_id, student_grade, reserved_by_user_id, target_enrollment_id))
-                    reservation_id = cursor_tx.fetchone()['reservation_id']
-                    reservation_ids.append(reservation_id)
-
-                    cursor_tx.execute("""
-                        INSERT INTO reservation_items (reservation_id, item_id, qty, size_label, unit_price, line_total)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                    """, (reservation_id, item_id, qty, stored_size, unit_price, line_total))
+                        cursor_tx.execute("""
+                            INSERT INTO reservation_items (
+                                reservation_id, item_id, qty, size_label,
+                                unit_price, line_total
+                            )
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                        """, (
+                            reservation_id,
+                            line["item_id"],
+                            line["qty"],
+                            line["size_label"],
+                            line["unit_price"],
+                            line["line_total"],
+                        ))
 
                 uniform_order_number = None
                 if uniform_lines:
@@ -2521,12 +2669,15 @@ def student_reservation():
 
                 db_tx.commit()
                 
-                # Redirect back to the same page with success_id to avoid form re-submission
-                last_id = reservation_ids[-1] if reservation_ids else 0
-                success_url = url_for("student.student_reservation", enrollment_id=target_enrollment_id)
+                # Redirect back with every separately-created book reservation.
+                success_url = url_for(
+                    "student.student_reservation",
+                    enrollment_id=target_enrollment_id,
+                    category=category_filter,
+                )
                 sep = "&" if "?" in success_url else "?"
-                if last_id:
-                    success_url += f"{sep}success_id={last_id}"
+                if reservation_ids:
+                    success_url += f"{sep}success_ids={','.join(map(str, reservation_ids))}"
                     sep = "&"
                 if uniform_order_number:
                     success_url += f"{sep}uo={uniform_order_number}"
@@ -2546,34 +2697,49 @@ def student_reservation():
                 cursor_tx.close()
                 db_tx.close()
 
-        # If success_id or uo was provided, fetch all details to show in the success modal on the same page
+        # Fetch all newly-created reservations for the in-page confirmation.
+        success_ids_raw = request.args.get("success_ids", "")
         success_id = request.args.get("success_id")
+        if success_id and not success_ids_raw:
+            success_ids_raw = success_id
+        try:
+            success_ids = sorted({
+                int(value) for value in success_ids_raw.split(",")
+                if value.strip()
+            })
+        except ValueError:
+            success_ids = []
+        if len(success_ids) > 50:
+            success_ids = []
         uo_num = request.args.get("uo")
 
-        if success_id or uo_num:
+        if success_ids or uo_num:
             try:
                 combined_items = []
                 ref_parts = []
                 created_at = None
 
-                if success_id:
+                if success_ids:
                     cursor.execute("""
                         SELECT r.reservation_id, r.status, r.created_at
                         FROM reservations r
-                        WHERE r.reservation_id = %s 
+                        WHERE r.reservation_id = ANY(%s)
                           AND (r.student_user_id = %s OR r.reserved_by_user_id = %s)
-                        LIMIT 1
-                    """, (success_id, student_user_id, reserved_by_user_id))
-                    res_row = cursor.fetchone()
-                    if res_row:
-                        created_at = res_row["created_at"]
-                        ref_parts.append(f"#{res_row['reservation_id']}")
+                        ORDER BY r.reservation_id
+                    """, (success_ids, student_user_id, reserved_by_user_id))
+                    res_rows = cursor.fetchall() or []
+                    authorized_ids = [row["reservation_id"] for row in res_rows]
+                    if len(authorized_ids) == len(success_ids):
+                        created_at = res_rows[0]["created_at"] if res_rows else None
+                        ref_parts.extend(f"#{value}" for value in authorized_ids)
                         cursor.execute("""
-                            SELECT ii.item_name, ri.qty, ri.size_label, ri.unit_price, ri.line_total
+                            SELECT ri.reservation_id, ii.item_name, ri.qty,
+                                   ri.size_label, ri.unit_price, ri.line_total
                             FROM reservation_items ri
                             JOIN inventory_items ii ON ii.item_id = ri.item_id
-                            WHERE ri.reservation_id = %s
-                        """, (success_id,))
+                            WHERE ri.reservation_id = ANY(%s)
+                            ORDER BY ri.reservation_id
+                        """, (authorized_ids,))
                         for item in cursor.fetchall():
                             combined_items.append(dict(item))
 
@@ -2603,7 +2769,8 @@ def student_reservation():
                         "ref_id": " & ".join(ref_parts),
                         "created_at": created_at,
                         "reserved_items": combined_items,
-                        "total": total_amount
+                        "total": total_amount,
+                        "payment_first": payment_first_enabled() and bool(success_ids),
                     }
             except Exception as e:
                 logger.error(f"Error fetching success data: {e}")
@@ -2660,7 +2827,7 @@ def student_reservations_list():
             LEFT JOIN reservation_items ri ON ri.reservation_id = r.reservation_id
             LEFT JOIN inventory_items ii ON ii.item_id = ri.item_id
             WHERE r.student_user_id = %s AND r.branch_id = %s
-              AND UPPER(COALESCE(r.status, '')) NOT IN ('CANCELLED', 'REJECTED')
+              AND UPPER(COALESCE(r.status, '')) <> 'REJECTED'
               AND EXISTS (
                   SELECT 1 FROM reservation_items ri2
                   JOIN inventory_items ii2 ON ii2.item_id = ri2.item_id
@@ -2671,6 +2838,18 @@ def student_reservations_list():
             ORDER BY r.created_at DESC
         """, (student_user_id, branch_id))
         rows = list(cur.fetchall() or [])
+        if payment_first_schema_ready(cur) and rows:
+            cur.execute(
+                """SELECT reservation_id, inventory_policy
+                   FROM reservations WHERE reservation_id = ANY(%s)""",
+                ([row["ref_id"] for row in rows],),
+            )
+            policies = {
+                row["reservation_id"]: row.get("inventory_policy")
+                for row in (cur.fetchall() or [])
+            }
+            for row in rows:
+                row["inventory_policy"] = policies.get(row["ref_id"])
 
         # Uniform pre-orders (cashier Uniform Orders tracking)
         cur.execute("""
@@ -2716,6 +2895,93 @@ def student_reservations_list():
         conn.close()
 
     return render_template("student_reservations_list.html", rows=rows)
+
+@student_bp.route("/reservations/<int:reservation_id>/cancel", methods=["POST"])
+def cancel_reservation(reservation_id):
+    role = session.get("role")
+    if role not in ("student", "parent"):
+        return redirect(url_for("auth.login"))
+
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id") if role == "student" else None
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    redirect_endpoint = (
+        "student.student_reservations_list"
+        if role == "student"
+        else "parent.parent_reservations_list"
+    )
+    try:
+        if role == "parent":
+            cur.execute(
+                """
+                SELECT r.branch_id
+                FROM reservations r
+                LEFT JOIN users u ON u.user_id = r.student_user_id
+                LEFT JOIN student_accounts sa ON sa.username = u.username
+                JOIN parent_student ps
+                  ON ps.student_id = COALESCE(r.enrollment_id, sa.enrollment_id)
+                WHERE r.reservation_id = %s AND ps.parent_id = %s
+                """,
+                (reservation_id, user_id),
+            )
+            authorized = cur.fetchone()
+            if not authorized:
+                raise ReservationSecurityError("Reservation not found or access denied.")
+            branch_id = authorized["branch_id"]
+
+        reservation = lock_reservation_for_cancellation(
+            cur, reservation_id, branch_id
+        )
+        enrollment_id = reservation.get("resolved_enrollment_id")
+        if role == "student":
+            if (
+                reservation.get("student_user_id") != user_id
+                and enrollment_id != session.get("enrollment_id")
+            ):
+                raise ReservationSecurityError("Reservation not found or access denied.")
+        else:
+            cur.execute(
+                """
+                SELECT 1 FROM parent_student
+                WHERE parent_id = %s AND student_id = %s
+                """,
+                (user_id, enrollment_id),
+            )
+            if not cur.fetchone():
+                raise ReservationSecurityError("Reservation not found or access denied.")
+
+        released_hold = cancel_inventory(
+            cur, reservation, release_reserved_inventory
+        )
+        cur.execute(
+            """
+            UPDATE reservations
+            SET status = 'CANCELLED', cancelled_at = NOW()
+            WHERE reservation_id = %s AND branch_id = %s AND status = 'RESERVED'
+            """,
+            (reservation_id, branch_id),
+        )
+        if cur.rowcount != 1:
+            raise ReservationSecurityError("Reservation was already cancelled or changed.")
+        conn.commit()
+        flash(
+            "Reservation cancelled. Reserved copies are available again."
+            if released_hold
+            else "Unpaid reservation cancelled. No inventory was held.",
+            "success",
+        )
+    except ReservationSecurityError as exc:
+        conn.rollback()
+        flash(str(exc), "error")
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect(url_for(redirect_endpoint))
 
 @student_bp.route("/reservation/success/<int:reservation_id>")
 def student_reservation_success(reservation_id):
