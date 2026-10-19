@@ -847,17 +847,22 @@ def inject_branch_admin_notifications():
             
             # 2. Grade Approval Alerts (pending_admin)
             cursor.execute("""
-                SELECT r.*, sub.name AS subject_name, g.name AS grade_level_name, s.section_name, reg.full_name AS registrar_name
+                SELECT r.*, sub.name AS subject_name, g.name AS grade_level_name,
+                       s.section_name, reg.full_name AS registrar_name,
+                       COUNT(*) OVER() AS pending_total
                 FROM grade_submission_requests r
                 JOIN subjects sub ON r.subject_id = sub.subject_id
                 JOIN sections s ON r.section_id = s.section_id
                 JOIN grade_levels g ON s.grade_level_id = g.id
+                JOIN school_years sy ON sy.year_id = r.year_id AND sy.branch_id = r.branch_id
                 LEFT JOIN users reg ON r.registrar_approved_by = reg.user_id
-                WHERE r.branch_id = %s AND r.status = 'pending_admin'
+                WHERE r.branch_id = %s AND r.status = 'pending_admin' AND sy.is_active = TRUE
                 ORDER BY r.registrar_approved_at DESC
                 LIMIT 10
             """, (branch_id,))
-            for req in cursor.fetchall():
+            grade_requests = cursor.fetchall()
+            grade_approval_count = int(grade_requests[0]['pending_total']) if grade_requests else 0
+            for req in grade_requests:
                 alerts.append({
                     'title': 'Grade Approval Needed',
                     'message': f"{req['subject_name']} ({req['grade_level_name']} - {req['section_name']}) verified by {req['registrar_name'] or 'Registrar'}. Pending your approval.",
@@ -867,14 +872,15 @@ def inject_branch_admin_notifications():
                 })
 
             unread_count = len(alerts)
-            return dict(branch_global_notifs=alerts, branch_unread_count=unread_count)
+            return dict(branch_global_notifs=alerts, branch_unread_count=unread_count,
+                        branch_grade_approval_count=grade_approval_count)
         except Exception as e:
             print(f"Error in Branch Admin context processor: {e}")
-            return dict(branch_global_notifs=[], branch_unread_count=0)
+            return dict(branch_global_notifs=[], branch_unread_count=0, branch_grade_approval_count=0)
         finally:
             cursor.close()
             db.close()
-    return dict(branch_global_notifs=[], branch_unread_count=0)
+    return dict(branch_global_notifs=[], branch_unread_count=0, branch_grade_approval_count=0)
 
 
 @app.context_processor

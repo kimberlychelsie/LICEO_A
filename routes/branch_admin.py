@@ -15,6 +15,7 @@ import time
 from cloudinary_helper import upload_announcement_photo
 from utils.send_email import send_email
 from utils.parent_sync import sync_user_parent_links
+from utils.grade_approval_history import record_grade_history
 
 branch_admin_bp = Blueprint("branch_admin", __name__)
 
@@ -3889,53 +3890,99 @@ def branch_admin_grade_approval():
         year_row = cur.fetchone()
         year_id = year_row["year_id"] if year_row else 0
 
-        # Fetch all grade levels
-        cur.execute("SELECT id, name FROM grade_levels ORDER BY display_order, id")
+        cur.execute("""
+            SELECT MIN(g.id) AS id, MIN(g.name) AS name
+            FROM sections s
+            JOIN grade_levels g ON g.id = s.grade_level_id
+            WHERE s.branch_id = %s AND s.year_id = %s
+            GROUP BY LOWER(TRIM(g.name))
+            ORDER BY MIN(CASE LOWER(TRIM(g.name))
+                WHEN 'nursery' THEN 0
+                WHEN 'kinder' THEN 1
+                WHEN 'grade 1' THEN 2
+                WHEN 'grade 2' THEN 3
+                WHEN 'grade 3' THEN 4
+                WHEN 'grade 4' THEN 5
+                WHEN 'grade 5' THEN 6
+                WHEN 'grade 6' THEN 7
+                WHEN 'grade 7' THEN 8
+                WHEN 'grade 8' THEN 9
+                WHEN 'grade 9' THEN 10
+                WHEN 'grade 10' THEN 11
+                WHEN 'grade 11' THEN 12
+                WHEN 'grade 12' THEN 13
+                ELSE 99
+            END), MIN(g.name), MIN(g.id)
+        """, (branch_id, year_id))
         grade_levels = cur.fetchall() or []
 
-        # Get selected filters
         selected_grade_id = request.args.get("grade_level_id", type=int)
         selected_section_id = request.args.get("section_id", type=int)
         selected_period = request.args.get("period")
+        selected_teacher_id = request.args.get("teacher_id", type=int)
 
-        # Auto-select based on pending requests if filters are not provided
         if not selected_grade_id or not selected_period:
             cur.execute("""
-                SELECT s.grade_level_id, r.grading_period 
+                SELECT s.grade_level_id, r.grading_period
                 FROM grade_submission_requests r
                 JOIN sections s ON r.section_id = s.section_id
                 WHERE r.branch_id = %s AND r.year_id = %s AND r.status = 'pending_admin'
-                ORDER BY r.submitted_at DESC LIMIT 1
+                ORDER BY r.registrar_approved_at DESC NULLS LAST, r.id DESC LIMIT 1
             """, (branch_id, year_id))
             pending_req = cur.fetchone()
-
             if pending_req:
-                if not selected_grade_id:
-                    selected_grade_id = pending_req['grade_level_id']
-                if not selected_period:
-                    selected_period = pending_req['grading_period']
+                selected_grade_id = selected_grade_id or pending_req["grade_level_id"]
+                selected_period = selected_period or pending_req["grading_period"]
 
-        # Fallback to Nursery and 1st period
-        if not selected_grade_id:
+        selected_grade_name = None
+        if selected_grade_id:
+            cur.execute("""
+                SELECT g.name
+                FROM sections s
+                JOIN grade_levels g ON g.id = s.grade_level_id
+                WHERE s.branch_id = %s AND s.year_id = %s AND s.grade_level_id = %s
+                LIMIT 1
+            """, (branch_id, year_id, selected_grade_id))
+            selected_grade = cur.fetchone()
+            selected_grade_name = selected_grade["name"] if selected_grade else None
+
+        if not selected_grade_name:
             nursery = next((g for g in grade_levels if "nursery" in g["name"].lower()), None)
-            if nursery:
-                selected_grade_id = nursery["id"]
-            elif grade_levels:
-                selected_grade_id = grade_levels[0]["id"]
-                
+            selected_grade = nursery or (grade_levels[0] if grade_levels else None)
+            if selected_grade:
+                selected_grade_id = selected_grade["id"]
+                selected_grade_name = selected_grade["name"]
+
+        if selected_grade_name:
+            canonical_grade = next((g for g in grade_levels if g["name"].strip().lower() == selected_grade_name.strip().lower()), None)
+            if canonical_grade:
+                selected_grade_id = canonical_grade["id"]
         if not selected_period:
             selected_period = "1st"
 
-        # Fetch sections for selected grade level
         cur.execute("""
             SELECT s.section_id, s.section_name
             FROM sections s
-            WHERE s.branch_id = %s AND s.year_id = %s AND s.grade_level_id = %s
-            ORDER BY s.section_name
-        """, (branch_id, year_id, selected_grade_id))
+            JOIN grade_levels g ON g.id = s.grade_level_id
+            WHERE s.branch_id = %s AND s.year_id = %s
+              AND LOWER(TRIM(g.name)) = LOWER(TRIM(%s))
+            ORDER BY s.section_name, s.section_id
+        """, (branch_id, year_id, selected_grade_name))
         sections = cur.fetchall() or []
+        if selected_section_id not in {section["section_id"] for section in sections}:
+            selected_section_id = None
 
-        # Query grade submission requests
+        cur.execute("""
+            SELECT DISTINCT u.user_id, u.full_name
+            FROM grade_submission_requests r
+            JOIN users u ON u.user_id = r.submitted_by
+            WHERE r.branch_id = %s AND r.year_id = %s
+            ORDER BY u.full_name, u.user_id
+        """, (branch_id, year_id))
+        teachers = cur.fetchall() or []
+        if selected_teacher_id not in {teacher["user_id"] for teacher in teachers}:
+            selected_teacher_id = None
+
         query = """
             SELECT r.id, r.section_id, r.subject_id, r.grading_period, r.status,
                    r.submitted_at, r.registrar_approved_at, r.rejection_remarks,
@@ -3947,29 +3994,30 @@ def branch_admin_grade_approval():
             JOIN subjects sub ON r.subject_id = sub.subject_id
             LEFT JOIN users u ON r.submitted_by = u.user_id
             LEFT JOIN users reg ON r.registrar_approved_by = reg.user_id
-            WHERE r.branch_id = %s AND r.year_id = %s AND s.grade_level_id = %s
+            WHERE r.branch_id = %s AND r.year_id = %s
+              AND LOWER(TRIM(g.name)) = LOWER(TRIM(%s))
         """
-        params = [branch_id, year_id, selected_grade_id]
-
+        params = [branch_id, year_id, selected_grade_name]
         if selected_section_id:
             query += " AND r.section_id = %s"
             params.append(selected_section_id)
-
         if selected_period:
             query += " AND r.grading_period = %s"
             params.append(selected_period)
+        if selected_teacher_id:
+            query += " AND r.submitted_by = %s"
+            params.append(selected_teacher_id)
 
-        query += " ORDER BY r.submitted_at DESC, s.section_name, sub.name"
+        query += " ORDER BY r.registrar_approved_at DESC NULLS LAST, r.submitted_at DESC, r.id DESC"
         cur.execute(query, params)
         submissions = cur.fetchall() or []
 
-        return render_template("branch_admin_grade_approval.html",
-            grade_levels=grade_levels,
-            sections=sections,
-            submissions=submissions,
-            selected_grade_id=selected_grade_id,
-            selected_section_id=selected_section_id,
-            selected_period=selected_period
+        return render_template(
+            "branch_admin_grade_approval.html",
+            grade_levels=grade_levels, sections=sections, teachers=teachers,
+            submissions=submissions, selected_grade_id=selected_grade_id,
+            selected_section_id=selected_section_id, selected_period=selected_period,
+            selected_teacher_id=selected_teacher_id,
         )
     finally:
         cur.close()
@@ -3994,6 +4042,11 @@ def branch_admin_approve_grade_request(req_id):
                 rejection_remarks = NULL
             WHERE id = %s AND branch_id = %s AND status = 'pending_admin'
         """, (user_id, req_id, branch_id))
+        if cur.rowcount:
+            record_grade_history(
+                cur, req_id, 'admin_approved', 'pending_admin',
+                'approved_for_posting', user_id, 'branch_admin'
+            )
         db.commit()
         flash("Grade submission approved for posting! The teacher can now publish these grades.", "success")
     except Exception as e:
@@ -4020,6 +4073,12 @@ def branch_admin_reject_grade_request(req_id):
     cur = db.cursor()
     try:
         cur.execute("""
+            SELECT status FROM grade_submission_requests
+            WHERE id = %s AND branch_id = %s
+            FOR UPDATE
+        """, (req_id, branch_id))
+        current = cur.fetchone()
+        cur.execute("""
             UPDATE grade_submission_requests
             SET status = 'rejected',
                 rejected_by = %s,
@@ -4027,6 +4086,11 @@ def branch_admin_reject_grade_request(req_id):
                 rejection_remarks = %s
             WHERE id = %s AND branch_id = %s
         """, (user_id, remarks, req_id, branch_id))
+        if current and cur.rowcount:
+            record_grade_history(
+                cur, req_id, 'returned', current[0], 'rejected',
+                user_id, 'branch_admin', remarks
+            )
         db.commit()
         flash("Grade submission rejected and returned to Teacher with remarks.", "info")
     except Exception as e:

@@ -22,6 +22,7 @@ import zipfile
 from werkzeug.utils import secure_filename
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
+from utils.grade_approval_history import fetch_grade_history, record_grade_history
 
 try:
     import pytesseract
@@ -4737,17 +4738,20 @@ def class_record(section_id, subject_id):
         cur.execute("""
             SELECT 1 FROM section_teachers st
             JOIN sections s ON st.section_id = s.section_id
-            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
-        """, (user_id, section_id, subject_id, year_id))
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s
+              AND s.branch_id=%s AND s.year_id=%s
+        """, (user_id, section_id, subject_id, branch_id, year_id))
         if not cur.fetchone():
             flash("Unauthorized or assignment not found.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
         # Section/subject context (with year check)
         cur.execute("""
-            SELECT s.section_name, g.name AS grade_level_name, sub.name AS subject_name
+            SELECT s.section_name, g.name AS grade_level_name, sub.name AS subject_name,
+                   y.label AS school_year_label
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN school_years y ON y.year_id = s.year_id
             JOIN subjects sub ON sub.subject_id = %s
             WHERE s.section_id = %s AND s.year_id = %s
         """, (subject_id, section_id, year_id))
@@ -4805,11 +4809,43 @@ def class_record(section_id, subject_id):
         else:
             # Fetch grade submission request status for this class record
             cur.execute("""
-                SELECT status, rejection_remarks, submitted_at, registrar_approved_at, admin_approved_at
-                FROM grade_submission_requests
-                WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
-            """, (section_id, subject_id, period, year_id))
+                SELECT r.*, submitter.full_name AS submitted_by_name,
+                       registrar.full_name AS registrar_name,
+                       admin.full_name AS admin_name,
+                       rejector.full_name AS rejected_by_name, rejector.role AS rejected_by_role
+                FROM grade_submission_requests r
+                LEFT JOIN users submitter ON submitter.user_id = r.submitted_by
+                LEFT JOIN users registrar ON registrar.user_id = r.registrar_approved_by
+                LEFT JOIN users admin ON admin.user_id = r.admin_approved_by
+                LEFT JOIN users rejector ON rejector.user_id = r.rejected_by
+                WHERE r.section_id=%s AND r.subject_id=%s AND r.grading_period=%s
+                  AND r.branch_id=%s AND r.year_id=%s
+            """, (section_id, subject_id, period, branch_id, year_id))
             submission_req = cur.fetchone() or {'status': 'draft', 'rejection_remarks': None}
+            approval_history, approval_history_enabled = fetch_grade_history(
+                cur, submission_req.get('id')
+            )
+            approval_history_is_legacy = False
+            if not approval_history and submission_req.get('id'):
+                legacy_events = (
+                    ('submitted', 'teacher', 'submitted_by_name', 'submitted_at', None),
+                    ('registrar_approved', 'registrar', 'registrar_name', 'registrar_approved_at', None),
+                    ('admin_approved', 'branch_admin', 'admin_name', 'admin_approved_at', None),
+                    ('returned', submission_req.get('rejected_by_role') or 'reviewer',
+                     'rejected_by_name', 'rejected_at', submission_req.get('rejection_remarks')),
+                )
+                for event_type, actor_role, actor_key, time_key, remarks in legacy_events:
+                    created_at = submission_req.get(time_key)
+                    if created_at:
+                        approval_history.append({
+                            'event_type': event_type,
+                            'actor_role': actor_role,
+                            'actor_name': submission_req.get(actor_key),
+                            'created_at': created_at,
+                            'remarks': remarks,
+                        })
+                approval_history.sort(key=lambda event: event['created_at'])
+                approval_history_is_legacy = bool(approval_history)
 
             _, weights, records = _compute_period_grades(
                 cur, user_id, branch_id, section_id, subject_id, period, year_id
@@ -4888,6 +4924,9 @@ def class_record(section_id, subject_id):
             monthly_exam_count=monthly_exam_count,
             exam_count=exam_count,
             submission_req=submission_req,
+            approval_history=approval_history if period != 'final' else [],
+            approval_history_enabled=approval_history_enabled if period != 'final' else False,
+            approval_history_is_legacy=approval_history_is_legacy if period != 'final' else False,
             grading_periods=['1st', '2nd', '3rd', 'final'])
     finally:
         cur.close()
@@ -6545,6 +6584,13 @@ def teacher_submit_grades(section_id, subject_id, period):
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
         cur.execute("""
+            SELECT id, status FROM grade_submission_requests
+            WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+            FOR UPDATE
+        """, (section_id, subject_id, period, year_id))
+        previous_request = cur.fetchone()
+
+        cur.execute("""
             INSERT INTO grade_submission_requests
                 (section_id, subject_id, grading_period, year_id, branch_id, status, submitted_by, submitted_at, rejection_remarks)
             VALUES (%s, %s, %s, %s, %s, 'pending_registrar', %s, NOW(), NULL)
@@ -6554,7 +6600,14 @@ def teacher_submit_grades(section_id, subject_id, period):
                 submitted_by = EXCLUDED.submitted_by,
                 submitted_at = NOW(),
                 rejection_remarks = NULL
+            RETURNING id
         """, (section_id, subject_id, period, year_id, branch_id, user_id))
+        request_id = cur.fetchone()['id']
+        record_grade_history(
+            cur, request_id, 'submitted',
+            previous_request['status'] if previous_request else 'draft',
+            'pending_registrar', user_id, 'teacher'
+        )
         db.commit()
         flash(f"Class record for {period} Grading has been submitted to the Registrar for review.", "success")
     except Exception as e:
@@ -6592,7 +6645,7 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
             return redirect(url_for("teacher.teacher_dashboard"))
 
         cur.execute("""
-            SELECT status FROM grade_submission_requests
+            SELECT id, status FROM grade_submission_requests
             WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
         """, (section_id, subject_id, period, year_id))
         req = cur.fetchone()
@@ -6604,12 +6657,16 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
             flash(f"Cannot cancel submission: Current status is '{req['status']}'. Only pending submissions can be cancelled.", "error")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
+        cancel_remarks = 'Submission cancelled by teacher for editing.'
         cur.execute("""
             UPDATE grade_submission_requests
-            SET status = 'draft',
-                rejection_remarks = 'Submission cancelled by teacher for editing.'
+            SET status = 'draft', rejection_remarks = %s
             WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
-        """, (section_id, subject_id, period, year_id))
+        """, (cancel_remarks, section_id, subject_id, period, year_id))
+        record_grade_history(
+            cur, req['id'], 'cancelled', req['status'], 'draft',
+            user_id, 'teacher', cancel_remarks
+        )
         db.commit()
         flash(f"Submission for {period} Grading has been cancelled. The class record is now editable again.", "success")
     except Exception as e:
@@ -6648,7 +6705,7 @@ def teacher_post_grades(section_id, subject_id, period):
 
         # Check approval status
         cur.execute("""
-            SELECT status FROM grade_submission_requests
+            SELECT id, status FROM grade_submission_requests
             WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
         """, (section_id, subject_id, period, year_id))
         req = cur.fetchone()
@@ -6678,6 +6735,10 @@ def teacher_post_grades(section_id, subject_id, period):
             SET status = 'posted'
             WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
         """, (section_id, subject_id, period, year_id))
+        record_grade_history(
+            cur, req['id'], 'posted', 'approved_for_posting', 'posted',
+            user_id, 'teacher'
+        )
 
         db.commit()
         flash(f"Grades for {period} Grading have been posted to the Student Portal!", "success")
