@@ -1690,6 +1690,55 @@ def _get_active_school_year(cur, branch_id):
         return row[0]
     return row["year_id"]
 
+
+def _ordinal_term_name(number):
+    if 10 <= number % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th")
+    return f"{number}{suffix}"
+
+
+def _term_number(period_name):
+    match = re.fullmatch(r"(\d+)(?:st|nd|rd|th)", (period_name or "").strip(), re.IGNORECASE)
+    return int(match.group(1)) if match else None
+
+
+def _validate_academic_terms(terms):
+    """Validate inclusive calendar ranges without enabling them for grading."""
+    errors = {}
+    seen_numbers = {}
+    parsed = []
+    for index, term in enumerate(terms):
+        name = (term.get("period_name") or "").strip().lower()
+        label = f"{name} Term" if name else f"Term {index + 1}"
+        number = _term_number(name)
+        if not number or name != _ordinal_term_name(number):
+            errors[index] = "This term has an invalid term number."
+            continue
+        if number in seen_numbers:
+            errors[index] = f"{label} is duplicated."
+            errors.setdefault(seen_numbers[number], f"{label} is duplicated.")
+        else:
+            seen_numbers[number] = index
+        try:
+            start_date = datetime.strptime(term.get("start_date") or "", "%Y-%m-%d").date()
+            end_date = datetime.strptime(term.get("end_date") or "", "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            errors.setdefault(index, "Select both a valid start date and end date.")
+            continue
+        if start_date > end_date:
+            errors.setdefault(index, "Start date must be on or before the end date.")
+            continue
+        parsed.append((index, start_date, end_date, label))
+
+    for left_pos, (left_index, left_start, left_end, left_label) in enumerate(parsed):
+        for right_index, right_start, right_end, right_label in parsed[left_pos + 1:]:
+            if left_start <= right_end and right_start <= left_end:
+                errors.setdefault(left_index, f"Dates overlap with {right_label}.")
+                errors.setdefault(right_index, f"Dates overlap with {left_label}.")
+    return errors
+
 # =======================
 # ACADEMIC CALENDAR (Branch Admin)
 # =======================
@@ -1711,33 +1760,116 @@ def branch_admin_academic_calendar():
         today = datetime.now().date()
         today_str = today.strftime('%Y-%m-%d')
 
+        form_terms = None
+        validation_errors = {}
         if request.method == "POST":
-            action = request.form.get("action")
+            action = "delete_term" if request.form.get("delete_term_id") else request.form.get("action")
+
+            if action == "delete_term":
+                try:
+                    term_id = int(request.form.get("delete_term_id") or 0)
+                    cur.execute("SELECT pg_advisory_xact_lock(%s, %s)", (int(branch_id), int(year_id)))
+                    cur.execute("""
+                        SELECT id, period_name FROM grading_period_ranges
+                        WHERE id = %s AND branch_id = %s AND year_id = %s
+                        FOR UPDATE
+                    """, (term_id, branch_id, year_id))
+                    term_row = cur.fetchone()
+                    if not term_row:
+                        raise ValueError("Term was not found for this branch and school year.")
+
+                    period_name = term_row["period_name"]
+                    term_label = f"{period_name} Term"
+                    cur.execute("""
+                        SELECT EXISTS (
+                            SELECT 1 FROM activities WHERE branch_id = %s AND year_id = %s AND grading_period = %s
+                            UNION ALL SELECT 1 FROM exams WHERE branch_id = %s AND year_id = %s AND grading_period = %s
+                            UNION ALL SELECT 1 FROM grade_submission_requests WHERE branch_id = %s AND year_id = %s AND grading_period = %s
+                            UNION ALL SELECT 1 FROM grading_weights gw JOIN sections gw_sec ON gw_sec.section_id = gw.section_id
+                                WHERE gw_sec.branch_id = %s AND gw_sec.year_id = %s AND gw.grading_period = %s
+                            UNION ALL SELECT 1 FROM attendance_scores WHERE year_id = %s AND grading_period = %s
+                            UNION ALL SELECT 1 FROM participation_scores WHERE year_id = %s AND grading_period = %s
+                            UNION ALL SELECT 1 FROM posted_grades WHERE year_id = %s AND grading_period = %s
+                            UNION ALL SELECT 1 FROM finalized_grades WHERE year_id = %s AND grading_period = %s
+                            UNION ALL SELECT 1 FROM grade_overrides WHERE year_id = %s AND grading_period = %s
+                            UNION ALL SELECT 1 FROM schedules WHERE branch_id = %s AND year_id = %s AND term_name IN (%s, %s)
+                            UNION ALL SELECT 1 FROM section_teachers st JOIN sections sec ON sec.section_id = st.section_id
+                                WHERE sec.branch_id = %s AND st.year_id = %s AND st.term_name IN (%s, %s)
+                            UNION ALL SELECT 1 FROM shs_elective_offerings WHERE branch_id = %s AND year_id = %s AND term_name IN (%s, %s)
+                            UNION ALL SELECT 1 FROM shs_selection_periods WHERE branch_id = %s AND year_id = %s AND term_name IN (%s, %s)
+                        ) AS is_referenced
+                    """, (
+                        branch_id, year_id, period_name, branch_id, year_id, period_name,
+                        branch_id, year_id, period_name, branch_id, year_id, period_name,
+                        year_id, period_name, year_id, period_name, year_id, period_name,
+                        year_id, period_name, year_id, period_name,
+                        branch_id, year_id, period_name, term_label,
+                        branch_id, year_id, period_name, term_label,
+                        branch_id, year_id, period_name, term_label,
+                        branch_id, year_id, period_name, term_label,
+                    ))
+                    reference_row = cur.fetchone()
+                    if reference_row and reference_row["is_referenced"]:
+                        raise ValueError(f"{term_label} cannot be deleted because it is already referenced by academic or grading records.")
+
+                    cur.execute("""
+                        DELETE FROM grading_period_ranges
+                        WHERE id = %s AND branch_id = %s AND year_id = %s
+                    """, (term_id, branch_id, year_id))
+                    db.commit()
+                    flash(f"{term_label} was deleted.", "success")
+                    return redirect(url_for("branch_admin.branch_admin_academic_calendar"))
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Unable to delete term: {str(e)}", "error")
+                    return redirect(url_for("branch_admin.branch_admin_academic_calendar"))
 
             if action == "save_ranges":
-                periods = ["1st", "2nd", "3rd"]
                 try:
-                    for p in periods:
-                        start_d_str = request.form.get(f"{p}_start")
-                        end_d_str   = request.form.get(f"{p}_end")
-                        
-                        if start_d_str and end_d_str:
-                            # Server-side validation: end date at least 1.5 months (approx 45 days) after start
-                            s_dt = datetime.strptime(start_d_str, '%Y-%m-%d')
-                            e_dt = datetime.strptime(end_d_str, '%Y-%m-%d')
-                            if (e_dt - s_dt).days < 45:
-                                period_labels = {"1st": "1st Term", "2nd": "2nd Term", "3rd": "3rd Term"}
-                                flash(f"For {period_labels.get(p, p)}: Period must be at least 45 days (1.5 months).", "error")
-                                continue
+                    ids = request.form.getlist("term_id[]")
+                    names = request.form.getlist("period_name[]")
+                    starts = request.form.getlist("start_date[]")
+                    ends = request.form.getlist("end_date[]")
+                    if not (ids and len(ids) == len(names) == len(starts) == len(ends)):
+                        raise ValueError("Invalid academic term form submission.")
+                    form_terms = [
+                        {"id": ids[i].strip(), "period_name": names[i].strip().lower(),
+                         "start_date": starts[i].strip(), "end_date": ends[i].strip()}
+                        for i in range(len(names))
+                    ]
+                    validation_errors = _validate_academic_terms(form_terms)
 
-                            cur.execute("""
-                                INSERT INTO grading_period_ranges (branch_id, year_id, period_name, start_date, end_date)
-                                VALUES (%s, %s, %s, %s, %s)
-                                ON CONFLICT (branch_id, year_id, period_name) DO UPDATE
-                                SET start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date
-                            """, (branch_id, year_id, p, start_d_str, end_d_str))
-                    db.commit()
-                    flash("Terms updated successfully.", "success")
+                    cur.execute("SELECT pg_advisory_xact_lock(%s, %s)", (int(branch_id), int(year_id)))
+                    cur.execute("""
+                        SELECT id, period_name FROM grading_period_ranges
+                        WHERE branch_id = %s AND year_id = %s FOR UPDATE
+                    """, (branch_id, year_id))
+                    existing = {str(row["id"]): row for row in (cur.fetchall() or [])}
+                    submitted_ids = {term["id"] for term in form_terms if term["id"]}
+                    if submitted_ids != set(existing.keys()):
+                        raise ValueError("One or more terms do not belong to this branch and school year.")
+                    for index, term in enumerate(form_terms):
+                        if term["id"] and existing[term["id"]]["period_name"].lower() != term["period_name"]:
+                            validation_errors[index] = "Existing terms cannot be renumbered."
+
+                    if validation_errors:
+                        db.rollback()
+                    else:
+                        for term in form_terms:
+                            if term["id"]:
+                                cur.execute("""
+                                    UPDATE grading_period_ranges SET start_date = %s, end_date = %s
+                                    WHERE id = %s AND branch_id = %s AND year_id = %s
+                                """, (term["start_date"], term["end_date"], int(term["id"]), branch_id, year_id))
+                            else:
+                                cur.execute("""
+                                    INSERT INTO grading_period_ranges
+                                        (branch_id, year_id, period_name, start_date, end_date)
+                                    VALUES (%s, %s, %s, %s, %s)
+                                """, (branch_id, year_id, term["period_name"], term["start_date"], term["end_date"]))
+                        db.commit()
+                        flash("Terms updated successfully.", "success")
+                        return redirect(url_for("branch_admin.branch_admin_academic_calendar"))
                 except Exception as e:
                     db.rollback()
                     flash(f"Error saving ranges: {str(e)}", "error")
@@ -1746,15 +1878,31 @@ def branch_admin_academic_calendar():
 
         # Fetch ranges
         cur.execute("""
-            SELECT period_name, start_date, end_date 
-            FROM grading_period_ranges 
+            SELECT id, period_name, start_date, end_date
+            FROM grading_period_ranges
             WHERE branch_id = %s AND year_id = %s
         """, (branch_id, year_id))
         ranges_raw = cur.fetchall() or []
-        ranges = {r["period_name"]: r for r in ranges_raw}
+        ranges_raw.sort(key=lambda row: (row["start_date"], _term_number(row["period_name"]) or 999999, row["id"]))
+        if form_terms is not None:
+            terms = form_terms
+        else:
+            terms = [{
+                "id": str(row["id"]), "period_name": row["period_name"],
+                "start_date": row["start_date"].isoformat(), "end_date": row["end_date"].isoformat()
+            } for row in ranges_raw]
+            existing_numbers = [_term_number(term["period_name"]) for term in terms]
+            next_number = max([number for number in existing_numbers if number] or [0]) + 1
+            while len(terms) < 3:
+                terms.append({"id": "", "period_name": _ordinal_term_name(next_number), "start_date": "", "end_date": ""})
+                next_number += 1
 
-        return render_template("branch_admin_academic_calendar.html", 
-                               ranges=ranges, today=today_str)
+        used_numbers = [_term_number(term["period_name"]) for term in terms]
+        next_term_name = _ordinal_term_name(max([number for number in used_numbers if number] or [0]) + 1)
+
+        return render_template("branch_admin_academic_calendar.html",
+                               terms=terms, validation_errors=validation_errors,
+                               next_term_name=next_term_name, today=today_str)
 
     finally:
         cur.close()

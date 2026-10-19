@@ -321,6 +321,22 @@
             width: 100%;
         }
     }
+
+    .term-inline-error {
+        color: #b91c1c;
+        font-size: .875rem;
+        font-weight: 600;
+        margin: 12px 0 0;
+    }
+
+    #add-term-btn { margin: 0 0 20px; }
+
+    .term-header-actions { display: flex; align-items: center; gap: 10px; }
+    .delete-term-btn {
+        border: 1px solid #fecaca; background: #fff1f2; color: #b91c1c;
+        border-radius: 10px; padding: 8px 12px; font-weight: 700; cursor: pointer;
+    }
+    .delete-term-btn:hover { background: #fee2e2; }
 </style>
 
 <div class="ma-container">
@@ -336,16 +352,19 @@
     <div style="max-width: 1200px; margin: 0 auto;">
         <form method="POST" id="grading-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="save_ranges">
 
-            {% for p in ['1st', '2nd', '3rd'] %}
-            <div class="term-card">
+            <div id="terms-container">
+            {% for term in terms %}
+            <div class="term-card" data-term-card data-term-name="{{ term.period_name }}">
+                <input type="hidden" name="term_id[]" value="{{ term.id }}">
+                <input type="hidden" name="period_name[]" value="{{ term.period_name }}">
                 <!-- Term Header -->
                 <div class="term-card-header">
                     <div class="term-card-title">
-                        <i class="fas fa-calendar-week"></i> {{ PERIOD_LABELS[p] }}
+                        <i class="fas fa-calendar-week"></i> <span data-term-label>{{ term.period_name }} Term</span>
                     </div>
-                    {% if p in ranges and ranges[p].start_date %}
+                    <div class="term-header-actions">
+                    {% if term.start_date %}
                     <span class="status-pill status-set">
                         <i class="fas fa-check-circle"></i> Set
                     </span>
@@ -354,6 +373,20 @@
                         <i class="fas fa-clock"></i> Not Set
                     </span>
                     {% endif %}
+                    {% if term.id %}
+                    <button type="submit" class="delete-term-btn" name="delete_term_id" value="{{ term.id }}"
+                        data-saved-term="true" formnovalidate
+                        onclick="return confirm('WARNING: Delete {{ term.period_name }} Term? This cannot be undone. Deletion will be blocked if the term is referenced by grades, submissions, schedules, or other academic records.');"
+                        aria-label="Delete {{ term.period_name }} Term">
+                        <i class="fas fa-trash-alt"></i> Delete
+                    </button>
+                    {% else %}
+                    <button type="button" class="delete-term-btn" data-remove-unsaved="true"
+                        aria-label="Remove unsaved {{ term.period_name }} Term">
+                        <i class="fas fa-trash-alt"></i> Delete
+                    </button>
+                    {% endif %}
+                    </div>
                 </div>
 
                 <!-- Term Dates Grid -->
@@ -361,33 +394,33 @@
                     <div class="date-grid">
                         <div class="form-node">
                             <label><i class="fas fa-play-circle" style="color:#16a34a;"></i> Start Date</label>
-                            <input type="hidden" name="{{ p }}_start" id="{{ p }}_start_val"
-                                value="{{ ranges[p].start_date if p in ranges else '' }}">
                             <div class="input-wrapper">
-                                <input type="text" class="grading-date-picker" id="{{ p }}_start_display"
-                                    data-target="{{ p }}_start_val" placeholder="Select Start Date"
-                                    value="{{ ranges[p].start_date.strftime('%Y-%m-%d') if p in ranges and ranges[p].start_date else '' }}"
-                                    readonly>
+                                <input type="date" class="grading-date-picker" name="start_date[]" data-allow-future
+                                    value="{{ term.start_date }}" aria-label="{{ term.period_name }} Term start date" required>
                                 <i class="fas fa-calendar-day input-icon"></i>
                             </div>
                         </div>
 
                         <div class="form-node">
                             <label><i class="fas fa-flag-checkered" style="color:#dc2626;"></i> End Date</label>
-                            <input type="hidden" name="{{ p }}_end" id="{{ p }}_end_val"
-                                value="{{ ranges[p].end_date if p in ranges else '' }}">
                             <div class="input-wrapper">
-                                <input type="text" class="grading-date-picker" id="{{ p }}_end_display"
-                                    data-target="{{ p }}_end_val" placeholder="Select End Date"
-                                    value="{{ ranges[p].end_date.strftime('%Y-%m-%d') if p in ranges and ranges[p].end_date else '' }}"
-                                    readonly>
+                                <input type="date" class="grading-date-picker" name="end_date[]" data-allow-future
+                                    value="{{ term.end_date }}" aria-label="{{ term.period_name }} Term end date" required>
                                 <i class="fas fa-calendar-day input-icon"></i>
                             </div>
                         </div>
                     </div>
+                    <p class="term-inline-error" data-term-error {% if not validation_errors.get(loop.index0) %}hidden{% endif %}>
+                        {{ validation_errors.get(loop.index0, '') }}
+                    </p>
                 </div>
             </div>
             {% endfor %}
+            </div>
+
+            <button type="button" id="add-term-btn" class="btn-prem btn-ghost" data-next-term="{{ next_term_name }}">
+                <i class="fas fa-plus-circle"></i> Add Another Term
+            </button>
 
             <!-- Actions Footer -->
             <div class="form-actions">
@@ -395,7 +428,7 @@
                     onclick="return confirm('Are you sure you want to reset all date inputs?')">
                     <i class="fas fa-undo"></i> Reset Date Term
                 </button>
-                <button type="submit" id="save-terms-btn" class="btn-prem btn-primary-action" disabled>
+                <button type="submit" id="save-terms-btn" name="action" value="save_ranges" class="btn-prem btn-primary-action" disabled>
                     <i class="fas fa-save"></i> Save Academic Terms
                 </button>
             </div>
@@ -403,10 +436,9 @@
     </div>
 </div>
 
-<!-- Flatpickr JS -->
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script>
+<script type="application/x-disabled">
     document.addEventListener('DOMContentLoaded', function () {
+        return; // Replaced by the dynamic term editor below.
 
         // ── Grading Period Date Pickers ─────────────────────────────────────────
         document.querySelectorAll('.grading-date-picker').forEach(function (el) {
@@ -493,5 +525,70 @@
             }
         });
     });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('grading-form');
+    const container = document.getElementById('terms-container');
+    const saveBtn = document.getElementById('save-terms-btn');
+    const addBtn = document.getElementById('add-term-btn');
+    const markChanged = () => { saveBtn.disabled = false; saveBtn.style.opacity = '1'; saveBtn.style.cursor = 'pointer'; };
+    const showError = (card, message) => {
+        const error = card.querySelector('[data-term-error]');
+        error.textContent = message || '';
+        error.hidden = !message;
+    };
+    form.addEventListener('input', markChanged);
+    form.addEventListener('reset', markChanged);
+    addBtn.addEventListener('click', function () {
+        const name = addBtn.dataset.nextTerm;
+        const number = parseInt(name, 10) + 1;
+        const suffix = (number % 100 >= 10 && number % 100 <= 20) ? 'th' : ({1: 'st', 2: 'nd', 3: 'rd'}[number % 10] || 'th');
+        container.insertAdjacentHTML('beforeend', `
+            <div class="term-card" data-term-card data-term-name="${name}">
+                <input type="hidden" name="term_id[]" value=""><input type="hidden" name="period_name[]" value="${name}">
+                <div class="term-card-header"><div class="term-card-title"><i class="fas fa-calendar-week"></i> ${name} Term</div><div class="term-header-actions"><span class="status-pill status-unset"><i class="fas fa-clock"></i> Not Set</span><button type="button" class="delete-term-btn" data-remove-unsaved="true"><i class="fas fa-trash-alt"></i> Delete</button></div></div>
+                <div class="term-card-body"><div class="date-grid">
+                    <div class="form-node"><label>Start Date</label><div class="input-wrapper"><input type="date" class="grading-date-picker" name="start_date[]" data-allow-future required><i class="fas fa-calendar-day input-icon"></i></div></div>
+                    <div class="form-node"><label>End Date</label><div class="input-wrapper"><input type="date" class="grading-date-picker" name="end_date[]" data-allow-future required><i class="fas fa-calendar-day input-icon"></i></div></div>
+                </div><p class="term-inline-error" data-term-error hidden></p></div>
+            </div>`);
+        addBtn.dataset.nextTerm = `${number}${suffix}`;
+        markChanged();
+    });
+    container.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-remove-unsaved]');
+        if (!button) return;
+        const card = button.closest('[data-term-card]');
+        const label = card.dataset.termName + ' Term';
+        if (confirm(`WARNING: Remove unsaved ${label}? Any dates entered for it will be lost.`)) {
+            addBtn.dataset.nextTerm = card.dataset.termName;
+            card.remove();
+            markChanged();
+        }
+    });
+    form.addEventListener('submit', function (event) {
+        if (event.submitter && event.submitter.dataset.savedTerm) return;
+        const ranges = Array.from(container.querySelectorAll('[data-term-card]')).map((card) => ({
+            card, label: card.dataset.termName + ' Term',
+            start: card.querySelector('[name="start_date[]"]').value,
+            end: card.querySelector('[name="end_date[]"]').value
+        }));
+        ranges.forEach((range) => showError(range.card, ''));
+        let invalid = false;
+        ranges.forEach((range) => {
+            if (!range.start || !range.end) { showError(range.card, 'Select both a start date and end date.'); invalid = true; }
+            else if (range.start > range.end) { showError(range.card, 'Start date must be on or before the end date.'); invalid = true; }
+        });
+        for (let i = 0; i < ranges.length; i += 1) for (let j = i + 1; j < ranges.length; j += 1) {
+            if (ranges[i].start && ranges[j].start && ranges[i].start <= ranges[j].end && ranges[j].start <= ranges[i].end) {
+                showError(ranges[i].card, `Dates overlap with ${ranges[j].label}.`);
+                showError(ranges[j].card, `Dates overlap with ${ranges[i].label}.`);
+                invalid = true;
+            }
+        }
+        if (invalid) event.preventDefault();
+    });
+});
 </script>
 {% endblock %}

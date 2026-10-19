@@ -3060,6 +3060,7 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                 SELECT DISTINCT period_name, start_date
                 FROM grading_period_ranges
                 WHERE branch_id = %s AND year_id = %s
+                  AND period_name IN ('1st', '2nd', '3rd')
                   AND start_date <= %s
                 ORDER BY start_date
             """, (branch_id_for_query, enr["year_id"], today))
@@ -3071,6 +3072,7 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
             cur.execute("""
                 SELECT period_name FROM grading_period_ranges
                 WHERE branch_id = %s AND year_id = %s
+                  AND period_name IN ('1st', '2nd', '3rd')
                   AND start_date <= %s AND end_date >= %s
                 ORDER BY start_date LIMIT 1
             """, (branch_id_for_query, enr["year_id"], today, today))
@@ -3246,6 +3248,7 @@ def student_my_schedule():
             cur.execute("""
                 SELECT period_name FROM grading_period_ranges
                 WHERE branch_id = %s AND year_id = %s
+                  AND period_name IN ('1st', '2nd', '3rd')
                   AND start_date <= %s AND end_date >= %s
                 ORDER BY start_date LIMIT 1
             """, (effective_branch_id, active_year_id, today, today))
@@ -4079,4 +4082,3 @@ def student_clearance():
     finally:
         cur.close()
         db.close()
-

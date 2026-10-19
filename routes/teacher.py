@@ -117,6 +117,7 @@ def _get_grading_period_by_date(cur, branch_id, year_id, date_obj):
         SELECT period_name 
         FROM grading_period_ranges 
         WHERE branch_id = %s AND year_id = %s 
+          AND period_name IN ('1st', '2nd', '3rd')
           AND %s BETWEEN start_date AND end_date
         LIMIT 1
     """, (branch_id, year_id, date_obj))
@@ -688,6 +689,7 @@ def teacher_dashboard():
         cur.execute("""
             SELECT period_name FROM grading_period_ranges
             WHERE branch_id = %s AND year_id = %s AND %s BETWEEN start_date AND end_date
+              AND period_name IN ('1st', '2nd', '3rd')
             ORDER BY start_date LIMIT 1
         """, (branch_id, year_id, today))
         active_term_row = cur.fetchone()
@@ -8019,6 +8021,7 @@ def teacher_schedules():
         cursor.execute("""
             SELECT period_name FROM grading_period_ranges
             WHERE branch_id = %s AND year_id = ANY(%s)
+              AND period_name IN ('1st', '2nd', '3rd')
               AND start_date <= %s AND end_date >= %s
             ORDER BY start_date LIMIT 1
         """, (branch_id, active_years, today, today))

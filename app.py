@@ -463,6 +463,7 @@ def inject_student_subjects():
                     cursor.execute("""
                         SELECT period_name FROM grading_period_ranges
                         WHERE branch_id = %s AND year_id = %s
+                          AND period_name IN ('1st', '2nd', '3rd')
                           AND start_date <= %s AND end_date >= %s
                         ORDER BY start_date LIMIT 1
                     """, (enr['branch_id'], active_year_id, today, today))
@@ -787,6 +788,7 @@ def inject_active_term_label():
                 SELECT period_name FROM grading_period_ranges
                 WHERE branch_id = %s
                   AND year_id = (SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1)
+                  AND period_name IN ('1st', '2nd', '3rd')
                   AND start_date <= %s AND end_date >= %s
                 ORDER BY start_date LIMIT 1
             """, (branch_id, branch_id, today, today))
@@ -1169,4 +1171,3 @@ def inject_active_school_year():
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
-

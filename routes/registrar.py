@@ -4460,6 +4460,7 @@ def registrar_subjects():
     cursor.execute("""
         SELECT period_name FROM grading_period_ranges
         WHERE branch_id = %s AND year_id = (SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1)
+          AND period_name IN ('1st', '2nd', '3rd')
           AND start_date <= %s AND end_date >= %s
         ORDER BY start_date LIMIT 1
     """, (branch_id, branch_id, today, today))
