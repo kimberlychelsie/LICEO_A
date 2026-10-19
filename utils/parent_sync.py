@@ -41,6 +41,19 @@ def sync_user_parent_links(db, cursor, user_id):
     if primary_role not in user_roles_list:
         user_roles_list.insert(0, primary_role)
 
+    # Student logins also have a shadow row in users for shared foreign keys.
+    # They are never eligible for automatic Parent Mode based on email.
+    if primary_role == "student":
+        if session.get("user_id") == user_id:
+            session["roles"] = ["student"]
+            session["role"] = "student"
+        return {
+            "links_count": 0,
+            "has_parent_role": False,
+            "user_roles": ["student"],
+            "switched_role": "student",
+        }
+
     # Define generic system/admin email prefixes that should NEVER be auto-linked to student accounts
     BLOCKED_SYSTEM_EMAIL_PREFIXES = (
         'admin@', 'superadmin@', 'registrar@', 'info@', 'system@', 'support@', 'test@', 'demo@'

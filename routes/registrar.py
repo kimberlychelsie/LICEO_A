@@ -1002,8 +1002,14 @@ def registrar_enrollments():
                    (EXISTS (
                        SELECT 1 FROM parent_student ps2
                        JOIN enrollments e3 ON e3.enrollment_id = ps2.student_id
+                       JOIN users pu ON pu.user_id = ps2.parent_id
                        WHERE e3.branch_enrollment_no = e.branch_enrollment_no 
                          AND e3.branch_id = e.branch_id
+                         AND pu.branch_id = e.branch_id
+                         AND (
+                             pu.role = 'parent'
+                             OR (pu.role <> 'student' AND COALESCE(pu.user_roles, '') ILIKE '%%"parent"%%')
+                         )
                    )) AS has_parent_account,
                    (SELECT u.username 
                     FROM parent_student ps2
@@ -1011,25 +1017,41 @@ def registrar_enrollments():
                     JOIN users u ON u.user_id = ps2.parent_id
                     WHERE e3.branch_enrollment_no = e.branch_enrollment_no 
                       AND e3.branch_id = e.branch_id
+                      AND u.branch_id = e.branch_id
+                      AND (
+                          u.role = 'parent'
+                          OR (u.role <> 'student' AND COALESCE(u.user_roles, '') ILIKE '%%"parent"%%')
+                      )
                     LIMIT 1) AS parent_username,
                    -- Correlated subquery: find existing parent account from a sibling enrollment
                    -- with the same guardian_email (returns at most 1 row — no duplication)
                    (SELECT ps2.parent_id
                     FROM enrollments e2
                     JOIN parent_student ps2 ON ps2.student_id = e2.enrollment_id
-                    WHERE e.guardian_email IS NOT NULL
-                      AND LOWER(e2.guardian_email) = LOWER(e.guardian_email)
+                    JOIN users u2 ON u2.user_id = ps2.parent_id
+                    WHERE NULLIF(TRIM(e.guardian_email), '') IS NOT NULL
+                      AND LOWER(TRIM(e2.guardian_email)) = LOWER(TRIM(e.guardian_email))
                       AND e2.enrollment_id <> e.enrollment_id
                       AND e2.branch_id = e.branch_id
+                      AND u2.branch_id = e.branch_id
+                      AND (
+                          u2.role = 'parent'
+                          OR (u2.role <> 'student' AND COALESCE(u2.user_roles, '') ILIKE '%%"parent"%%')
+                      )
                     LIMIT 1) AS existing_parent_user_id,
                    (SELECT u2.username
                     FROM enrollments e2
                     JOIN parent_student ps2 ON ps2.student_id = e2.enrollment_id
                     JOIN users u2           ON u2.user_id     = ps2.parent_id
-                    WHERE e.guardian_email IS NOT NULL
-                      AND LOWER(e2.guardian_email) = LOWER(e.guardian_email)
+                    WHERE NULLIF(TRIM(e.guardian_email), '') IS NOT NULL
+                      AND LOWER(TRIM(e2.guardian_email)) = LOWER(TRIM(e.guardian_email))
                       AND e2.enrollment_id <> e.enrollment_id
                       AND e2.branch_id = e.branch_id
+                      AND u2.branch_id = e.branch_id
+                      AND (
+                          u2.role = 'parent'
+                          OR (u2.role <> 'student' AND COALESCE(u2.user_roles, '') ILIKE '%%"parent"%%')
+                      )
                     LIMIT 1) AS existing_parent_username
             FROM enrollments e
             LEFT JOIN sections s          ON s.section_id    = e.section_id
@@ -2471,7 +2493,12 @@ def create_parent_account(enrollment_id):
             SELECT ps.*, u.username FROM parent_student ps
             JOIN users u ON ps.parent_id = u.user_id
             WHERE ps.student_id = %s
-        """, (enrollment_id,))
+              AND u.branch_id = %s
+              AND (
+                  u.role = 'parent'
+                  OR (u.role <> 'student' AND COALESCE(u.user_roles, '') ILIKE '%%"parent"%%')
+              )
+        """, (enrollment_id, branch_id))
         existing_parent = cursor.fetchone()
 
         if existing_parent:
@@ -2490,11 +2517,16 @@ def create_parent_account(enrollment_id):
                 FROM enrollments e_sib
                 JOIN parent_student ps_sib ON ps_sib.student_id = e_sib.enrollment_id
                 JOIN users u               ON u.user_id          = ps_sib.parent_id
-                WHERE LOWER(e_sib.guardian_email) = %s
+                WHERE LOWER(TRIM(e_sib.guardian_email)) = %s
                   AND e_sib.enrollment_id <> %s
                   AND e_sib.branch_id = %s
+                  AND u.branch_id = %s
+                  AND (
+                      u.role = 'parent'
+                      OR (u.role <> 'student' AND COALESCE(u.user_roles, '') ILIKE '%%"parent"%%')
+                  )
                 LIMIT 1
-            """, (guardian_email, enrollment_id, branch_id))
+            """, (guardian_email, enrollment_id, branch_id, branch_id))
             existing_by_email = cursor.fetchone()
             if existing_by_email:
                 cursor.execute("""
@@ -2687,11 +2719,16 @@ def link_parent_account(enrollment_id):
             FROM enrollments e_sib
             JOIN parent_student ps_sib ON ps_sib.student_id = e_sib.enrollment_id
             JOIN users u               ON u.user_id          = ps_sib.parent_id
-            WHERE LOWER(e_sib.guardian_email) = %s
+            WHERE LOWER(TRIM(e_sib.guardian_email)) = %s
               AND e_sib.enrollment_id <> %s
               AND e_sib.branch_id = %s
+              AND u.branch_id = %s
+              AND (
+                  u.role = 'parent'
+                  OR (u.role <> 'student' AND COALESCE(u.user_roles, '') ILIKE '%%"parent"%%')
+              )
             LIMIT 1
-        """, (guardian_email, enrollment_id, branch_id))
+        """, (guardian_email, enrollment_id, branch_id, branch_id))
         parent_user = cursor.fetchone()
 
         if not parent_user:

@@ -208,8 +208,15 @@ def get_db_connection():
                     cur.execute("""
                         SELECT u.user_id, u.user_roles, e.enrollment_id
                         FROM users u
-                        JOIN enrollments e ON LOWER(TRIM(u.email)) = LOWER(TRIM(e.guardian_email))
+                        JOIN enrollments e
+                          ON LOWER(TRIM(u.email)) = LOWER(TRIM(e.guardian_email))
+                         AND u.branch_id = e.branch_id
                         WHERE u.email IS NOT NULL AND TRIM(u.email) <> ''
+                          AND u.role <> 'student'
+                          AND LOWER(TRIM(u.email)) NOT LIKE ANY (
+                              ARRAY['admin@%%', 'superadmin@%%', 'registrar@%%', 'info@%%',
+                                    'system@%%', 'support@%%', 'test@%%', 'demo@%%']
+                          )
                     """)
                     matches = cur.fetchall()
                     for uid, ur_json, eid in matches:
@@ -233,6 +240,7 @@ def get_db_connection():
                         SELECT DISTINCT u.user_id, u.user_roles
                         FROM users u
                         JOIN parent_student ps ON u.user_id = ps.parent_id
+                        WHERE u.role <> 'student'
                     """)
                     ps_matches = cur.fetchall()
                     for uid, ur_json in ps_matches:

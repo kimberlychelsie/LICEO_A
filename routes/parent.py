@@ -44,16 +44,23 @@ def register():
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         try:
+            if not name or not email or not phone:
+                flash("Name, email, and phone number are required", "error")
+                return redirect(url_for("parent.register"))
+
             cursor.execute("SELECT 1 FROM users WHERE username=%s", (username,))
             if cursor.fetchone():
                 flash("Username already exists", "error")
                 return redirect(url_for("parent.register"))
 
             cursor.execute("""
-                INSERT INTO users (username, password, role, branch_id, require_password_change)
-                VALUES (%s, %s, 'parent', NULL, 1)
+                INSERT INTO users (
+                    username, password, role, branch_id, require_password_change,
+                    email, full_name, contact_number
+                )
+                VALUES (%s, %s, 'parent', NULL, 1, %s, %s, %s)
                 RETURNING user_id
-            """, (username, hashed_password))
+            """, (username, hashed_password, email.lower(), name, phone))
 
             user_id = cursor.fetchone()["user_id"]
             db.commit()
@@ -207,10 +214,28 @@ def link_child():
             branch_id_int = int(branch_id)
 
             cursor.execute("""
+                SELECT email, branch_id, role, enrollment_id
+                FROM users
+                WHERE user_id = %s
+                FOR UPDATE
+            """, (session.get("user_id"),))
+            parent_user = cursor.fetchone()
+            parent_email = (parent_user.get("email") or "").strip().lower() if parent_user else ""
+
+            if not parent_user or parent_user.get("role") != "parent" or not parent_email:
+                flash("A verified parent email is required before linking a child.", "error")
+                return redirect(url_for("parent.link_child"))
+
+            if parent_user.get("branch_id") is None or parent_user.get("branch_id") != branch_id_int:
+                flash("Only a registrar-verified parent account from the same branch can link this student.", "error")
+                return redirect(url_for("parent.link_child"))
+
+            cursor.execute("""
                 SELECT e.*
                 FROM enrollments e
                 LEFT JOIN school_years sy ON sy.year_id = e.year_id AND sy.branch_id = e.branch_id
                 WHERE e.branch_enrollment_no=%s AND e.branch_id=%s
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
                 ORDER BY COALESCE(sy.is_active, FALSE) DESC, e.year_id DESC NULLS LAST, e.created_at DESC
                 LIMIT 1
             """, (enrollment_no_int, branch_id_int))
@@ -221,6 +246,15 @@ def link_child():
                 return redirect(url_for("parent.link_child"))
 
             enrollment_id = enrollment["enrollment_id"] # Internal global ID
+            guardian_email = (enrollment.get("guardian_email") or "").strip().lower()
+
+            if parent_user.get("enrollment_id") == enrollment_id:
+                flash("A student account cannot be linked as its own parent.", "error")
+                return redirect(url_for("parent.link_child"))
+
+            if not guardian_email or guardian_email != parent_email:
+                flash("The account email does not match this student's guardian email.", "error")
+                return redirect(url_for("parent.link_child"))
 
             cursor.execute("""
                 SELECT 1 FROM parent_student
