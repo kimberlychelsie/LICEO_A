@@ -13,6 +13,12 @@ import json
 from extensions import limiter
 from routes.super_admin import log_audit_event
 from utils.parent_sync import sync_user_parent_links
+from utils.auth_sessions import (
+    AUTH_SESSION_KEY,
+    issue_auth_session,
+    revoke_auth_session,
+    revoke_current_auth_session,
+)
 
 auth_bp = Blueprint("auth", __name__)
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
@@ -106,6 +112,7 @@ def _activate_user_session(user, db, cursor, client_ip):
         
         # BLOCK LOGIN IF BRANCH IS INACTIVE (Except for Super Admin)
         if brow and not brow.get("is_active") and user["role"] != "super_admin":
+            session.clear()
             return None, "This branch is currently deactivated. Access is restricted."
 
         session["branch_name"] = brow["branch_name"] if brow else None
@@ -179,6 +186,9 @@ def _activate_user_session(user, db, cursor, client_ip):
                     session["branch_name"] = brow["branch_name"]
 
     # ── Force password change if required (session is already complete)
+    issue_auth_session(cursor, user["user_id"])
+    db.commit()
+
     if check_password_change_required(user):
         return url_for("auth.change_password"), None
 
@@ -475,6 +485,7 @@ def login():
                     next_url = session.get("next_url")
                     # ✅ set sessions properly + enrollment-based references
                     session.clear()
+                    session.permanent = True
                     session["user_id"] = student_user_id
                     session["student_account_id"] = student["account_id"]
                     session["username"] = student.get("username") or username
@@ -492,6 +503,7 @@ def login():
 
                         # BLOCK LOGIN IF BRANCH IS INACTIVE
                         if brow and not brow.get("is_active"):
+                            session.clear()
                             flash("This branch is currently deactivated. Access is restricted.", "error")
                             return redirect(url_for("auth.login"))
 
@@ -511,6 +523,10 @@ def login():
 
                     session["student_name"] = student_name
                     session["student_grade_level"] = student.get("grade_level")
+                    session["last_activity"] = time.time()
+
+                    issue_auth_session(cursor, student_user_id)
+                    db.commit()
 
                     if check_password_change_required(student, is_student=True):
                         return redirect(url_for("auth.change_password"))
@@ -652,6 +668,11 @@ def change_password():
                         WHERE user_id=%s
                     """, (hashed_password, session.get("user_id")))
 
+                revoke_auth_session(
+                    cursor,
+                    session.get(AUTH_SESSION_KEY),
+                    session.get("user_id"),
+                )
                 db.commit()
                 # Logout the user so they can try the new password
                 session.clear()
@@ -942,6 +963,13 @@ def reset_password(token):
 
 @auth_bp.route("/logout", methods=["GET", "POST"])
 def logout():
+    if not revoke_current_auth_session():
+        return render_template(
+            "error_page.html",
+            title="Unable to sign out",
+            message="Your session could not be revoked. Please try signing out again.",
+        ), 503
+
     session.clear()
     flash("You have been logged out successfully.", "info")
     resp = make_response(redirect(url_for("auth.login")))

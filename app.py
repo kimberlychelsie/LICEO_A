@@ -15,6 +15,10 @@ werkzeug.urls.url_encode = urlencode
 from routes import init_routes
 from db import is_branch_active, get_db_connection
 from utils.parent_sync import sync_user_parent_links
+from utils.auth_sessions import (
+    enforce_active_auth_session,
+    revoke_current_auth_session,
+)
 from routes.teacher import _get_active_school_year
 from flask import send_from_directory, make_response # Liceo LMS Flask Application Entry Point (Preserve Grade Level filter on student update)
 import psycopg2.extras
@@ -24,10 +28,25 @@ from flask_wtf.csrf import CSRFError
 from datetime import timedelta
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
+_is_production = bool(
+    os.getenv("FLASK_ENV") == "production" or os.getenv("RAILWAY_ENVIRONMENT")
+)
+_secret_key = os.getenv("SECRET_KEY")
+if _is_production and not _secret_key:
+    raise RuntimeError("SECRET_KEY must be configured in production.")
+app.secret_key = _secret_key or "liceo_secret_key_dev"
 
 app.config["SESSION_PERMANENT"] = True
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=24)
+app.config["AUTH_SESSION_ABSOLUTE_LIFETIME_SECONDS"] = int(
+    os.getenv("AUTH_SESSION_ABSOLUTE_LIFETIME_SECONDS", "86400")
+)
+app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"] = int(
+    os.getenv("AUTH_SESSION_IDLE_TIMEOUT_SECONDS", "3600")
+)
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
+    seconds=app.config["AUTH_SESSION_ABSOLUTE_LIFETIME_SECONDS"]
+)
+app.config["SESSION_REFRESH_EACH_REQUEST"] = True
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
@@ -138,8 +157,7 @@ app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('
 # Session cookie security (panel / security scan)
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-if os.getenv("FLASK_ENV") == "production" or os.getenv("RAILWAY_ENVIRONMENT"):
-    app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_SECURE"] = _is_production
 
 # Max upload size: 100MB total
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
@@ -216,7 +234,10 @@ def check_maintenance_and_session_timeout():
     # 1. Session Inactivity Timeout (1 hour = 3600s)
     if session.get("user_id") or session.get("role"):
         last_act = session.get("last_activity")
-        if last_act and (now - last_act > 3600):
+        if last_act and (
+            now - last_act > app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"]
+        ):
+            revoke_current_auth_session()
             session.clear()
             flash("Your session expired due to inactivity for security reasons.", "warning")
             return redirect(url_for("auth.login"))
@@ -243,6 +264,15 @@ def check_maintenance_and_session_timeout():
 @app.route("/maintenance")
 def maintenance_page():
     return render_template("maintenance.html"), 503
+
+
+@app.before_request
+def validate_server_auth_session():
+    if request.endpoint == "static":
+        return None
+    return enforce_active_auth_session(
+        idle_timeout_seconds=app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"]
+    )
 
 
 @app.before_request
@@ -1037,8 +1067,13 @@ def add_security_headers(response):
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     
-    # Do not cache dynamic HTML pages to secure the 'Back' button behavior
-    if "text/html" in response.headers.get("Content-Type", ""):
+    # Do not cache authenticated responses or dynamic HTML pages. This also
+    # prevents protected content from resurfacing through browser Back.
+    is_authenticated_response = bool(session.get("user_id"))
+    is_dynamic_html = "text/html" in response.headers.get("Content-Type", "")
+    if is_dynamic_html or (
+        is_authenticated_response and request.endpoint != "static"
+    ):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"

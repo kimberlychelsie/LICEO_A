@@ -2,8 +2,10 @@ from flask import Blueprint, render_template, request, redirect, session, flash,
 from db import get_db_connection
 from werkzeug.security import generate_password_hash
 import logging
+import time
 import psycopg2.extras
 from utils.payment_first_reservations import payment_first_schema_ready
+from utils.auth_sessions import issue_auth_session
 
 from decimal import Decimal
 from datetime import datetime
@@ -63,11 +65,18 @@ def register():
             """, (username, hashed_password, email.lower(), name, phone))
 
             user_id = cursor.fetchone()["user_id"]
-            db.commit()
 
+            session.clear()
+            session.permanent = True
+            issue_auth_session(cursor, user_id)
             session["user_id"] = user_id
             session["role"] = "parent"
+            session["roles"] = ["parent"]
             session["branch_id"] = None
+            session["username"] = username
+            session["full_name"] = name
+            session["last_activity"] = time.time()
+            db.commit()
 
             flash("Registration successful! Set your new password, then you can link your children.", "success")
             return redirect(url_for("auth.change_password"))
