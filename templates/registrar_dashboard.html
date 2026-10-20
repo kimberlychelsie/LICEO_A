@@ -1429,16 +1429,21 @@
                                             </div>
                                             {% endif %}
                                             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                            {% if enrollment.initial_payment_amount > 0 %}
+                                            <span style="font-size:.75rem; font-weight:800; color:#166534; background:#dcfce7; padding:6px 10px; border-radius:999px;">Cash paid: &#8369;{{ "{:,.2f}".format(enrollment.initial_payment_amount) }}</span>
+                                            {% else %}
+                                            <span style="font-size:.75rem; font-weight:800; color:#991b1b; background:#fee2e2; padding:6px 10px; border-radius:999px;">Awaiting Cashier payment</span>
+                                            {% endif %}
                                             <button name="action" value="approved"
                                                 class="btn btn-success action-btn-{{ enrollment.enrollment_id }}" {% if
-                                                (enrollment.documents and enrollment.documents | length> 0) or enrollment.identity_review_status == 'existing_student' %}disabled{%
+                                                (enrollment.documents and enrollment.documents | length> 0) or enrollment.identity_review_status == 'existing_student' or enrollment.initial_payment_amount <= 0 %}disabled{%
                                                 endif
                                                 %}
                                                 style="padding:8px 20px; font-weight:800; border-radius:10px;
                                                 border:none;
                                                 cursor:pointer; font-size:0.85rem; opacity:{% if enrollment.documents
                                                 and
-                                                enrollment.documents | length > 0 or enrollment.identity_review_status == 'existing_student' %}0.5{% else %}1{% endif %}; display:
+                                                enrollment.documents | length > 0 or enrollment.identity_review_status == 'existing_student' or enrollment.initial_payment_amount <= 0 %}0.5{% else %}1{% endif %}; display:
                                                 flex; align-items: center; gap: 6px;">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"

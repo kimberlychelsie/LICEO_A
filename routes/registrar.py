@@ -34,6 +34,27 @@ logger = logging.getLogger(__name__)
 
 registrar_bp = Blueprint("registrar", __name__)
 
+
+def _initial_enrollment_payment_amount(cursor, enrollment_id, branch_id, year_id):
+    """Return qualifying cash paid in the same enrollment scope."""
+    cursor.execute("""
+        SELECT COALESCE(SUM(p.amount), 0) AS amount
+        FROM payments p
+        JOIN billing b
+          ON b.bill_id = p.bill_id
+         AND b.enrollment_id = p.enrollment_id
+         AND b.branch_id = p.branch_id
+         AND b.year_id = p.year_id
+        WHERE p.enrollment_id = %s
+          AND p.branch_id = %s
+          AND p.year_id = %s
+          AND LOWER(COALESCE(p.payment_method, '')) = 'cash'
+          AND p.target_type IN ('general', 'tuition')
+          AND p.amount > 0
+    """, (enrollment_id, branch_id, year_id))
+    row = cursor.fetchone()
+    return row["amount"] if row and row.get("amount") is not None else 0
+
 def generate_password(length=8):
     characters = string.ascii_letters + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
@@ -648,6 +669,14 @@ def registrar_enrollments():
                         flash("Only pending applications in the active school year can be approved.", "error")
                         return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
 
+                    initial_payment = _initial_enrollment_payment_amount(
+                        cursor, enrollment_id, branch_id, active_year_id
+                    )
+                    if initial_payment <= 0:
+                        db.rollback()
+                        flash("Approval blocked: the Cashier must record an initial cash payment first.", "error")
+                        return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
+
                     from routes.student import validate_student_identity
                     approval_student_name = " ".join(filter(None, [
                         approval_enrollment.get("student_first_name"),
@@ -891,6 +920,21 @@ def registrar_enrollments():
                         e.student_last_name
                     ) AS student_name,
                    e.branch_enrollment_no AS display_no,
+                   COALESCE((
+                       SELECT SUM(p.amount)
+                       FROM payments p
+                       JOIN billing b
+                         ON b.bill_id = p.bill_id
+                        AND b.enrollment_id = p.enrollment_id
+                        AND b.branch_id = p.branch_id
+                        AND b.year_id = p.year_id
+                       WHERE p.enrollment_id = e.enrollment_id
+                         AND p.branch_id = e.branch_id
+                         AND p.year_id = e.year_id
+                         AND LOWER(COALESCE(p.payment_method, '')) = 'cash'
+                         AND p.target_type IN ('general', 'tuition')
+                         AND p.amount > 0
+                   ), 0) AS initial_payment_amount,
                    COALESCE(
                        json_agg(
                            json_build_object(
@@ -1836,6 +1880,10 @@ FROM enrollments e
         if not enrollment:
             flash("Enrollment not found.", "error")
             return redirect("/registrar/enrollments")
+
+        enrollment["initial_payment_amount"] = _initial_enrollment_payment_amount(
+            cursor, enrollment["enrollment_id"], enrollment["branch_id"], enrollment["year_id"]
+        )
 
         cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id = %s", (enrollment_id,))
         documents = cursor.fetchall()

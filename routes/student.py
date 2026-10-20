@@ -1738,7 +1738,22 @@ def track_enrollment():
                     branch_id_int = int(branch_id)
 
                 cursor.execute("""
-                    SELECT e.*, b.branch_name
+                    SELECT e.*, b.branch_name,
+                           COALESCE((
+                               SELECT SUM(p.amount)
+                               FROM payments p
+                               JOIN billing bl
+                                 ON bl.bill_id = p.bill_id
+                                AND bl.enrollment_id = p.enrollment_id
+                                AND bl.branch_id = p.branch_id
+                                AND bl.year_id = p.year_id
+                               WHERE p.enrollment_id = e.enrollment_id
+                                 AND p.branch_id = e.branch_id
+                                 AND p.year_id = e.year_id
+                                 AND LOWER(COALESCE(p.payment_method, '')) = 'cash'
+                                 AND p.target_type IN ('general', 'tuition')
+                                 AND p.amount > 0
+                           ), 0) AS initial_payment_amount
                     FROM enrollments e
                     JOIN branches b ON e.branch_id = b.branch_id
                     LEFT JOIN school_years sy ON sy.year_id = e.year_id AND sy.branch_id = e.branch_id

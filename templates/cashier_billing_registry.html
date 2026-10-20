@@ -617,6 +617,7 @@
                     <tr>
                         <th>Student &amp; ID</th>
                         <th>Grade Level</th>
+                        <th>Enrollment</th>
                         <th>Bill Status</th>
                         <th>Total Bill</th>
                         <th>Paid</th>
@@ -638,6 +639,13 @@
                             </div>
                         </td>
                         <td style="font-weight:600; color:var(--cashier-muted);">{{ e.grade_level }}</td>
+                        <td>
+                            {% if e.status == 'pending' %}
+                            <span class="badge-status badge-pending">Applicant</span>
+                            {% else %}
+                            <span class="badge-status badge-paid">{{ e.status|title }}</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if not e.bill_id %}
                             <span class="badge-status badge-none">No Bill</span>

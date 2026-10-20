@@ -371,7 +371,8 @@
         <a href="/registrar/enrollments" class="btn btn-outline">← Back to Roster</a>
         <div style="display:flex; gap:12px;">
             {% if enrollment.status == 'pending' and is_branch_active_status %}
-            <button form="enrollmentForm" name="action" value="approved" class="btn btn-success">✅ Approve
+            <button form="enrollmentForm" name="action" value="approved" class="btn btn-success"
+                {% if enrollment.initial_payment_amount <= 0 %}disabled title="Cashier payment is required first"{% endif %}>✅ Approve
                 Application</button>
             <button type="button" class="btn btn-danger" onclick="openRejectModal()">❌ Deny Application</button>
             {% endif %}

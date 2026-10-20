@@ -671,20 +671,13 @@ def billing_registry():
         # Grade levels for filter dropdown
         cursor.execute("""
             SELECT DISTINCT grade_level FROM enrollments
-            WHERE branch_id = %s AND year_id = %s AND status IN ('approved', 'enrolled')
+            WHERE branch_id = %s AND year_id = %s AND status IN ('pending', 'approved', 'enrolled')
             ORDER BY grade_level
         """, (session.get("branch_id"), active_year_id))
         grade_levels = [r["grade_level"] for r in cursor.fetchall()]
 
         if grade_filter_raw is None:
-            if "Nursery" in grade_levels:
-                grade_filter = "Nursery"
-            elif any("nursery" in g.lower() for g in grade_levels):
-                grade_filter = next(g for g in grade_levels if "nursery" in g.lower())
-            elif grade_levels:
-                grade_filter = grade_levels[0]
-            else:
-                grade_filter = "all"
+            grade_filter = "all"
         else:
             grade_filter = grade_filter_raw.strip()
 
@@ -706,7 +699,7 @@ def billing_registry():
               ON e.enrollment_id = sa.enrollment_id
             LEFT JOIN branches br
               ON e.branch_id = br.branch_id
-            WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
+            WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('pending', 'approved', 'enrolled')
         """
         params = [session.get("branch_id"), active_year_id]
 
@@ -771,7 +764,7 @@ def billing_registry():
         # Grade levels for filter dropdown
         cursor.execute("""
             SELECT DISTINCT grade_level FROM enrollments
-            WHERE branch_id = %s AND year_id = %s AND status IN ('approved', 'enrolled')
+            WHERE branch_id = %s AND year_id = %s AND status IN ('pending', 'approved', 'enrolled')
             ORDER BY grade_level
         """, (session.get("branch_id"), active_year_id))
         grade_levels = [r["grade_level"] for r in cursor.fetchall()]
@@ -946,8 +939,6 @@ def create_bill(enrollment_id):
 
         if request.method == "POST":
             tuition_fee = Decimal(request.form.get("tuition_fee", "0") or "0")
-            if tuition_fee > 20000:
-                tuition_fee = Decimal("20000")
 
             books_fee = Decimal(request.form.get("books_fee", "0") or "0")
             uniform_fee = Decimal(request.form.get("uniform_fee", "0") or "0")
@@ -1757,7 +1748,8 @@ def process_payment(bill_id):
                 e.student_middle_name,
                 e.student_last_name,
                 e.grade_level,
-                e.branch_enrollment_no
+                e.branch_enrollment_no,
+                e.status AS enrollment_status
             FROM billing b
             JOIN enrollments e
               ON b.enrollment_id = e.enrollment_id
@@ -1802,7 +1794,7 @@ def process_payment(bill_id):
         if request.method == "POST":
             # Serialize payment validation and insertion for this bill.
             cursor.execute("""
-                SELECT b.*
+                SELECT b.*, e.status AS enrollment_status
                 FROM billing b
                 JOIN enrollments e ON e.enrollment_id = b.enrollment_id
                 WHERE b.bill_id = %s AND e.branch_id = %s
@@ -1829,6 +1821,20 @@ def process_payment(bill_id):
                 "target_type",
                 "general"
             )
+
+            if bill.get("enrollment_status") == "pending":
+                if payment_method.lower() != "cash":
+                    message = "Initial enrollment payments must be recorded as cash."
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        return jsonify({"success": False, "error": message}), 400
+                    flash(message, "error")
+                    return redirect(url_for("cashier.view_bill", bill_id=bill_id))
+                if target_type not in ("general", "tuition"):
+                    message = "Use General or Tuition for an applicant's initial payment."
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        return jsonify({"success": False, "error": message}), 400
+                    flash(message, "error")
+                    return redirect(url_for("cashier.view_bill", bill_id=bill_id))
 
             target_id_str = request.form.get(
                 "target_id",

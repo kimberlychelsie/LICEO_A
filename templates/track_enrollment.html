@@ -628,7 +628,20 @@
         </div>
 
         <!-- Conditional Alerts -->
-        {% if enrollment.status == 'correction_requested' %}
+        {% if enrollment.status == 'pending' %}
+        <div class="alert-box {{ 'alert-approved' if enrollment.initial_payment_amount > 0 else 'alert-rejected' }}">
+            <div class="alert-header">
+                {{ 'Initial Payment Received' if enrollment.initial_payment_amount > 0 else 'Proceed to the Cashier' }}
+            </div>
+            <div class="alert-body">
+                {% if enrollment.initial_payment_amount > 0 %}
+                Your cash payment of &#8369;{{ "{:,.2f}".format(enrollment.initial_payment_amount) }} was recorded. Your application is now awaiting Registrar review.
+                {% else %}
+                Please visit the school Cashier and make any positive cash payment. Registrar approval and account creation will proceed only after payment is recorded.
+                {% endif %}
+            </div>
+        </div>
+        {% elif enrollment.status == 'correction_requested' %}
         <div class="alert-box alert-rejected">
             <div class="alert-header">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
