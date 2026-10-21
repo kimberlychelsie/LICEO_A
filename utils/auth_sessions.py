@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 AUTH_SESSION_KEY = "_auth_session_id"
 DEFAULT_ABSOLUTE_LIFETIME_SECONDS = 24 * 60 * 60
 DEFAULT_IDLE_TIMEOUT_SECONDS = 60 * 60
+DEFAULT_RETENTION_DAYS = 7
+DEFAULT_CLEANUP_BATCH_SIZE = 1000
+DEFAULT_CLEANUP_MAX_BATCHES = 100
 
 
 def _hash_session_id(session_id):
@@ -41,27 +44,31 @@ def issue_auth_session(cursor, user_id, absolute_lifetime_seconds=None):
     return raw_session_id
 
 
-def touch_auth_session(cursor, raw_session_id, user_id, idle_timeout_seconds):
+def touch_auth_session(
+    cursor, raw_session_id, user_id, idle_timeout_seconds, allow_idle_expired=False
+):
     """Validate and refresh one active session without extending its absolute expiry."""
     if not raw_session_id or not user_id:
         return False
 
+    idle_clause = "" if allow_idle_expired else """
+          AND last_seen_at >= NOW() - (%s * INTERVAL '1 second')
+    """
+    params = [_hash_session_id(raw_session_id), user_id]
+    if not allow_idle_expired:
+        params.append(int(idle_timeout_seconds))
     cursor.execute(
-        """
+        f"""
         UPDATE auth_sessions
         SET last_seen_at = NOW()
         WHERE session_id_hash = %s
           AND user_id = %s
           AND revoked_at IS NULL
           AND expires_at > NOW()
-          AND last_seen_at >= NOW() - (%s * INTERVAL '1 second')
+          {idle_clause}
         RETURNING session_id_hash
         """,
-        (
-            _hash_session_id(raw_session_id),
-            user_id,
-            int(idle_timeout_seconds),
-        ),
+        tuple(params),
     )
     return cursor.fetchone() is not None
 
@@ -81,6 +88,68 @@ def revoke_auth_session(cursor, raw_session_id, user_id):
         (_hash_session_id(raw_session_id), user_id),
     )
     return True
+
+
+def cleanup_auth_sessions(
+    db_factory=None,
+    retention_days=DEFAULT_RETENTION_DAYS,
+    batch_size=DEFAULT_CLEANUP_BATCH_SIZE,
+    max_batches=DEFAULT_CLEANUP_MAX_BATCHES,
+):
+    """Delete old terminal sessions in short, concurrency-safe transactions."""
+    retention_days = int(retention_days)
+    batch_size = int(batch_size)
+    max_batches = int(max_batches)
+    if retention_days < 0:
+        raise ValueError("retention_days must be zero or greater")
+    if not 1 <= batch_size <= 10000:
+        raise ValueError("batch_size must be between 1 and 10000")
+    if not 1 <= max_batches <= 10000:
+        raise ValueError("max_batches must be between 1 and 10000")
+
+    factory = db_factory or get_db_connection
+    db = factory()
+    cursor = db.cursor()
+    deleted = 0
+    batches = 0
+    try:
+        for _ in range(max_batches):
+            cursor.execute(
+                """
+                WITH doomed AS (
+                    SELECT session_id_hash
+                    FROM auth_sessions
+                    WHERE (
+                        revoked_at IS NOT NULL
+                        AND revoked_at < NOW() - (%s * INTERVAL '1 day')
+                    ) OR (
+                        revoked_at IS NULL
+                        AND expires_at < NOW() - (%s * INTERVAL '1 day')
+                    )
+                    ORDER BY COALESCE(revoked_at, expires_at), session_id_hash
+                    LIMIT %s
+                    FOR UPDATE SKIP LOCKED
+                )
+                DELETE FROM auth_sessions target
+                USING doomed
+                WHERE target.session_id_hash = doomed.session_id_hash
+                RETURNING target.session_id_hash
+                """,
+                (retention_days, retention_days, batch_size),
+            )
+            batch_deleted = len(cursor.fetchall())
+            db.commit()
+            deleted += batch_deleted
+            batches += 1
+            if batch_deleted < batch_size:
+                break
+        return {"deleted": deleted, "batches": batches}
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        cursor.close()
+        db.close()
 
 
 def revoke_current_auth_session(db_factory=None):
@@ -115,6 +184,7 @@ def enforce_active_auth_session(
     db_factory=None,
     idle_timeout_seconds=DEFAULT_IDLE_TIMEOUT_SECONDS,
     login_endpoint="auth.login",
+    allow_idle_expired=False,
 ):
     """Fail closed unless the authenticated cookie maps to an active server session."""
     user_id = session.get("user_id")
@@ -138,6 +208,7 @@ def enforce_active_auth_session(
             raw_session_id,
             user_id,
             idle_timeout_seconds,
+            allow_idle_expired=allow_idle_expired,
         )
         db.commit()
     except Exception:

@@ -67,7 +67,7 @@ def register():
             user_id = cursor.fetchone()["user_id"]
 
             session.clear()
-            session.permanent = True
+            session.permanent = False
             issue_auth_session(cursor, user_id)
             session["user_id"] = user_id
             session["role"] = "parent"

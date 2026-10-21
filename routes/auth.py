@@ -19,6 +19,7 @@ from utils.auth_sessions import (
     revoke_auth_session,
     revoke_current_auth_session,
 )
+from utils.assessment_resume import find_resumable_assessment_exam_id
 
 auth_bp = Blueprint("auth", __name__)
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
@@ -55,7 +56,7 @@ def _activate_user_session(user, db, cursor, client_ip):
     """Centralized helper to activate user session and determine redirect dashboard URL"""
     next_url = session.get("next_url")
     session.clear()
-    session.permanent = True
+    session.permanent = False
 
     session["user_id"]   = user["user_id"]
     session["role"]      = user["role"]
@@ -191,6 +192,13 @@ def _activate_user_session(user, db, cursor, client_ip):
 
     if check_password_change_required(user):
         return url_for("auth.change_password"), None
+
+    if role == "student":
+        resumable_exam_id = find_resumable_assessment_exam_id(
+            cursor, session.get("enrollment_id")
+        )
+        if resumable_exam_id:
+            return f"/student/exams/{resumable_exam_id}/take", None
 
     # ── Route to correct dashboard
     if role == "super_admin":
@@ -485,7 +493,7 @@ def login():
                     next_url = session.get("next_url")
                     # ✅ set sessions properly + enrollment-based references
                     session.clear()
-                    session.permanent = True
+                    session.permanent = False
                     session["user_id"] = student_user_id
                     session["student_account_id"] = student["account_id"]
                     session["username"] = student.get("username") or username
@@ -530,6 +538,15 @@ def login():
 
                     if check_password_change_required(student, is_student=True):
                         return redirect(url_for("auth.change_password"))
+
+                    resumable_exam_id = find_resumable_assessment_exam_id(
+                        cursor, enrollment_id
+                    )
+                    if resumable_exam_id:
+                        return redirect(url_for(
+                            "student_portal.student_exam_take",
+                            exam_id=resumable_exam_id,
+                        ))
 
                     if next_url:
                         return redirect(next_url)

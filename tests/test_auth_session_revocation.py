@@ -7,6 +7,7 @@ from utils.auth_sessions import (
     enforce_active_auth_session,
     issue_auth_session,
     revoke_current_auth_session,
+    touch_auth_session,
 )
 
 
@@ -52,14 +53,14 @@ class FakeCursor:
                 "idle": False,
             }
         elif "SET LAST_SEEN_AT = NOW()" in normalized:
-            session_hash, user_id, _idle_timeout = params
+            session_hash, user_id = params[:2]
             record = self.store.sessions.get(session_hash)
             if (
                 record
                 and record["user_id"] == user_id
                 and not record["revoked"]
                 and not record["expired"]
-                and not record["idle"]
+                and (len(params) == 2 or not record["idle"])
             ):
                 self.result = (session_hash,)
         elif "SET REVOKED_AT = COALESCE" in normalized:
@@ -173,6 +174,19 @@ class AuthSessionRevocationTests(unittest.TestCase):
 
         self.assertEqual(first.post("/logout").status_code, 200)
         self.assertEqual(second.get("/protected").status_code, 200)
+
+    def test_verified_assessment_can_refresh_an_idle_session(self):
+        self.login(role="student")
+        with self.client.session_transaction() as current:
+            raw_session_id = current[AUTH_SESSION_KEY]
+        from utils.auth_sessions import _hash_session_id
+        self.store.sessions[_hash_session_id(raw_session_id)]["idle"] = True
+        cursor = self.store.connect().cursor()
+        self.assertTrue(
+            touch_auth_session(
+                cursor, raw_session_id, 42, 300, allow_idle_expired=True
+            )
+        )
 
     def test_role_switch_keeps_same_server_session(self):
         self.login(role="teacher", roles=["teacher", "parent"])

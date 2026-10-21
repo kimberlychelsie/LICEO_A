@@ -3510,14 +3510,34 @@ def teacher_exam_results(exam_id):
             SELECT r.result_id, r.exam_id
             FROM exam_results r
             JOIN exams e ON e.exam_id = r.exam_id
+            LEFT JOIN individual_extensions ext
+              ON ext.item_id = e.exam_id
+             AND ext.enrollment_id = r.enrollment_id
+             AND ext.item_type IN ('exam', 'quiz')
             WHERE r.exam_id = %s
               AND r.status = 'in_progress'
-              AND (NOW() > r.started_at + (e.duration_mins * INTERVAL '1 minute'))
+              AND (
+                NOW() >= r.started_at + (e.duration_mins * INTERVAL '1 minute')
+                OR (
+                  COALESCE(ext.new_due_date, e.scheduled_start) IS NOT NULL
+                  AND NOW() >= COALESCE(ext.new_due_date, e.scheduled_start)
+                               + (e.duration_mins * INTERVAL '1 minute')
+                )
+              )
         """, (exam_id,))
         expired_attempts = cur.fetchall() or []
 
         for exp in expired_attempts:
             r_id = exp["result_id"]
+            cur.execute("""
+                SELECT status
+                FROM exam_results
+                WHERE result_id = %s
+                FOR UPDATE
+            """, (r_id,))
+            locked_attempt = cur.fetchone()
+            if not locked_attempt or locked_attempt["status"] != "in_progress":
+                continue
             cur.execute("""
                 SELECT
                     COALESCE(SUM(CASE WHEN ea.is_correct THEN q.points ELSE 0 END), 0) AS final_score,

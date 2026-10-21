@@ -26,4 +26,8 @@ CREATE INDEX IF NOT EXISTS idx_auth_sessions_active_user
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at
     ON public.auth_sessions (expires_at);
 
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_revoked_at
+    ON public.auth_sessions (revoked_at)
+    WHERE revoked_at IS NOT NULL;
+
 COMMIT;

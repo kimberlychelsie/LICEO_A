@@ -3,7 +3,7 @@ import time
 from dotenv import load_dotenv
 load_dotenv()  # loads .env file locally; no effect in Railway (env vars set directly)
 
-from flask import Flask, request, session, flash, redirect, url_for, render_template, send_from_directory
+from flask import Flask, request, session, flash, redirect, url_for, render_template, send_from_directory, g
 import flask
 import markupsafe
 flask.Markup = markupsafe.Markup
@@ -41,7 +41,7 @@ app.config["AUTH_SESSION_ABSOLUTE_LIFETIME_SECONDS"] = int(
     os.getenv("AUTH_SESSION_ABSOLUTE_LIFETIME_SECONDS", "86400")
 )
 app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"] = int(
-    os.getenv("AUTH_SESSION_IDLE_TIMEOUT_SECONDS", "3600")
+    os.getenv("AUTH_SESSION_IDLE_TIMEOUT_SECONDS", "300")
 )
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
     seconds=app.config["AUTH_SESSION_ABSOLUTE_LIFETIME_SECONDS"]
@@ -181,14 +181,39 @@ def run_auto_finalize_expired_exams():
                 SELECT r.result_id, r.exam_id
                 FROM exam_results r
                 JOIN exams e ON e.exam_id = r.exam_id
+                LEFT JOIN individual_extensions ext
+                  ON ext.item_id = e.exam_id
+                 AND ext.enrollment_id = r.enrollment_id
+                 AND ext.item_type IN ('exam', 'quiz')
                 WHERE r.status = 'in_progress'
-                  AND (NOW() > r.started_at + (e.duration_mins * INTERVAL '1 minute'))
+                  AND (
+                    NOW() >= r.started_at + (e.duration_mins * INTERVAL '1 minute')
+                    OR (
+                      COALESCE(ext.new_due_date, e.scheduled_start) IS NOT NULL
+                      AND NOW() >= COALESCE(ext.new_due_date, e.scheduled_start)
+                                   + (e.duration_mins * INTERVAL '1 minute')
+                    )
+                  )
             """)
             expired = cur.fetchall() or []
 
             for row in expired:
                 res_id = row[0] if isinstance(row, (list, tuple)) else row['result_id']
                 ex_id = row[1] if isinstance(row, (list, tuple)) else row['exam_id']
+
+                cur.execute("""
+                    SELECT status
+                    FROM exam_results
+                    WHERE result_id = %s
+                    FOR UPDATE
+                """, (res_id,))
+                locked = cur.fetchone()
+                locked_status = (
+                    locked[0] if isinstance(locked, (list, tuple))
+                    else locked.get("status") if locked else None
+                )
+                if locked_status != "in_progress":
+                    continue
 
                 cur.execute("""
                     SELECT
@@ -226,17 +251,55 @@ def _background_exam_worker():
 
 threading.Thread(target=_background_exam_worker, daemon=True).start()
 
+
+def _student_has_live_assessment_attempt():
+    if session.get("role") != "student" or not session.get("enrollment_id"):
+        return False
+    db = get_db_connection()
+    try:
+        with db.cursor() as cur:
+            cur.execute("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM exam_results r
+                    JOIN exams e ON e.exam_id = r.exam_id
+                    LEFT JOIN individual_extensions ext
+                      ON ext.item_id = e.exam_id
+                     AND ext.enrollment_id = r.enrollment_id
+                     AND ext.item_type IN ('exam', 'quiz')
+                    WHERE r.enrollment_id = %s
+                      AND r.status = 'in_progress'
+                      AND NOW() < r.started_at + (e.duration_mins * INTERVAL '1 minute')
+                      AND (
+                          COALESCE(ext.new_due_date, e.scheduled_start) IS NULL
+                          OR NOW() < COALESCE(ext.new_due_date, e.scheduled_start)
+                                     + (e.duration_mins * INTERVAL '1 minute')
+                      )
+                )
+            """, (session["enrollment_id"],))
+            row = cur.fetchone()
+            return bool(row[0] if isinstance(row, (tuple, list)) else row["exists"])
+    except Exception:
+        return False
+    finally:
+        db.close()
+
 @app.before_request
 def check_maintenance_and_session_timeout():
     run_auto_finalize_expired_exams()
     now = time.time()
     
-    # 1. Session Inactivity Timeout (1 hour = 3600s)
+    # 1. Session Inactivity Timeout
+    g.assessment_session_exempt = False
     if session.get("user_id") or session.get("role"):
         last_act = session.get("last_activity")
-        if last_act and (
-            now - last_act > app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"]
-        ):
+        idle_expired = bool(
+            last_act
+            and now - last_act > app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"]
+        )
+        if idle_expired and session.get("role") == "student":
+            g.assessment_session_exempt = _student_has_live_assessment_attempt()
+        if idle_expired and not g.assessment_session_exempt:
             revoke_current_auth_session()
             session.clear()
             flash("Your session expired due to inactivity for security reasons.", "warning")
@@ -271,8 +334,24 @@ def validate_server_auth_session():
     if request.endpoint == "static":
         return None
     return enforce_active_auth_session(
-        idle_timeout_seconds=app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"]
+        idle_timeout_seconds=app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"],
+        allow_idle_expired=bool(getattr(g, "assessment_session_exempt", False)),
     )
+
+
+@app.context_processor
+def inject_session_timeout_policy():
+    return {
+        "auth_idle_timeout_seconds": app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"]
+    }
+
+
+@app.post("/auth/session/keepalive")
+def authenticated_session_keepalive():
+    """Refresh an already-validated session after genuine browser activity."""
+    if not (session.get("user_id") or session.get("role")):
+        return {"ok": False}, 401
+    return {"ok": True}, 200
 
 
 @app.before_request

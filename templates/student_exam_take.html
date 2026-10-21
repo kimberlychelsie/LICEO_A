@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ exam.title }}{% endblock %}
 {% block content %}
+<script>window.LICEO_ACTIVE_ASSESSMENT = true;</script>
 <style>
   /* ── Anti-Screenshot: Print Protection ── */
   @media print {
@@ -808,6 +809,8 @@
 
   // ── Timer ──
   let remaining = {{ remaining_secs | int }};
+  const serverSavedAnswers = {{ saved_answers | default({}) | tojson }};
+  const activeResultId = {{ result_id | int }};
   const timerEl = document.getElementById('timerBox');
   const total = {{ questions| length }};
 
@@ -946,6 +949,10 @@
   window.saveAnswer = saveAnswer;
 
   function loadAnswers() {
+    Object.entries(serverSavedAnswers).forEach(([questionId, answer]) => {
+      lsSet('ans_answer_' + questionId, String(answer));
+      lsSet('answered_answer_' + questionId, 'true');
+    });
     const names = new Set();
     document.querySelectorAll('.q-card input[type="radio"]').forEach(input => {
       const saved = lsGet('ans_' + input.name);
@@ -961,6 +968,23 @@
     updateProgress();
   }
   loadAnswers();
+
+  function assessmentHeartbeat() {
+    fetch('/student/exams/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result_id: activeResultId })
+    }).then(response => {
+      if (response.ok) {
+        try { localStorage.setItem('liceoAssessmentHeartbeatAt', String(Date.now())); } catch (_) {}
+      } else if (response.status === 409) {
+        try { localStorage.removeItem('liceoAssessmentHeartbeatAt'); } catch (_) {}
+        window.location.reload();
+      }
+    }).catch(() => {});
+  }
+  assessmentHeartbeat();
+  setInterval(assessmentHeartbeat, 120000);
 
   // ── Section navigation ──
   const mcTotal = document.querySelectorAll('[id^="mc-q"]').length;

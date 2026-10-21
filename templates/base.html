@@ -3652,19 +3652,47 @@
   </script>
 
   <script>
-    // Inactivity Auto-Logout JS Guard (1 hour / 60 minutes policy)
+    // Inactivity Auto-Logout JS Guard
     (function () {
+      if (window.LICEO_ACTIVE_ASSESSMENT) return;
       var idleSeconds = 0;
-      var maxIdleSeconds = 3600; // 60 mins (1 hour)
-      var warningSeconds = 3300; // 55 mins (5-min warning)
+      var maxIdleSeconds = {{ auth_idle_timeout_seconds | default(300) | int }};
+      var warningSeconds = Math.max(0, maxIdleSeconds - 60);
       var warningShown = false;
+      var lastKeepaliveAt = Date.now();
+      var keepalivePending = false;
+
+      function refreshServerActivity() {
+        var now = Date.now();
+        if (keepalivePending || document.hidden || now - lastKeepaliveAt < 120000) return;
+        keepalivePending = true;
+        fetch('/auth/session/keepalive', { method: 'POST' })
+          .then(function (response) {
+            if (response.redirected || response.status === 401) {
+              window.location.href = '/login';
+              return;
+            }
+            if (response.ok) lastKeepaliveAt = Date.now();
+          })
+          .finally(function () { keepalivePending = false; });
+      }
 
       function resetIdle() {
         idleSeconds = 0;
+        refreshServerActivity();
         if (warningShown) {
           var warnEl = document.getElementById('idle-warning-banner');
           if (warnEl) warnEl.style.display = 'none';
           warningShown = false;
+        }
+      }
+
+      function assessmentActiveInAnotherTab() {
+        try {
+          var heartbeatAt = Number(localStorage.getItem('liceoAssessmentHeartbeatAt') || 0);
+          return heartbeatAt > 0 && (Date.now() - heartbeatAt) < 150000;
+        } catch (_) {
+          return false;
         }
       }
 
@@ -3677,9 +3705,13 @@
       window.addEventListener('scroll', resetIdle);
 
       setInterval(function () {
+        if (assessmentActiveInAnotherTab()) {
+          resetIdle();
+          return;
+        }
         idleSeconds++;
 
-        // Show 5-min warning
+        // Show warning one minute before logout.
         if (idleSeconds >= warningSeconds && idleSeconds < maxIdleSeconds && !warningShown) {
           warningShown = true;
           var warnEl = document.getElementById('idle-warning-banner');
@@ -3687,7 +3719,7 @@
             warnEl = document.createElement('div');
             warnEl.id = 'idle-warning-banner';
             warnEl.style.cssText = 'position:fixed; bottom:24px; right:24px; z-index:99999; background:#1e293b; color:#fff; padding:16px 20px; border-radius:14px; box-shadow:0 10px 25px rgba(0,0,0,0.3); border:1px solid #334155; font-family:sans-serif; font-size:0.9rem; display:flex; align-items:center; gap:12px;';
-            warnEl.innerHTML = '<span>⏳ Your session will expire in 5 minutes due to inactivity.</span><button onclick="window.location.reload()" style="background:#2563eb; color:#fff; border:none; padding:6px 14px; border-radius:8px; font-weight:700; cursor:pointer;">Keep Logged In</button>';
+            warnEl.innerHTML = '<span>Your session will expire in 1 minute due to inactivity.</span><button onclick="window.location.reload()" style="background:#2563eb; color:#fff; border:none; padding:6px 14px; border-radius:8px; font-weight:700; cursor:pointer;">Stay Logged In</button>';
             document.body.appendChild(warnEl);
           } else {
             warnEl.style.display = 'flex';

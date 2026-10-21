@@ -13,6 +13,7 @@ import json
 import pytz
 from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, size_price_map, price_for_size
 from utils.parent_sync import sync_all_users_for_enrollment_guardian_email
+from utils.assessment_resume import find_resumable_assessment_exam_id
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
@@ -37,11 +38,48 @@ def _to_manila_naive(dt_value):
         return dt_value.replace(tzinfo=None)
     return dt_value.astimezone(ph_tz).replace(tzinfo=None)
 
+
+def _assessment_remaining_seconds(attempt):
+    duration = int(attempt.get("duration_mins") or 0)
+    started_at = attempt.get("started_at")
+    if not started_at or duration <= 0:
+        return 0
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    started_naive = started_at.astimezone(timezone.utc).replace(tzinfo=None) if started_at.tzinfo else started_at
+    attempt_remaining = int(
+        ((started_naive + timedelta(minutes=duration)) - now_utc).total_seconds()
+    )
+    effective_start = _to_manila_naive(
+        attempt.get("individual_extension") or attempt.get("scheduled_start")
+    )
+    if effective_start:
+        now_manila = _to_manila_naive(datetime.now(timezone.utc))
+        schedule_remaining = int(
+            ((effective_start + timedelta(minutes=duration)) - now_manila).total_seconds()
+        )
+        return max(0, min(attempt_remaining, schedule_remaining))
+    return max(0, attempt_remaining)
+
 def _finalize_expired_attempt(
     cur,
     result_id,
     exam_id
 ):
+    cur.execute("""
+        SELECT status, score, total_points
+        FROM exam_results
+        WHERE result_id = %s AND exam_id = %s
+        FOR UPDATE
+    """, (result_id, exam_id))
+    locked_attempt = cur.fetchone()
+    if not locked_attempt:
+        return 0, 0
+    if locked_attempt["status"] != "in_progress":
+        return (
+            int(locked_attempt.get("score") or 0),
+            int(locked_attempt.get("total_points") or 0),
+        )
+
     cur.execute("""
         SELECT
             COALESCE(
@@ -105,6 +143,15 @@ def dashboard():
     try:
         account_id    = session.get("student_account_id")
         enrollment_id = session.get("enrollment_id")
+
+        resumable_exam_id = find_resumable_assessment_exam_id(
+            cursor, enrollment_id
+        )
+        if resumable_exam_id:
+            return redirect(url_for(
+                "student_portal.student_exam_take",
+                exam_id=resumable_exam_id,
+            ))
 
         if account_id:
             # Path A: logged in via student_accounts table
@@ -2091,6 +2138,7 @@ def student_exam_take(exam_id):
         existing = cur.fetchone()
 
         if existing and existing["status"] in ("submitted", "auto_submitted"):
+            session.permanent = False
             return redirect(url_for("student_portal.student_exam_result", result_id=existing["result_id"]))
 
         # ✅ 2. Effective Timing Logic (Individual Rescheduling)
@@ -2153,6 +2201,35 @@ def student_exam_take(exam_id):
                     "error"
                 )
                 return redirect(back_url)
+
+            cur.execute("""
+                SELECT r.result_id, r.exam_id, r.started_at, r.status,
+                       e.duration_mins, e.scheduled_start,
+                       ext.new_due_date AS individual_extension
+                FROM exam_results r
+                JOIN exams e ON e.exam_id = r.exam_id
+                LEFT JOIN individual_extensions ext
+                  ON ext.item_id = e.exam_id
+                 AND ext.enrollment_id = r.enrollment_id
+                 AND ext.item_type IN ('exam', 'quiz')
+                WHERE r.result_id = %s
+                  AND r.exam_id = %s
+                  AND r.enrollment_id = %s
+                FOR UPDATE OF r
+            """, (result_id, exam_id, enrollment_id))
+            locked_attempt = cur.fetchone()
+            if not locked_attempt or locked_attempt["status"] != "in_progress":
+                db.rollback()
+                session.permanent = False
+                flash("This assessment attempt has already been finalized.", "warning")
+                return redirect(back_url)
+            if _assessment_remaining_seconds(locked_attempt) <= 0:
+                _finalize_expired_attempt(cur, result_id, exam_id)
+                db.commit()
+                session.permanent = False
+                return redirect(url_for(
+                    "student_portal.student_exam_result", result_id=result_id
+                ))
 
             # =====================================
             # FINAL ANSWER SYNC
@@ -2291,9 +2368,10 @@ def student_exam_take(exam_id):
                 UPDATE exam_results
                 SET score=%s, total_points=%s, status=%s,
                     submitted_at=NOW()
-                WHERE result_id=%s AND enrollment_id=%s
+                WHERE result_id=%s AND enrollment_id=%s AND status='in_progress'
             """, (score, total_points, status, result_id, enrollment_id))
             db.commit()
+            session.permanent = False
     
             return redirect(url_for("student_portal.student_exam_result",
                                     result_id=result_id))
@@ -2395,6 +2473,7 @@ def student_exam_take(exam_id):
             ))
 
             db.commit()
+            session.permanent = False
 
             flash(
                 "The quiz time has expired. "
@@ -2417,7 +2496,10 @@ def student_exam_take(exam_id):
         if exam.get("randomize"):
             import random
             questions = list(questions)
-            random.shuffle(questions)
+            rng = random.Random(result_id)
+            rng.shuffle(questions)
+        else:
+            rng = None
 
         shared_matching_opts = None
         for q in questions:
@@ -2428,19 +2510,32 @@ def student_exam_take(exam_id):
                 if shared_matching_opts is None:
                     import random
                     shared_matching_opts = list(q["choices"]["options"])
-                    random.shuffle(shared_matching_opts)
+                    (rng or random.Random(result_id)).shuffle(shared_matching_opts)
                 q["choices"]["options"] = shared_matching_opts
+
+        cur.execute("""
+            SELECT question_id, student_answer
+            FROM exam_answers
+            WHERE result_id = %s
+        """, (result_id,))
+        saved_answers = {
+            str(row["question_id"]): row["student_answer"]
+            for row in (cur.fetchall() or [])
+            if row.get("student_answer") is not None
+        }
 
         cur.execute("SELECT tab_switches FROM exam_results WHERE result_id=%s", (result_id,))
         tab_row = cur.fetchone()
         current_tab_switches = tab_row["tab_switches"] if tab_row else 0
 
+        session.permanent = True
         return render_template("student_exam_take.html",
                                exam=exam,
                                questions=questions,
                                result_id=result_id,
                                remaining_secs=remaining,
-                               current_tab_switches=current_tab_switches)
+                               current_tab_switches=current_tab_switches,
+                               saved_answers=saved_answers)
     finally:
         cur.close()
         db.close()
@@ -2454,8 +2549,19 @@ def auto_finalize_expired_exams(cur, enrollment_id=None):
             SELECT r.result_id, r.exam_id, r.enrollment_id
             FROM exam_results r
             JOIN exams e ON e.exam_id = r.exam_id
+            LEFT JOIN individual_extensions ext
+              ON ext.item_id = e.exam_id
+             AND ext.enrollment_id = r.enrollment_id
+             AND ext.item_type IN ('exam', 'quiz')
             WHERE r.status = 'in_progress'
-              AND (NOW() > r.started_at + (e.duration_mins * INTERVAL '1 minute'))
+              AND (
+                NOW() >= r.started_at + (e.duration_mins * INTERVAL '1 minute')
+                OR (
+                  COALESCE(ext.new_due_date, e.scheduled_start) IS NOT NULL
+                  AND NOW() >= COALESCE(ext.new_due_date, e.scheduled_start)
+                               + (e.duration_mins * INTERVAL '1 minute')
+                )
+              )
         """
         params = []
         if enrollment_id:
@@ -2676,6 +2782,54 @@ def check_exam_status():
         cur.close()
         db.close()
 
+@student_portal_bp.route("/student/exams/heartbeat", methods=["POST"])
+def student_exam_heartbeat():
+    if session.get("role") != "student":
+        return jsonify({"ok": False}), 403
+    data = request.get_json(silent=True) or {}
+    result_id = data.get("result_id")
+    enrollment_id = session.get("enrollment_id")
+    if not result_id or not enrollment_id:
+        return jsonify({"ok": False}), 400
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT r.result_id, r.exam_id, r.started_at, r.status,
+                   e.duration_mins, e.scheduled_start,
+                   ext.new_due_date AS individual_extension
+            FROM exam_results r
+            JOIN exams e ON e.exam_id = r.exam_id
+            LEFT JOIN individual_extensions ext
+              ON ext.item_id = e.exam_id
+             AND ext.enrollment_id = r.enrollment_id
+             AND ext.item_type IN ('exam', 'quiz')
+            WHERE r.result_id = %s
+              AND r.enrollment_id = %s
+              AND r.status = 'in_progress'
+        """, (result_id, enrollment_id))
+        attempt = cur.fetchone()
+        if not attempt:
+            session.permanent = False
+            return jsonify({"ok": False, "expired": True}), 409
+        remaining = _assessment_remaining_seconds(attempt)
+        if remaining <= 0:
+            _finalize_expired_attempt(cur, attempt["result_id"], attempt["exam_id"])
+            db.commit()
+            session.permanent = False
+            return jsonify({"ok": False, "expired": True}), 409
+        session.permanent = True
+        return jsonify({"ok": True, "remaining": remaining})
+    except Exception:
+        db.rollback()
+        logger.exception("Assessment heartbeat failed")
+        return jsonify({"ok": False}), 500
+    finally:
+        cur.close()
+        db.close()
+
+
 @student_portal_bp.route("/student/exams/save-answer", methods=["POST"])
 def save_answer():
     """AJAX endpoint — save individual answer to database in real-time"""
@@ -2694,26 +2848,35 @@ def save_answer():
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)  # ✅ ADD THIS
     try:
-        # Verify ownership — check if this result belongs to this student
+        # Verify ownership, active status, matching question, and deadline.
         cur.execute("""
-            SELECT 1 FROM exam_results 
-            WHERE result_id = %s AND enrollment_id = %s
-        """, (result_id, enrollment_id))
-        
-        if not cur.fetchone():
-            return jsonify({"ok": False, "msg": "Unauthorized"}), 403
+            SELECT r.result_id, r.exam_id, r.started_at,
+                   e.duration_mins, e.scheduled_start,
+                   ext.new_due_date AS individual_extension,
+                   q.correct_answer
+            FROM exam_results r
+            JOIN exams e ON e.exam_id = r.exam_id
+            JOIN exam_questions q
+              ON q.exam_id = r.exam_id AND q.question_id = %s
+            LEFT JOIN individual_extensions ext
+              ON ext.item_id = e.exam_id
+             AND ext.enrollment_id = r.enrollment_id
+             AND ext.item_type IN ('exam', 'quiz')
+            WHERE r.result_id = %s
+              AND r.enrollment_id = %s
+              AND r.status = 'in_progress'
+            FOR UPDATE OF r
+        """, (question_id, result_id, enrollment_id))
+        attempt = cur.fetchone()
+        if not attempt:
+            return jsonify({"ok": False, "msg": "Attempt is not active"}), 403
+        if _assessment_remaining_seconds(attempt) <= 0:
+            _finalize_expired_attempt(cur, attempt["result_id"], attempt["exam_id"])
+            db.commit()
+            session.permanent = False
+            return jsonify({"ok": False, "msg": "Assessment time has expired"}), 409
 
-        # Get correct answer
-        cur.execute("""
-            SELECT correct_answer FROM exam_questions 
-            WHERE question_id = %s
-        """, (question_id,))
-        
-        question = cur.fetchone()
-        if not question:
-            return jsonify({"ok": False, "msg": "Question not found"}), 404
-
-        correct_answer = str(question["correct_answer"]).strip()  # ✅ NOW THIS WORKS
+        correct_answer = str(attempt["correct_answer"] or "").strip()
         is_correct = answer.upper() == correct_answer.upper() if answer else False
 
         # Check if answer already exists
