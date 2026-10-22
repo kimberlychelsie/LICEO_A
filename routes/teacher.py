@@ -4319,8 +4319,8 @@ TRANSMUTATION_RANGES = [
 
 def _get_deped_transmuted_grade(initial_grade):
     """
-    DepEd Order No. 8, s. 2015 — Transmutation Table (Initial 0-100 -> Final 60-100).
-    Returns an integer transmuted grade.
+    School-approved base-70 formula (Initial 0-100 -> Term Grade 70-100).
+    Returns an integer term grade.
     """
     try:
         x = round(float(initial_grade), 2)
@@ -4333,29 +4333,18 @@ def _get_deped_transmuted_grade(initial_grade):
     if x > 100:
         x = 100
 
-    # Special case: exact 100.
-    if x >= 100:
-        return 100
-
-    for min_g, max_g, transmuted in TRANSMUTATION_RANGES:
-        if min_g <= x <= max_g:
-            return transmuted
-
-    # Fallback: should not happen due to 0-3.99 => 60 range.
-    return 60
+    # School-approved base-70 formula: 0 -> 70 and 100 -> 100.
+    # Round halves upward so the server matches JavaScript Math.round previews.
+    return min(100, int((70 + (x * 0.30)) + 0.5))
 
 def _get_transmutation_band(initial_grade):
-    """Human-readable transmutation bracket for display/debugging."""
+    """Human-readable base-70 calculation for display/debugging."""
     try:
         x = round(float(initial_grade), 2)
     except (TypeError, ValueError):
         return None
-    if x >= 100:
-        return "100.00-100.00 => 100"
-    for min_g, max_g, transmuted in TRANSMUTATION_RANGES:
-        if min_g <= x <= max_g:
-            return f"{min_g:.2f}-{max_g:.2f} => {transmuted}"
-    return "0.00-3.99 => 60"
+    x = min(100, max(0, x))
+    return f"70 + ({x:.2f} x 0.30) => {_get_deped_transmuted_grade(x)}"
 
 
 def _get_teacher_assignments(cur, user_id, branch_id, year_id):
