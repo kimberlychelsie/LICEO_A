@@ -2,6 +2,13 @@
 {% block title %}Enrollment Documents — Registrar{% endblock %}
 
 {% block content %}
+{% macro document_label(doc_type) -%}
+  {%- set normalized = (doc_type or '')|lower|replace(' ', '') -%}
+  {%- if 'form137' in normalized or 'sf10' in normalized or 'cumulative' in normalized -%}Permanent Record (SF10 / Form 137)
+  {%- elif 'form138' in normalized or 'sf9' in normalized or 'reportcard' in normalized -%}Report Card (SF9 / Form 138)
+  {%- else -%}{{ doc_type }}
+  {%- endif -%}
+{%- endmacro %}
 <style>
   :root {
     --primary: #1e40af;
@@ -322,7 +329,7 @@
         <select name="doc_type">
           <option value="">All Types</option>
           {% for dt in all_doc_types %}
-          <option value="{{ dt }}" {% if doc_type_f == dt %}selected{% endif %}>{{ dt }}</option>
+          <option value="{{ dt }}" {% if doc_type_f == dt %}selected{% endif %}>{{ document_label(dt) }}</option>
           {% endfor %}
         </select>
       </div>
@@ -411,7 +418,7 @@
             {% endif %}
 
             <div class="doc-info">
-              <div class="dtype">{{ doc.doc_type }}</div>
+              <div class="dtype">{{ document_label(doc.doc_type) }}</div>
               <div class="dfname" title="{{ doc.file_name }}">{{ doc.file_name }}</div>
               <div class="ddate">{{ doc.uploaded_at.strftime('%b %d, %Y') if doc.uploaded_at else '—' }}</div>
             </div>

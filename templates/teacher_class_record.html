@@ -163,8 +163,28 @@
     .period-tabs {
         display: flex;
         gap: 8px;
-        margin-bottom: 22px;
         flex-wrap: wrap;
+    }
+
+    .period-tabs-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 22px;
+    }
+
+    .period-components-btn {
+        flex: 0 0 auto;
+        background: #fff;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
+        box-shadow: 0 2px 7px rgba(30, 64, 175, 0.08);
+    }
+
+    .period-components-btn:hover {
+        background: #eff6ff;
+        border-color: #93c5fd;
     }
 
     .ptab {
@@ -1141,6 +1161,18 @@
             background: #cbd5e1;
             border-radius: 4px;
         }
+        .period-tabs-row {
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        .period-tabs-row .period-tabs {
+            margin-bottom: 0 !important;
+        }
+        .period-components-btn {
+            padding: 8px 12px !important;
+            width: auto !important;
+            white-space: nowrap;
+        }
         .ptab, .ctab {
             white-space: nowrap !important;
             flex-shrink: 0 !important;
@@ -1284,12 +1316,6 @@
                 </p>
             </div>
             <div class="cr-hero-actions">
-                {% if period != 'final' %}
-                <button type="button" class="cr-btn cr-btn-ghost" onclick="openComponentModal()" title="Configure {{ PERIOD_LABELS.get(period, period) }} grading components">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-                    Components
-                </button>
-                {% endif %}
                 <a href="{{ url_for('teacher.class_record_export', section_id=section_id, subject_id=subject_id, period=period) }}"
                     class="cr-btn cr-btn-ghost">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -1348,11 +1374,19 @@
 
     {% if period != 'final' %}{% include '_grade_approval_tracker.html' %}{% endif %}
 
-    <div class="period-tabs">
-        {% for p in grading_periods %}
-        <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=p) }}"
-            class="ptab {% if p == period %}active{% endif %}">{{ PERIOD_LABELS.get(p, p) }}</a>
-        {% endfor %}
+    <div class="period-tabs-row">
+        <div class="period-tabs">
+            {% for p in grading_periods %}
+            <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=p) }}"
+                class="ptab {% if p == period %}active{% endif %}">{{ PERIOD_LABELS.get(p, p) }}</a>
+            {% endfor %}
+        </div>
+        {% if period != 'final' %}
+        <button type="button" class="cr-btn period-components-btn" onclick="openComponentModal()" title="Configure {{ PERIOD_LABELS.get(period, period) }} grading components">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+            Components
+        </button>
+        {% endif %}
     </div>
 
     {% if period == 'final' %}

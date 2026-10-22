@@ -2099,6 +2099,325 @@ def registrar_documents():
 # TOGGLE NEW STUDENT ENROLLMENT
 # ══════════════════════════════════════════
 
+def _student_transfers_table_missing(exc):
+    return getattr(exc, "pgcode", None) == "42P01" or "student_transfer_requests" in str(exc)
+
+
+@registrar_bp.route("/registrar/student-transfers")
+def registrar_student_transfers():
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("SELECT year_id, label FROM school_years WHERE branch_id=%s AND is_active=TRUE LIMIT 1", (branch_id,))
+        active_year = cursor.fetchone()
+        if not active_year:
+            flash("No active school year found for this branch.", "error")
+            return redirect(url_for("registrar.registrar_home"))
+        cursor.execute("""
+            SELECT e.enrollment_id, e.branch_enrollment_no, e.lrn, e.grade_level,
+                   CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name) AS student_name,
+                   EXISTS (SELECT 1 FROM enrollment_documents d WHERE d.enrollment_id=e.enrollment_id AND (LOWER(d.doc_type) LIKE '%%form 137%%' OR LOWER(d.doc_type) LIKE '%%form137%%' OR LOWER(d.doc_type) LIKE '%%sf10%%' OR LOWER(d.doc_type) LIKE '%%cumulative%%')) AS has_sf10,
+                   EXISTS (SELECT 1 FROM enrollment_documents d WHERE d.enrollment_id=e.enrollment_id AND (LOWER(d.doc_type) LIKE '%%form 138%%' OR LOWER(d.doc_type) LIKE '%%form138%%' OR LOWER(d.doc_type) LIKE '%%sf9%%' OR LOWER(d.doc_type) LIKE '%%report card%%' OR LOWER(d.doc_type) = 'card')) AS has_sf9
+            FROM enrollments e
+            WHERE e.branch_id=%s AND e.year_id=%s
+              AND e.status IN ('approved','enrolled','open_for_enrollment','completed')
+              AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.source_enrollment_id=e.enrollment_id AND tr.status='pending_destination')
+            ORDER BY e.student_last_name, e.student_first_name
+        """, (branch_id, active_year["year_id"]))
+        eligible_students = cursor.fetchall() or []
+        cursor.execute("""
+            SELECT b.branch_id, b.branch_name, sy.year_id, sy.label AS school_year
+            FROM branches b
+            JOIN school_years sy ON sy.branch_id=b.branch_id AND sy.is_active=TRUE
+            JOIN new_student_enrollment_settings ns ON ns.branch_id=b.branch_id AND ns.year_id=sy.year_id AND ns.is_open=TRUE
+            WHERE b.branch_id<>%s AND COALESCE(b.is_active, TRUE)=TRUE ORDER BY b.branch_name
+        """, (branch_id,))
+        destinations = cursor.fetchall() or []
+        base_select = """
+            SELECT tr.*, sb.branch_name AS source_branch_name, db.branch_name AS destination_branch_name,
+                   CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name) AS student_name,
+                   e.lrn, e.branch_enrollment_no, sec.section_name
+            FROM student_transfer_requests tr
+            JOIN enrollments e ON e.enrollment_id=tr.source_enrollment_id
+            JOIN branches sb ON sb.branch_id=tr.source_branch_id
+            JOIN branches db ON db.branch_id=tr.destination_branch_id
+            LEFT JOIN sections sec ON sec.section_id=tr.destination_section_id
+        """
+        cursor.execute(base_select + " WHERE tr.destination_branch_id=%s ORDER BY tr.requested_at DESC", (branch_id,))
+        incoming = cursor.fetchall() or []
+        cursor.execute(base_select + " WHERE tr.source_branch_id=%s ORDER BY tr.requested_at DESC", (branch_id,))
+        outgoing = cursor.fetchall() or []
+        cursor.execute("""
+            SELECT s.section_id, s.section_name, g.name AS grade_level_name, s.capacity,
+                   COUNT(e.enrollment_id) FILTER (WHERE e.status IN ('approved','enrolled','open_for_enrollment','completed')) AS current_count
+            FROM sections s JOIN grade_levels g ON g.id=s.grade_level_id
+            LEFT JOIN enrollments e ON e.section_id=s.section_id
+            WHERE s.branch_id=%s AND s.year_id=%s
+            GROUP BY s.section_id, s.section_name, g.name, s.capacity, g.display_order
+            ORDER BY g.display_order, s.section_name
+        """, (branch_id, active_year["year_id"]))
+        sections = cursor.fetchall() or []
+        return render_template("registrar_student_transfers.html", active_year=active_year,
+            eligible_students=eligible_students, destinations=destinations,
+            incoming=incoming, outgoing=outgoing, sections=sections)
+    except Exception as exc:
+        db.rollback()
+        if _student_transfers_table_missing(exc):
+            flash("Student transfers are not configured yet. Apply the internal-transfer migration first.", "error")
+        else:
+            logger.error(f"Student transfer page error: {exc}")
+            flash("Unable to load student transfers.", "error")
+        return redirect(url_for("registrar.registrar_home"))
+    finally:
+        cursor.close(); db.close()
+
+
+@registrar_bp.route("/registrar/student-transfers/request", methods=["POST"])
+def registrar_request_student_transfer():
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    enrollment_id = request.form.get("enrollment_id", type=int)
+    destination_branch_id = request.form.get("destination_branch_id", type=int)
+    grade_level = (request.form.get("grade_level") or "").strip()
+    effective_term = (request.form.get("effective_term") or "").strip()
+    reason = (request.form.get("reason") or "").strip()
+    back = url_for("registrar.registrar_student_transfers")
+    if not enrollment_id or not destination_branch_id or not grade_level or effective_term not in ("1st", "2nd", "3rd") or not reason:
+        flash("Complete all required transfer details.", "error")
+        return redirect(back)
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT e.*, sy.year_id AS source_year_id
+            FROM enrollments e JOIN school_years sy ON sy.year_id=e.year_id
+            WHERE e.enrollment_id=%s AND e.branch_id=%s AND sy.is_active=TRUE
+              AND e.status IN ('approved','enrolled','open_for_enrollment','completed')
+            FOR UPDATE OF e
+        """, (enrollment_id, branch_id))
+        student = cursor.fetchone()
+        if not student:
+            raise ValueError("Student is not eligible for transfer from this branch.")
+        required_terms = {"1st": (), "2nd": ("1st",), "3rd": ("1st", "2nd")}[effective_term]
+        for required_term in required_terms:
+            cursor.execute("""
+                SELECT COUNT(DISTINCT st.subject_id) AS assigned_subjects,
+                       COUNT(DISTINCT pg.subject_id) AS posted_subjects
+                FROM section_teachers st
+                LEFT JOIN posted_grades pg
+                  ON pg.enrollment_id=%s
+                 AND pg.subject_id=st.subject_id
+                 AND pg.grading_period=%s
+                 AND pg.year_id=%s
+                WHERE st.section_id=%s
+            """, (enrollment_id, required_term, student["source_year_id"], student["section_id"]))
+            grade_completion = cursor.fetchone()
+            assigned_subjects = int(grade_completion["assigned_subjects"] or 0)
+            posted_subjects = int(grade_completion["posted_subjects"] or 0)
+            if assigned_subjects == 0 or posted_subjects < assigned_subjects:
+                raise ValueError(
+                    f"Complete and post all {required_term} Term subject grades before requesting this transfer."
+                )
+        cursor.execute("""
+            SELECT sy.year_id FROM school_years sy
+            JOIN new_student_enrollment_settings ns ON ns.branch_id=sy.branch_id AND ns.year_id=sy.year_id AND ns.is_open=TRUE
+            WHERE sy.branch_id=%s AND sy.is_active=TRUE LIMIT 1
+        """, (destination_branch_id,))
+        destination_year = cursor.fetchone()
+        if not destination_year:
+            raise ValueError("The destination branch is not accepting enrollment transfers.")
+        cursor.execute("""
+            SELECT
+              EXISTS(SELECT 1 FROM enrollment_documents WHERE enrollment_id=%s AND (LOWER(doc_type) LIKE '%%form 137%%' OR LOWER(doc_type) LIKE '%%form137%%' OR LOWER(doc_type) LIKE '%%sf10%%' OR LOWER(doc_type) LIKE '%%cumulative%%')) AS has_sf10,
+              EXISTS(SELECT 1 FROM enrollment_documents WHERE enrollment_id=%s AND (LOWER(doc_type) LIKE '%%form 138%%' OR LOWER(doc_type) LIKE '%%form138%%' OR LOWER(doc_type) LIKE '%%sf9%%' OR LOWER(doc_type) LIKE '%%report card%%' OR LOWER(doc_type) = 'card')) AS has_sf9
+        """, (enrollment_id, enrollment_id))
+        docs = cursor.fetchone()
+        if not docs["has_sf10"] or not docs["has_sf9"]:
+            raise ValueError("Upload both the Permanent Record (SF10 / Form 137) and Report Card (SF9 / Form 138) before requesting transfer.")
+        cursor.execute("""
+            INSERT INTO student_transfer_requests
+              (source_enrollment_id, source_branch_id, destination_branch_id, source_year_id,
+               destination_year_id, requested_grade_level, effective_term, reason, requested_by)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING transfer_id
+        """, (enrollment_id, branch_id, destination_branch_id, student["source_year_id"],
+              destination_year["year_id"], grade_level, effective_term, reason, session.get("user_id")))
+        transfer_id = cursor.fetchone()["transfer_id"]
+        cursor.execute("""
+            INSERT INTO student_transfer_history (transfer_id, action, new_status, notes, acted_by)
+            VALUES (%s, 'requested', 'pending_destination', %s, %s)
+        """, (transfer_id, reason, session.get("user_id")))
+        db.commit()
+        flash("Transfer request sent to the destination Registrar.", "success")
+    except Exception as exc:
+        db.rollback()
+        if getattr(exc, "pgcode", None) == "23505":
+            flash("This student already has a pending transfer request.", "error")
+        else:
+            flash(str(exc), "error")
+    finally:
+        cursor.close(); db.close()
+    return redirect(back)
+
+
+@registrar_bp.route("/registrar/student-transfers/<int:transfer_id>/decide", methods=["POST"])
+def registrar_decide_student_transfer(transfer_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    action = request.form.get("action")
+    decision_reason = (request.form.get("decision_reason") or "").strip()
+    section_id = request.form.get("section_id", type=int)
+    back = url_for("registrar.registrar_student_transfers")
+    if action not in ("approve", "reject") or (action == "reject" and not decision_reason):
+        flash("Provide a valid decision and rejection reason.", "error")
+        return redirect(back)
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT tr.*,
+                   e.student_first_name, e.student_middle_name, e.student_last_name,
+                   e.guardian_first_name, e.guardian_middle_name, e.guardian_last_name,
+                   e.father_first_name, e.father_middle_name, e.father_last_name,
+                   e.mother_first_name, e.mother_middle_name, e.mother_last_name,
+                   e.gender, e.dob, e.address, e.contact_number, e.guardian_contact,
+                   e.previous_school, e.lrn, e.email, e.guardian_email, e.user_id,
+                   e.shs_track, e.curriculum_type, e.profile_image, e.birthplace
+            FROM student_transfer_requests tr
+            JOIN enrollments e ON e.enrollment_id=tr.source_enrollment_id
+            WHERE tr.transfer_id=%s AND tr.destination_branch_id=%s
+              AND tr.status='pending_destination'
+            FOR UPDATE OF tr, e
+        """, (transfer_id, branch_id))
+        transfer = cursor.fetchone()
+        if not transfer:
+            raise ValueError("Pending transfer request not found or already processed.")
+        if action == "reject":
+            cursor.execute("""
+                UPDATE student_transfer_requests SET status='rejected', decision_reason=%s,
+                    processed_by=%s, processed_at=NOW(), updated_at=NOW()
+                WHERE transfer_id=%s
+            """, (decision_reason, session.get("user_id"), transfer_id))
+            cursor.execute("""
+                INSERT INTO student_transfer_history (transfer_id, action, old_status, new_status, notes, acted_by)
+                VALUES (%s, 'rejected', 'pending_destination', 'rejected', %s, %s)
+            """, (transfer_id, decision_reason, session.get("user_id")))
+            db.commit()
+            flash("Transfer request rejected.", "warning")
+            return redirect(back)
+        if not section_id:
+            raise ValueError("Select a destination section before approval.")
+        cursor.execute("""
+            SELECT sy.year_id FROM school_years sy
+            JOIN new_student_enrollment_settings ns ON ns.branch_id=sy.branch_id AND ns.year_id=sy.year_id AND ns.is_open=TRUE
+            WHERE sy.branch_id=%s AND sy.year_id=%s AND sy.is_active=TRUE
+            FOR UPDATE OF ns
+        """, (branch_id, transfer["destination_year_id"]))
+        if not cursor.fetchone():
+            raise ValueError("Destination enrollment is closed; this transfer can no longer be approved.")
+        cursor.execute("""
+            SELECT s.section_id, s.capacity, g.name AS grade_level_name
+            FROM sections s JOIN grade_levels g ON g.id=s.grade_level_id
+            WHERE s.section_id=%s AND s.branch_id=%s AND s.year_id=%s
+            FOR UPDATE OF s
+        """, (section_id, branch_id, transfer["destination_year_id"]))
+        section = cursor.fetchone()
+        if not section or not _grades_compatible_for_section(transfer["requested_grade_level"], section["grade_level_name"]):
+            raise ValueError("Selected section does not match the requested grade level.")
+        cursor.execute("""
+            SELECT COUNT(*) AS current_count FROM enrollments
+            WHERE section_id=%s AND status IN ('approved','enrolled','open_for_enrollment','completed')
+        """, (section_id,))
+        current_count = int(cursor.fetchone()["current_count"] or 0)
+        if section["capacity"] is not None and current_count >= int(section["capacity"]):
+            raise ValueError("Selected destination section is already full.")
+        cursor.execute("""
+            SELECT 1 FROM enrollments
+            WHERE branch_id=%s AND year_id=%s AND enrollment_id<>%s
+              AND NULLIF(TRIM(lrn),'') IS NOT NULL AND TRIM(lrn)=TRIM(%s)
+              AND status IN ('approved','enrolled','open_for_enrollment','completed')
+        """, (branch_id, transfer["destination_year_id"], transfer["source_enrollment_id"], transfer.get("lrn")))
+        if cursor.fetchone():
+            raise ValueError("This learner already has an active enrollment in the destination branch.")
+        cursor.execute("""
+            SELECT
+              EXISTS(SELECT 1 FROM enrollment_documents WHERE enrollment_id=%s AND (LOWER(doc_type) LIKE '%%form 137%%' OR LOWER(doc_type) LIKE '%%form137%%' OR LOWER(doc_type) LIKE '%%sf10%%' OR LOWER(doc_type) LIKE '%%cumulative%%')) AS has_sf10,
+              EXISTS(SELECT 1 FROM enrollment_documents WHERE enrollment_id=%s AND (LOWER(doc_type) LIKE '%%form 138%%' OR LOWER(doc_type) LIKE '%%form138%%' OR LOWER(doc_type) LIKE '%%sf9%%' OR LOWER(doc_type) LIKE '%%report card%%' OR LOWER(doc_type) = 'card')) AS has_sf9
+        """, (transfer["source_enrollment_id"], transfer["source_enrollment_id"]))
+        docs = cursor.fetchone()
+        if not docs["has_sf10"] or not docs["has_sf9"]:
+            raise ValueError("Approval requires both the Permanent Record (SF10 / Form 137) and Report Card (SF9 / Form 138).")
+        from routes.student import acquire_branch_enrollment_no_lock
+        acquire_branch_enrollment_no_lock(cursor, branch_id)
+        cursor.execute("SELECT COALESCE(MAX(branch_enrollment_no),0)+1 AS next_no FROM enrollments WHERE branch_id=%s", (branch_id,))
+        next_no = cursor.fetchone()["next_no"]
+        cursor.execute("""
+            INSERT INTO enrollments (
+              student_first_name, student_middle_name, student_last_name,
+              guardian_first_name, guardian_middle_name, guardian_last_name,
+              father_first_name, father_middle_name, father_last_name,
+              mother_first_name, mother_middle_name, mother_last_name,
+              grade_level, gender, dob, address, contact_number, guardian_contact,
+              previous_school, branch_id, status, branch_enrollment_no, lrn, email,
+              guardian_email, user_id, section_id, year_id, shs_track, curriculum_type,
+              enroll_type, enroll_date, profile_image, birthplace
+            ) VALUES (
+              %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+              %s,%s,'enrolled',%s,%s,%s,%s,%s,%s,%s,%s,%s,'Transferee',CURRENT_DATE,%s,%s
+            ) RETURNING enrollment_id
+        """, (
+            transfer.get("student_first_name"), transfer.get("student_middle_name"), transfer.get("student_last_name"),
+            transfer.get("guardian_first_name"), transfer.get("guardian_middle_name"), transfer.get("guardian_last_name"),
+            transfer.get("father_first_name"), transfer.get("father_middle_name"), transfer.get("father_last_name"),
+            transfer.get("mother_first_name"), transfer.get("mother_middle_name"), transfer.get("mother_last_name"),
+            transfer["requested_grade_level"], transfer.get("gender"), transfer.get("dob"), transfer.get("address"),
+            transfer.get("contact_number"), transfer.get("guardian_contact"), transfer.get("previous_school"), branch_id,
+            next_no, transfer.get("lrn"), transfer.get("email"), transfer.get("guardian_email"), transfer.get("user_id"),
+            section_id, transfer["destination_year_id"], transfer.get("shs_track"), transfer.get("curriculum_type") or "basic_ed",
+            transfer.get("profile_image"), transfer.get("birthplace"),
+        ))
+        destination_enrollment_id = cursor.fetchone()["enrollment_id"]
+        cursor.execute("""
+            INSERT INTO enrollment_documents (enrollment_id, file_name, file_path, doc_type)
+            SELECT %s, file_name, file_path, doc_type FROM enrollment_documents
+            WHERE enrollment_id=%s AND (
+              LOWER(doc_type) LIKE '%%form 137%%' OR LOWER(doc_type) LIKE '%%form137%%' OR LOWER(doc_type) LIKE '%%sf10%%' OR LOWER(doc_type) LIKE '%%cumulative%%'
+              OR LOWER(doc_type) LIKE '%%form 138%%' OR LOWER(doc_type) LIKE '%%form138%%' OR LOWER(doc_type) LIKE '%%sf9%%'
+              OR LOWER(doc_type) LIKE '%%report card%%'
+            )
+        """, (destination_enrollment_id, transfer["source_enrollment_id"]))
+        cursor.execute("UPDATE enrollments SET status='transferred_out' WHERE enrollment_id=%s", (transfer["source_enrollment_id"],))
+        cursor.execute("UPDATE student_accounts SET enrollment_id=%s, branch_id=%s WHERE enrollment_id=%s", (destination_enrollment_id, branch_id, transfer["source_enrollment_id"]))
+        cursor.execute("""
+            UPDATE users SET enrollment_id=%s, branch_id=%s, grade_level=%s
+            WHERE enrollment_id=%s OR (%s IS NOT NULL AND user_id=%s)
+        """, (destination_enrollment_id, branch_id, transfer["requested_grade_level"],
+              transfer["source_enrollment_id"], transfer.get("user_id"), transfer.get("user_id")))
+        cursor.execute("UPDATE parent_student SET student_id=%s WHERE student_id=%s", (destination_enrollment_id, transfer["source_enrollment_id"]))
+        cursor.execute("""
+            UPDATE student_transfer_requests SET status='approved', destination_enrollment_id=%s,
+              destination_section_id=%s, decision_reason=%s, processed_by=%s,
+              processed_at=NOW(), updated_at=NOW() WHERE transfer_id=%s
+        """, (destination_enrollment_id, section_id, decision_reason or None, session.get("user_id"), transfer_id))
+        cursor.execute("""
+            INSERT INTO student_transfer_history (transfer_id, action, old_status, new_status, notes, acted_by)
+            VALUES (%s, 'approved', 'pending_destination', 'approved', %s, %s)
+        """, (transfer_id, decision_reason or "Accepted by destination Registrar", session.get("user_id")))
+        db.commit()
+        flash("Student transfer approved. The historical source enrollment was preserved.", "success")
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Student transfer decision error: {exc}")
+        flash(str(exc), "error")
+    finally:
+        cursor.close(); db.close()
+    return redirect(back)
+
+
 @registrar_bp.route("/registrar/toggle-new-student-enrollment", methods=["POST"])
 def toggle_new_student_enrollment():
     if session.get("role") != "registrar":
@@ -3585,7 +3904,12 @@ def registrar_upload_student_document(enrollment_id):
         """, (enrollment_id, original_name, file_url, doc_type))
 
         db.commit()
-        return jsonify({"success": True, "message": f"{doc_type} uploaded successfully."})
+        return jsonify({
+            "success": True,
+            "message": f"{doc_type} uploaded successfully.",
+            "file_url": file_url,
+            "file_name": original_name
+        })
 
     except Exception as e:
         db.rollback()

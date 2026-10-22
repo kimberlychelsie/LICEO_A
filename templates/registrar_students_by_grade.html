@@ -829,41 +829,41 @@
 
                                             {% if found.doc %}
                                                 {% set doc_count.value = doc_count.value + 1 %}
-                                                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px;">
+                                                <div data-document-row data-document-status="submitted" style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px;">
                                                     <div style="display:flex; align-items:center; gap:9px; min-width:0;">
-                                                        <div style="width:30px; height:30px; border-radius:8px; background:#2563eb; color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                                        <div class="document-status-icon" style="width:30px; height:30px; border-radius:8px; background:#2563eb; color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                                 <path d="M20 6L9 17l-5-5"></path>
                                                             </svg>
                                                         </div>
                                                         <div style="min-width:0;">
-                                                            <div style="font-size:0.8rem; font-weight:800; color:#1e40af;">{{ required_doc }}</div>
-                                                            <div style="font-size:0.68rem; font-weight:700; color:#3b82f6;">Submitted</div>
+                                                            <div class="document-title" style="font-size:0.8rem; font-weight:800; color:#1e40af;">{{ required_doc }}</div>
+                                                            <div class="document-status-text" style="font-size:0.68rem; font-weight:700; color:#3b82f6;">Submitted</div>
                                                         </div>
                                                     </div>
 
-                                                    <div style="display:flex; gap:6px; flex-shrink:0;">
-                                                        <button type="button" onclick="openPreview('{{ found.doc.file_path }}', '{{ required_doc }}')" style="border:1px solid #93c5fd; background:white; color:#1d4ed8; border-radius:7px; padding:6px 9px; font-size:0.7rem; font-weight:800; cursor:pointer;">View</button>
+                                                    <div class="document-actions" style="display:flex; gap:6px; flex-shrink:0;">
+                                                        <button type="button" class="document-view-button" onclick="openPreview('{{ found.doc.file_path }}', '{{ required_doc }}')" style="border:1px solid #93c5fd; background:white; color:#1d4ed8; border-radius:7px; padding:6px 9px; font-size:0.7rem; font-weight:800; cursor:pointer;">View</button>
                                                         <input type="file" id="doc-{{ s.enrollment_id }}-{{ loop.index }}" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadRegistrarDocument({{ s.enrollment_id }}, '{{ required_doc }}', this)">
                                                         <button type="button" onclick="document.getElementById('doc-{{ s.enrollment_id }}-{{ loop.index }}').click()" style="border:1px solid #93c5fd; background:white; color:#1d4ed8; border-radius:7px; padding:6px 9px; font-size:0.7rem; font-weight:800; cursor:pointer;">Replace</button>
                                                     </div>
                                                 </div>
                                             {% else %}
-                                                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+                                                <div data-document-row data-document-status="missing" style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
                                                     <div style="display:flex; align-items:center; gap:9px; min-width:0;">
-                                                        <div style="width:30px; height:30px; border-radius:8px; background:#e2e8f0; color:#94a3b8; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                                        <div class="document-status-icon" style="width:30px; height:30px; border-radius:8px; background:#e2e8f0; color:#94a3b8; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                                                 <polyline points="14 2 14 8 20 8"></polyline>
                                                             </svg>
                                                         </div>
                                                         <div>
-                                                            <div style="font-size:0.8rem; font-weight:800; color:#64748b;">{{ required_doc }}</div>
-                                                            <div style="font-size:0.68rem; font-weight:700; color:#94a3b8;">Missing</div>
+                                                            <div class="document-title" style="font-size:0.8rem; font-weight:800; color:#64748b;">{{ required_doc }}</div>
+                                                            <div class="document-status-text" style="font-size:0.68rem; font-weight:700; color:#94a3b8;">Missing</div>
                                                         </div>
                                                     </div>
 
-                                                    <div style="flex-shrink:0;">
+                                                    <div class="document-actions" style="display:flex; gap:6px; flex-shrink:0;">
                                                         <input type="file" id="doc-{{ s.enrollment_id }}-{{ loop.index }}" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadRegistrarDocument({{ s.enrollment_id }}, '{{ required_doc }}', this)">
                                                         <button type="button" onclick="document.getElementById('doc-{{ s.enrollment_id }}-{{ loop.index }}').click()" style="border:1px solid #cbd5e1; background:white; color:#475569; border-radius:7px; padding:6px 10px; font-size:0.7rem; font-weight:800; cursor:pointer;">Upload</button>
                                                     </div>
@@ -871,7 +871,7 @@
                                             {% endif %}
                                         {% endfor %}
 
-                                        <div style="display:flex; justify-content:flex-end; margin-top:3px; font-size:0.72rem; font-weight:800; color:{% if doc_count.value == 5 %}#16a34a{% else %}#64748b{% endif %};">
+                                        <div data-document-count style="display:flex; justify-content:flex-end; margin-top:3px; font-size:0.72rem; font-weight:800; color:{% if doc_count.value == 5 %}#16a34a{% else %}#64748b{% endif %};">
                                             {{ doc_count.value }} / 5 Submitted
                                         </div>
                                     </div>
@@ -1542,6 +1542,16 @@
         formData.append('doc_type', docType);
         formData.append('document', file);
 
+        const documentRow = input.closest('[data-document-row]');
+        const uploadButton = input.nextElementSibling;
+        const originalButtonText = uploadButton ? uploadButton.textContent : '';
+        let uploadCompleted = false;
+
+        if (uploadButton) {
+            uploadButton.disabled = true;
+            uploadButton.textContent = 'Uploading...';
+        }
+
         try {
             const response = await fetch(`/registrar/students-by-grade/document/${enrollmentId}`, {
                 method: 'POST',
@@ -1556,11 +1566,55 @@
                 return;
             }
 
-            window.location.reload();
+            documentRow.dataset.documentStatus = 'submitted';
+            documentRow.style.background = '#eff6ff';
+            documentRow.style.borderColor = '#bfdbfe';
+
+            const icon = documentRow.querySelector('.document-status-icon');
+            icon.style.background = '#2563eb';
+            icon.style.color = 'white';
+            icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>';
+
+            const title = documentRow.querySelector('.document-title');
+            title.style.color = '#1e40af';
+            const status = documentRow.querySelector('.document-status-text');
+            status.textContent = 'Submitted';
+            status.style.color = '#3b82f6';
+
+            const actions = documentRow.querySelector('.document-actions');
+            let viewButton = actions.querySelector('.document-view-button');
+            if (!viewButton) {
+                viewButton = document.createElement('button');
+                viewButton.type = 'button';
+                viewButton.className = 'document-view-button';
+                viewButton.textContent = 'View';
+                viewButton.style.cssText = 'border:1px solid #93c5fd;background:white;color:#1d4ed8;border-radius:7px;padding:6px 9px;font-size:0.7rem;font-weight:800;cursor:pointer;';
+                actions.insertBefore(viewButton, input);
+            }
+            viewButton.onclick = () => openPreview(data.file_url, docType);
+
+            uploadButton.textContent = 'Replace';
+            uploadButton.style.borderColor = '#93c5fd';
+            uploadButton.style.color = '#1d4ed8';
+            uploadCompleted = true;
+
+            const documentGroup = documentRow.parentElement;
+            const submittedCount = documentGroup.querySelectorAll('[data-document-status="submitted"]').length;
+            const count = documentGroup.querySelector('[data-document-count]');
+            count.textContent = `${submittedCount} / 5 Submitted`;
+            count.style.color = submittedCount === 5 ? '#16a34a' : '#64748b';
+
+            input.value = '';
+            alert(data.message);
 
         } catch (error) {
             alert('Document upload failed. Please try again.');
             input.value = '';
+        } finally {
+            if (uploadButton) {
+                uploadButton.disabled = false;
+                uploadButton.textContent = uploadCompleted ? 'Replace' : originalButtonText;
+            }
         }
     }
 

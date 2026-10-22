@@ -3179,6 +3179,76 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                                    grade_data=[],
                                    grading_periods=GRADING_PERIODS)
 
+        authorized_enrollment_ids = [e["enrollment_id"] for e in all_enrollments]
+        consolidated_options = []
+        if authorized_enrollment_ids:
+            cur.execute("""
+                SELECT tr.transfer_id, tr.source_enrollment_id, tr.destination_enrollment_id,
+                       tr.effective_term, sy.label AS school_year,
+                       sb.branch_name AS source_branch_name, db.branch_name AS destination_branch_name
+                FROM student_transfer_requests tr
+                JOIN school_years sy ON sy.year_id=tr.destination_year_id
+                JOIN branches sb ON sb.branch_id=tr.source_branch_id
+                JOIN branches db ON db.branch_id=tr.destination_branch_id
+                WHERE tr.status='approved'
+                  AND tr.destination_enrollment_id IS NOT NULL
+                  AND (tr.source_enrollment_id = ANY(%s) OR tr.destination_enrollment_id = ANY(%s))
+                ORDER BY tr.processed_at DESC, tr.transfer_id DESC
+            """, (authorized_enrollment_ids, authorized_enrollment_ids))
+            consolidated_options = cur.fetchall() or []
+
+        consolidated_transfer_id = request.args.get("consolidated_transfer_id", type=int)
+        selected_transfer = next(
+            (row for row in consolidated_options if row["transfer_id"] == consolidated_transfer_id), None
+        )
+        if selected_transfer:
+            source_id = selected_transfer["source_enrollment_id"]
+            destination_id = selected_transfer["destination_enrollment_id"]
+            effective_index = GRADING_PERIODS.index(selected_transfer["effective_term"])
+            cur.execute("""
+                SELECT pg.enrollment_id, pg.grading_period, pg.grade,
+                       sub.name AS subject_name, b.branch_name
+                FROM posted_grades pg
+                JOIN subjects sub ON sub.subject_id=pg.subject_id
+                JOIN enrollments e ON e.enrollment_id=pg.enrollment_id
+                JOIN branches b ON b.branch_id=e.branch_id
+                WHERE pg.enrollment_id IN (%s,%s)
+                  AND pg.grading_period IN ('1st','2nd','3rd')
+                ORDER BY sub.name, pg.grading_period, pg.posted_at DESC
+            """, (source_id, destination_id))
+            consolidated = {}
+            for row in cur.fetchall() or []:
+                period = row["grading_period"]
+                period_index = GRADING_PERIODS.index(period)
+                owns_term = (
+                    (row["enrollment_id"] == source_id and period_index < effective_index)
+                    or (row["enrollment_id"] == destination_id and period_index >= effective_index)
+                )
+                key = " ".join((row["subject_name"] or "").lower().split())
+                subject = consolidated.setdefault(key, {
+                    "subject_name": row["subject_name"], "grades": {}, "grade_sources": {},
+                    "conflicts": set(), "final_grade": None
+                })
+                if owns_term and period not in subject["grades"]:
+                    subject["grades"][period] = int(round(float(row["grade"])))
+                    subject["grade_sources"][period] = row["branch_name"]
+                elif not owns_term:
+                    subject["conflicts"].add(period)
+            grade_data = sorted(consolidated.values(), key=lambda item: item["subject_name"].lower())
+            for subject in grade_data:
+                values = [subject["grades"].get(period) for period in GRADING_PERIODS]
+                if all(value is not None for value in values):
+                    subject["final_grade"] = int(round(sum(values) / len(values)))
+                subject["conflicts"] = sorted(subject["conflicts"], key=GRADING_PERIODS.index)
+            return render_template(
+                "student_grades.html", student=all_enrollments[0],
+                all_enrollments=all_enrollments, selected_enrollment_id=None,
+                grade_data=grade_data, grading_periods=GRADING_PERIODS,
+                school_year_label=selected_transfer["school_year"], available_terms=GRADING_PERIODS,
+                selected_term="all", consolidated_options=consolidated_options,
+                selected_consolidated_transfer_id=selected_transfer["transfer_id"], is_consolidated=True
+            )
+
         # 2. Determine which enrollment to show
         enr = None
         if selected_enrollment_id:
@@ -3347,7 +3417,10 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                                grading_periods=GRADING_PERIODS,
                                school_year_label=school_year_label,
                                available_terms=available_terms,
-                               selected_term=selected_term)
+                               selected_term=selected_term,
+                               consolidated_options=consolidated_options,
+                               selected_consolidated_transfer_id=None,
+                               is_consolidated=False)
     finally:
         cur.close()
         db.close()

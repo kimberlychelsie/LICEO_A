@@ -195,6 +195,9 @@
         color: transparent;
     }
 
+    .grade-source { display:block; margin-top:3px; color:var(--sd-muted); font-size:.64rem; font-weight:700; }
+    .grade-conflict { display:inline-block; margin-top:5px; padding:2px 6px; border-radius:6px; background:#fff7ed; color:#c2410c; font-size:.62rem; font-weight:800; }
+
     /* ── Legend ── */
     .legend-card {
         margin-top: 32px;
@@ -282,7 +285,12 @@
 
         <div class="term-selector-wrap">
             <select class="term-select"
-                onchange="var parts = this.value.split('|'); updateFilters(parts[0], parts[1]);">
+                onchange="updateGradeView(this.value);">
+                {% for transfer in consolidated_options or [] %}
+                <option value="consolidated|{{ transfer.transfer_id }}" {% if selected_consolidated_transfer_id == transfer.transfer_id %}selected{% endif %}>
+                    {{ transfer.school_year }} : Consolidated Record
+                </option>
+                {% endfor %}
                 {% for e in all_enrollments %}
                 {% if available_terms and e.enrollment_id == selected_enrollment_id %}
                 <option value="{{ e.enrollment_id }}|all" {% if e.enrollment_id==selected_enrollment_id and
@@ -310,6 +318,14 @@
     </header>
 
     <script>
+        function updateGradeView(value) {
+            const parts = value.split('|');
+            if (parts[0] === 'consolidated') {
+                window.location.href = '?consolidated_transfer_id=' + encodeURIComponent(parts[1]);
+                return;
+            }
+            updateFilters(parts[0], parts[1]);
+        }
         function updateFilters(enrollmentId, termFilter) {
             let url = '?enrollment_id=' + enrollmentId;
             if (termFilter) {
@@ -320,7 +336,15 @@
     </script>
 
     {% if grade_data %}
-    {% if selected_term and selected_term != 'all' %}
+    {% if is_consolidated %}
+    <div class="grades-card">
+        <div class="table-responsive"><table class="grade-table"><thead><tr><th class="col-subject">Subjects</th>{% for period in grading_periods %}<th>{{ period }} Term</th>{% endfor %}<th>Final Grade</th></tr></thead><tbody>
+        {% for subj in grade_data %}<tr><td><span class="subject-name">{{ subj.subject_name }}</span>{% if subj.conflicts %}<span class="grade-conflict">Conflicting non-owner grade: {{ subj.conflicts|join(', ') }}</span>{% endif %}</td>
+        {% for period in grading_periods %}{% set value = subj.grades.get(period) %}<td class="grade-cell {% if value is not none %}{{ 'grade-pass' if value >= 75 else 'grade-fail' }}{% else %}grade-empty{% endif %}">{{ value if value is not none else '—' }}{% if value is not none %}<span class="grade-source">{{ subj.grade_sources.get(period) }}</span>{% endif %}</td>{% endfor %}
+        {% set final = subj.final_grade %}<td class="grade-cell final-cell {% if final is not none %}{{ 'grade-pass' if final >= 75 else 'grade-fail' }}{% else %}grade-empty{% endif %}">{{ final if final is not none else '—' }}</td></tr>{% endfor %}
+        </tbody></table></div>
+    </div>
+    {% elif selected_term and selected_term != 'all' %}
     <div class="grades-card">
         <div class="table-responsive">
             <table class="grade-table">

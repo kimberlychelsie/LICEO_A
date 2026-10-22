@@ -4546,6 +4546,28 @@ def grading_component_distribution(section_id, subject_id, period):
         cur.close(); db.close()
 
 
+def _assert_student_gradeable_for_period(cur, enrollment_id, section_id, period):
+    """Reject destination-branch grading before an approved transfer's effective term."""
+    period_order = {"1st": 1, "2nd": 2, "3rd": 3}
+    if period not in period_order:
+        raise ValueError("Invalid grading period.")
+    cur.execute("""
+        SELECT e.enrollment_id,
+               NOT EXISTS (
+                   SELECT 1 FROM student_transfer_requests tr
+                   WHERE tr.destination_enrollment_id=e.enrollment_id
+                     AND tr.status='approved'
+                     AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > %s
+               ) AS may_grade
+        FROM enrollments e
+        WHERE e.enrollment_id=%s AND e.section_id=%s
+          AND e.status IN ('approved','enrolled','open_for_enrollment','completed')
+    """, (period_order[period], enrollment_id, section_id))
+    row = cur.fetchone()
+    if not row or not row["may_grade"]:
+        raise ValueError("This transferred student belongs to the source branch for this term. Destination teachers cannot edit these historical grades.")
+
+
 def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period, year_id):
     """Compute grades using DepEd K-12 auto-weighting.
     School policy (client customization):
@@ -4581,9 +4603,15 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             JOIN shs_student_elective_memberships m ON e.enrollment_id = m.enrollment_id
             WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s
                   AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                  AND NOT EXISTS (
+                    SELECT 1 FROM student_transfer_requests tr
+                    WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved'
+                      AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
+                          > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
+                  )
                   AND m.offering_id = %s AND m.status = 'ACTIVE'
             ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
-        """, (section_id, branch_id, year_id, offering_id))
+        """, (section_id, branch_id, year_id, period, offering_id))
     else:
         cur.execute("""
             SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
@@ -4594,8 +4622,14 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             LEFT JOIN branches b ON e.branch_id = b.branch_id
             WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s
                   AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                  AND NOT EXISTS (
+                    SELECT 1 FROM student_transfer_requests tr
+                    WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved'
+                      AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
+                          > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
+                  )
             ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
-        """, (section_id, branch_id, year_id))
+        """, (section_id, branch_id, year_id, period))
     students = cur.fetchall() or []
     for s in students:
         s["student_name"] = " ".join(filter(None, [
@@ -5417,6 +5451,7 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
         stu = cur.fetchone()
         if not stu:
             return jsonify({'success': False, 'error': 'Student not found'}), 404
+        _assert_student_gradeable_for_period(cur, enrollment_id, section_id, period)
         student_name = " ".join(filter(None, [
             stu['student_first_name'],
             stu['student_middle_name'],
@@ -6012,6 +6047,7 @@ def teacher_batch_save_scores(section_id, subject_id):
                 eid = s['enrollment_id']
                 score_str = request.form.get(f"score_{eid}", "").strip()
                 if score_str != "":
+                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
                     score_val = max(0.0, min(max_score, float(score_str)))
                     cur.execute("""
                         INSERT INTO exam_results (exam_id, enrollment_id, score, status, total_points, submitted_at)
@@ -6047,6 +6083,7 @@ def teacher_batch_save_scores(section_id, subject_id):
                 eid = s['enrollment_id']
                 score_str = request.form.get(f"score_{eid}", "").strip()
                 if score_str != "":
+                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
                     score_val = max(0.0, min(max_score, float(score_str)))
                     pct = (score_val / max_score) * 100 if max_score > 0 else 0
 
@@ -6087,6 +6124,7 @@ def teacher_batch_save_scores(section_id, subject_id):
                 eid = s['enrollment_id']
                 score_str = request.form.get(f"att_{eid}", "").strip()
                 if score_str != "":
+                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
                     val = max(0.0, min(total_days, float(score_str)))
                     cur.execute("""
                         INSERT INTO attendance_scores (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, total_days, updated_at)
@@ -6115,6 +6153,7 @@ def teacher_batch_save_scores(section_id, subject_id):
                 eid = s['enrollment_id']
                 score_str = request.form.get(f"part_{eid}", "").strip()
                 if score_str != "":
+                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
                     val = max(0.0, min(max_score, float(score_str)))
                     cur.execute("""
                         INSERT INTO participation_scores (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, max_score, updated_at)
@@ -6276,6 +6315,7 @@ def teacher_save_grid_scores(section_id, subject_id):
                 if len(parts) == 4:
                     act_id = int(parts[2])
                     eid = int(parts[3])
+                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
 
                     cur.execute("SELECT COALESCE(max_score, 100) AS max_score FROM activities WHERE activity_id=%s", (act_id,))
                     act_row = cur.fetchone()
@@ -6320,6 +6360,7 @@ def teacher_save_grid_scores(section_id, subject_id):
                 if len(parts) == 4:
                     ex_id = int(parts[2])
                     eid = int(parts[3])
+                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
 
                     posted_exam_max = (
                         request.form.get(f"max_quiz_{ex_id}")
@@ -6352,6 +6393,7 @@ def teacher_save_grid_scores(section_id, subject_id):
                 parts = key.split("_")
                 if len(parts) == 3:
                     eid = int(parts[2])
+                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
                     max_part = float(request.form.get("max_participation", 10))
                     val = max(0.0, min(max_part, val))
                     cur.execute("""
@@ -6367,6 +6409,7 @@ def teacher_save_grid_scores(section_id, subject_id):
                 parts = key.split("_")
                 if len(parts) == 3:
                     eid = int(parts[2])
+                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
                     total_days = float(request.form.get("max_attendance", 10))
                     val = max(0.0, min(total_days, val))
                     cur.execute("""
@@ -7248,6 +7291,12 @@ def participation_input(section_id, subject_id, period):
                           'open_for_enrollment',
                           'completed'
                       )
+                      AND NOT EXISTS (
+                        SELECT 1 FROM student_transfer_requests tr
+                        WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved'
+                          AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
+                              > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
+                      )
 
                     ON CONFLICT (
                         enrollment_id,
@@ -7267,7 +7316,8 @@ def participation_input(section_id, subject_id, period):
                     max_score,
                     section_id,
                     branch_id,
-                    year_id
+                    year_id,
+                    period
                 ))
 
                 db.commit()
@@ -7322,6 +7372,7 @@ def participation_input(section_id, subject_id, period):
                         enrollment_id = int(
                             key.split("_", 1)[1]
                         )
+                        _assert_student_gradeable_for_period(cur, enrollment_id, section_id, period)
 
                         score = float(val or 0)
 
@@ -7446,12 +7497,13 @@ def participation_input(section_id, subject_id, period):
                   AND e.branch_id = %s
                   AND s.year_id = %s
                   AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                  AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END)
                   AND m.offering_id = %s AND m.status = 'ACTIVE'
                 ORDER BY
                     e.student_last_name,
                     e.student_first_name,
                     e.student_middle_name
-            """, (subject_id, period, section_id, branch_id, year_id, offering_id))
+            """, (subject_id, period, section_id, branch_id, year_id, period, offering_id))
         else:
             cur.execute("""
                 SELECT
@@ -7467,11 +7519,12 @@ def participation_input(section_id, subject_id, period):
                   AND e.branch_id = %s
                   AND s.year_id = %s
                   AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                  AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END)
                 ORDER BY
                     e.student_last_name,
                     e.student_first_name,
                     e.student_middle_name
-            """, (subject_id, period, section_id, branch_id, year_id))
+            """, (subject_id, period, section_id, branch_id, year_id, period))
 
         students = cur.fetchall() or []
 
@@ -7556,9 +7609,10 @@ def attendance_input(section_id, subject_id, period):
                     SELECT %s, e.enrollment_id, %s, %s, %s, %s, NOW()
                     FROM enrollments e
                     WHERE e.section_id = %s
+                      AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END)
                     ON CONFLICT (enrollment_id, subject_id, grading_period)
                     DO UPDATE SET total_days = EXCLUDED.total_days, updated_at = NOW()
-                """, (user_id, section_id, subject_id, period, total_days, section_id))
+                """, (user_id, section_id, subject_id, period, total_days, section_id, period))
                 db.commit()
                 flash("Total school days updated!", "success")
                 return redirect(url_for("teacher.attendance_input",
@@ -7583,6 +7637,7 @@ def attendance_input(section_id, subject_id, period):
                     if key.startswith("score_"):
                         try:
                             eid   = int(key.split("_", 1)[1])
+                            _assert_student_gradeable_for_period(cur, eid, section_id, period)
                             score = max(1.0, min(float(total_days), float(val or 1)))
                             cur.execute("""
                                 INSERT INTO attendance_scores
@@ -7635,9 +7690,10 @@ def attendance_input(section_id, subject_id, period):
                 LEFT JOIN attendance_scores att ON att.enrollment_id = e.enrollment_id AND att.subject_id = %s AND att.grading_period = %s
                 JOIN shs_student_elective_memberships m ON e.enrollment_id = m.enrollment_id
                 WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END)
                 AND m.offering_id = %s AND m.status = 'ACTIVE'
                 ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
-            """, (subject_id, period, section_id, branch_id, year_id, offering_id))
+            """, (subject_id, period, section_id, branch_id, year_id, period, offering_id))
         else:
             cur.execute("""
                 SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
@@ -7649,8 +7705,9 @@ def attendance_input(section_id, subject_id, period):
                     ON att.enrollment_id = e.enrollment_id
                    AND att.subject_id = %s AND att.grading_period = %s
                 WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                  AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END)
                 ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
-            """, (subject_id, period, section_id, branch_id, year_id))
+            """, (subject_id, period, section_id, branch_id, year_id, period))
         students = cur.fetchall() or []
         for s in students:
             first_mid = " ".join(filter(None, [s.get("student_first_name"), s.get("student_middle_name")]))
