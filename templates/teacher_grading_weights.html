@@ -471,8 +471,7 @@
         </div>
         <div class="gw-info-text">
             <strong>How grade computation works:</strong><br>
-            Each subject's grading weight is automatically determined by its subject type (Language / Science & Math /
-            Skills).
+            Each subject's WW/PT/QA weight is configured by the Branch Admin.
             Scores from <strong>Quiz + Monthly Exam</strong> go to Written Works (WW),
             <strong>Activity + Participation + Attendance</strong> go to Performance Tasks (PT),
             and <strong>Periodical Exam</strong> scores go to Quarterly Assessment (QA).
@@ -494,42 +493,14 @@
                     {{ a.subject_name }}
                 </span>
                 <span class="gw-subject-meta">{{ a.grade_level_name }} / {{ a.section_name }}</span>
-                {% if a.deped_category == 'language' %}
                 <span class="gw-category-badge cat-language">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
                         style="margin-right: 4px;">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     </svg>
-                    Language / Values
+                    {{ a.grading_category_name }}
                 </span>
-                {% elif a.deped_category == 'science_math' %}
-                <span class="gw-category-badge cat-science_math">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                        style="margin-right: 4px;">
-                        <path d="M12 2v2"></path>
-                        <path d="M12 20v2"></path>
-                        <path d="m4.93 4.93 1.41 1.41"></path>
-                        <path d="m17.66 17.66 1.41 1.41"></path>
-                        <path d="M2 12h2"></path>
-                        <path d="M20 12h2"></path>
-                        <path d="m6.34 17.66-1.41 1.41"></path>
-                        <path d="m19.07 4.93-1.41 1.41"></path>
-                    </svg>
-                    Science / Math
-                </span>
-                {% else %}
-                <span class="gw-category-badge cat-skills">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-                        style="margin-right: 4px;">
-                        <path d="M12 20h9"></path>
-                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                    </svg>
-                    Skills (EPP/TLE/MAPEH)
-                </span>
-                {% endif %}
             </div>
             <div class="gw-term-group" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                 <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id, period='1st') }}"
@@ -626,30 +597,18 @@
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
             </svg>
-            DepEd K-12 Subject Categories
+            Admin-configured Grading Categories
         </div>
         <div class="gw-legend-grid">
+            {% for a in assignments %}
             <div class="gw-legend-item">
                 <div class="gw-legend-dot dot-lang"></div>
                 <div class="gw-legend-item-text">
-                    <strong>Language / Values — WW 30% · PT 50% · QA 20%</strong>
-                    <span>Filipino, English, Araling Panlipunan, Edukasyon sa Pagpapakatao (EsP)</span>
+                    <strong>{{ a.grading_category_name }} — WW {{ a.ww_pct }}% · PT {{ a.pt_pct }}% · QA {{ a.qa_pct }}%</strong>
+                    <span>{{ a.subject_name }} — {{ a.grade_level_name }} / {{ a.section_name }}</span>
                 </div>
             </div>
-            <div class="gw-legend-item">
-                <div class="gw-legend-dot dot-sci"></div>
-                <div class="gw-legend-item-text">
-                    <strong>Science / Math — WW 40% · PT 40% · QA 20%</strong>
-                    <span>Mathematics, Science</span>
-                </div>
-            </div>
-            <div class="gw-legend-item">
-                <div class="gw-legend-dot dot-skill"></div>
-                <div class="gw-legend-item-text">
-                    <strong>Skills — WW 20% · PT 60% · QA 20%</strong>
-                    <span>EPP, TLE, MAPEH (Music, Arts, PE, Health)</span>
-                </div>
-            </div>
+            {% endfor %}
         </div>
     </div>
 

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Component Distribution{% endblock %}
+{% block content %}
+<div style="max-width:900px;margin:30px auto;padding:0 20px;">
+  <div style="background:linear-gradient(135deg,#123b8f,#09265f);color:#fff;padding:28px;border-radius:20px;margin-bottom:20px;">
+    <h1 style="margin:0 0 8px;">Component Distribution</h1>
+    <p style="margin:0;opacity:.9;">{{ assignment.subject_name }} · {{ assignment.section_name }} · {{ period }} Term</p>
+  </div>
+  <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:15px;margin-bottom:18px;">
+    Admin category: <strong>{{ weights.name }}</strong> — WW {{ (weights.ww*100)|round|int }}%, PT {{ (weights.pt*100)|round|int }}%, QA {{ (weights.qa*100)|round|int }}%.
+    {% if not configured %}<br><small>Not saved yet: current grades continue using the legacy points-based computation until you save.</small>{% endif %}
+  </div>
+  <form method="post" style="background:white;border:1px solid #dbe3f0;border-radius:18px;padding:24px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <fieldset {% if locked %}disabled{% endif %} style="border:0;padding:0;margin:0;">
+      <h3>Written Works — must total 100%</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;"><label>Quizzes %<input class="form-control" type="number" name="ww_quiz_pct" min="0" max="100" step=".01" value="{{ distribution.ww_quiz_pct }}" required></label><label>Monthly Exams %<input class="form-control" type="number" name="ww_monthly_exam_pct" min="0" max="100" step=".01" value="{{ distribution.ww_monthly_exam_pct }}" required></label></div>
+      <h3 style="margin-top:24px;">Performance Tasks — must total 100%</h3>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;"><label>Activities %<input class="form-control" type="number" name="pt_activity_pct" min="0" max="100" step=".01" value="{{ distribution.pt_activity_pct }}" required></label><label>Participation %<input class="form-control" type="number" name="pt_participation_pct" min="0" max="100" step=".01" value="{{ distribution.pt_participation_pct }}" required></label><label>Attendance %<input class="form-control" type="number" name="pt_attendance_pct" min="0" max="100" step=".01" value="{{ distribution.pt_attendance_pct }}" required></label></div>
+      <h3 style="margin-top:24px;">Quarterly Assessment</h3>
+      <label>Periodical Exam %<input class="form-control" type="number" name="qa_periodical_exam_pct" value="100" readonly></label>
+      <button type="submit" class="btn btn-primary" style="margin-top:22px;">Save Distribution</button>
+    </fieldset>
+    {% if locked %}<p style="color:#b91c1c;font-weight:700;">This class record is locked because it is already under review or posted.</p>{% endif %}
+  </form>
+</div>
+{% endblock %}

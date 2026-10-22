@@ -1251,6 +1251,15 @@
             flex-wrap: wrap !important;
         }
     }
+.component-modal-overlay{position:fixed;inset:0;z-index:10020;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.68);backdrop-filter:blur(4px)}.component-modal-overlay.show{display:flex}.component-modal-card{width:min(620px,100%);max-height:calc(100vh - 36px);overflow:auto;background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.28)}.component-modal-head{display:flex;justify-content:space-between;align-items:flex-start;padding:19px 21px;border-bottom:1px solid #e2e8f0}.component-modal-head h3{margin:0;color:#123b8f;font-size:1.1rem}.component-modal-head p{margin:4px 0 0;color:#64748b;font-size:.78rem}.component-modal-close{border:0;background:#eef2f7;color:#475569;width:36px;height:36px;border-radius:9px;font-size:1.3rem;cursor:pointer}.component-modal-body{padding:20px}.component-policy{background:#eff6ff;border:1px solid #bfdbfe;border-radius:11px;padding:10px 12px;color:#1e3a8a;font-size:.78rem;margin-bottom:13px}.component-group{background:#f0fdfa;border:1px solid #b8eee4;border-radius:13px;padding:14px;margin-top:11px}.component-group-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;font-size:.82rem;font-weight:850;color:#123b8f}.component-rows{display:flex;flex-direction:column;gap:8px}.component-row{display:grid;grid-template-columns:minmax(0,1fr) 132px;align-items:center;gap:14px}.component-name{min-width:0;background:#fff;border:1px solid #dce7ee;border-radius:9px;padding:10px 12px;color:#334155;font-size:.8rem;font-weight:750}.component-value{display:grid;grid-template-columns:minmax(0,1fr) 34px;align-items:stretch}.component-input{width:100%;min-width:0;box-sizing:border-box;margin:0;padding:9px 10px;border:1px solid #cbd5e1;border-right:0;border-radius:9px 0 0 9px;background:#fff;font-weight:800;color:#0f172a;text-align:right}.component-input:focus{position:relative;outline:0;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}.component-input[readonly]{background:#f1f5f9;color:#64748b;cursor:not-allowed}.component-percent{display:flex;align-items:center;justify-content:center;border:1px solid #cbd5e1;border-left:0;border-radius:0 9px 9px 0;background:#f8fafc;color:#475569;font-weight:850}.component-total{font-size:.76rem;font-weight:850;color:#be123c}.component-total.valid{color:#15803d}.component-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.component-lock{color:#b91c1c;background:#fff1f2;border:1px solid #fecdd3;border-radius:10px;padding:10px;font-size:.78rem;font-weight:750;margin-bottom:12px}@media(max-width:560px){.component-modal-body{padding:16px}.component-row{grid-template-columns:minmax(0,1fr) 112px;gap:8px}.component-name{padding:9px 10px}}
+#componentSaveButton:disabled {
+    background: #cbd5e1 !important;
+    color: #64748b !important;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 1;
+}
+.grid-item-tools{display:flex;align-items:center;justify-content:center;gap:3px;margin-top:4px}.grid-max-editor{display:inline-flex;align-items:center;justify-content:center;gap:4px;font-size:.68rem;font-weight:750;white-space:nowrap}.grid-max-input{width:52px;padding:3px 5px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;color:#64748b;text-align:center;font-size:.72rem;font-weight:800}.grid-max-input.editing{background:#fff;color:inherit;border-color:currentColor}.grid-max-input:focus{outline:2px solid rgba(37,99,235,.2);outline-offset:1px}.grid-mini-action{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;padding:0;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#475569;cursor:pointer;font-size:.72rem}.grid-mini-action:hover{background:#eff6ff;color:#1d4ed8}.grid-mini-action.delete:hover{background:#fff1f2;border-color:#fecdd3;color:#dc2626}
 </style>
 {% endblock %}
 
@@ -1267,29 +1276,20 @@
                 </h1>
                 <p class="cr-hero-sub">
                     <span>{{ context.subject_name }}</span>
-                    {% if weights and weights.deped_category %}
-                        {% if weights.deped_category == 'language' %}
-                        <span class="category-badge cat-language">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                            Language / Values
-                        </span>
-                        {% elif weights.deped_category == 'science_math' %}
-                        <span class="category-badge cat-science_math">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
-                            Science / Math
-                        </span>
-                        {% else %}
-                        <span class="category-badge cat-skills">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                            Skills (EPP/TLE/MAPEH)
-                        </span>
-                        {% endif %}
+                    {% if weights and weights.category_name %}
+                        <span class="category-badge cat-language">{{ weights.category_name }}</span>
                     {% endif %}
                     <span style="color:rgba(255,255,255,0.5);">·</span>
                     <span>{{ context.grade_level_name }} / {{ context.section_name }}</span>
                 </p>
             </div>
             <div class="cr-hero-actions">
+                {% if period != 'final' %}
+                <button type="button" class="cr-btn cr-btn-ghost" onclick="openComponentModal()" title="Configure {{ PERIOD_LABELS.get(period, period) }} grading components">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+                    Components
+                </button>
+                {% endif %}
                 <a href="{{ url_for('teacher.participation_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="cr-btn cr-btn-ghost">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v2"></path><path d="M19 12h.01"></path></svg>
                     Participation
@@ -1618,14 +1618,14 @@
                                 {% for act in activities_list %}
                                 <th style="text-align:center; min-width:110px; background:#f0fdf4; color:#166534; border-bottom:2px solid #bbf7d0;">
                                     <div style="font-weight:800;">{{ act.title }}</div>
-                                    <small style="color:#15803d; font-weight:600;">Max: {{ act.max_score | int }}</small>
+                                    <div class="grid-item-tools"><label class="grid-max-editor" style="color:#15803d;">Max: <input class="grid-max-input" type="number" name="max_act_{{ act.activity_id }}" min="0.1" step="0.1" value="{{ act.max_score }}" aria-label="Maximum score for {{ act.title }}" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit maximum">&#9998;</button><button type="submit" class="grid-mini-action delete" formaction="{{ url_for('teacher.teacher_delete_class_record_item', section_id=section_id, subject_id=subject_id, period=period, item_type='activity', item_id=act.activity_id) }}" formmethod="post" onclick="return confirm('Delete this unused activity? This action cannot be undone.');" title="Delete activity" aria-label="Delete activity">&#128465;</button></div>
                                 </th>
                                 {% endfor %}
                             {% else %}
                                 <th style="text-align:center; color:#94a3b8; font-style:italic;">No Activities Added Yet (Click + Add Activity)</th>
                             {% endif %}
-                            <th style="text-align:center; min-width:110px; background:#fffbeb; color:#92400e;">Participation</th>
-                            <th style="text-align:center; min-width:110px; background:#eff6ff; color:#1e40af;">Attendance</th>
+                            <th style="text-align:center; min-width:125px; background:#fffbeb; color:#92400e;">Participation<div class="grid-item-tools"><label class="grid-max-editor">Max: <input class="grid-max-input" type="number" name="max_participation" min="0.1" step="0.1" value="{{ (records[0].participation_total if records else 10) | default(10) }}" aria-label="Maximum participation score" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit participation maximum">&#9998;</button></div></th>
+                            <th style="text-align:center; min-width:125px; background:#eff6ff; color:#1e40af;">Attendance<div class="grid-item-tools"><label class="grid-max-editor">Max: <input class="grid-max-input" type="number" name="max_attendance" min="0.1" step="0.1" value="{{ (records[0].attendance_total if records else 10) | default(10) }}" aria-label="Maximum attendance score" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit attendance maximum">&#9998;</button></div></th>
                             <th style="text-align:center; min-width:100px;">PT Total %</th>
                         </tr>
                     </thead>
@@ -1651,7 +1651,6 @@
 
                             <!-- Participation Input -->
                             <td style="text-align:center; padding:6px;">
-                                <input type="hidden" name="max_part_{{ r.enrollment_id }}" value="{{ r.participation_total | default(10) }}">
                                 <input type="number" step="0.1" min="0" max="{{ r.participation_total | default(10) }}"
                                        name="score_part_{{ r.enrollment_id }}"
                                        value="{{ r.participation if r.has_participation else '' }}"
@@ -1661,7 +1660,6 @@
 
                             <!-- Attendance Input -->
                             <td style="text-align:center; padding:6px;">
-                                <input type="hidden" name="total_att_{{ r.enrollment_id }}" value="{{ r.attendance_total | default(10) }}">
                                 <input type="number" step="0.1" min="0" max="{{ r.attendance_total | default(10) }}"
                                        name="score_att_{{ r.enrollment_id }}"
                                        value="{{ r.attendance if r.has_attendance else '' }}"
@@ -1719,13 +1717,13 @@
                                 <th style="text-align:center; min-width:115px; background:#f3e8ff; color:#6b21a8; border-bottom:2px solid #d8b4fe;">
                                     <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase; background:#e9d5ff; color:#7e22ce; padding:2px 6px; border-radius:4px; letter-spacing:0.5px;">Monthly Exam</span>
                                     <div style="font-weight:800; margin-top:3px;">{{ q.title }}</div>
-                                    <small style="color:#7c3aed; font-weight:600;">Max: {{ q.total_points | int }}</small>
+                                    <div class="grid-item-tools"><label class="grid-max-editor" style="color:#7c3aed;">Max: <input class="grid-max-input" type="number" name="max_quiz_{{ q.exam_id }}" min="0.1" step="0.1" value="{{ q.total_points }}" aria-label="Maximum score for {{ q.title }}" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit maximum">&#9998;</button><button type="submit" class="grid-mini-action delete" formaction="{{ url_for('teacher.teacher_delete_class_record_item', section_id=section_id, subject_id=subject_id, period=period, item_type='assessment', item_id=q.exam_id) }}" formmethod="post" onclick="return confirm('Delete this unused assessment? This action cannot be undone.');" title="Delete assessment" aria-label="Delete assessment">&#128465;</button></div>
                                 </th>
                                 {% else %}
                                 <th style="text-align:center; min-width:110px; background:#eff6ff; color:#1e40af; border-bottom:2px solid #bfdbfe;">
                                     <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase; background:#dbeafe; color:#1d4ed8; padding:2px 6px; border-radius:4px; letter-spacing:0.5px;">Quiz</span>
                                     <div style="font-weight:800; margin-top:3px;">{{ q.title }}</div>
-                                    <small style="color:#2563eb; font-weight:600;">Max: {{ q.total_points | int }}</small>
+                                    <div class="grid-item-tools"><label class="grid-max-editor" style="color:#2563eb;">Max: <input class="grid-max-input" type="number" name="max_quiz_{{ q.exam_id }}" min="0.1" step="0.1" value="{{ q.total_points }}" aria-label="Maximum score for {{ q.title }}" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit maximum">&#9998;</button><button type="submit" class="grid-mini-action delete" formaction="{{ url_for('teacher.teacher_delete_class_record_item', section_id=section_id, subject_id=subject_id, period=period, item_type='assessment', item_id=q.exam_id) }}" formmethod="post" onclick="return confirm('Delete this unused assessment? This action cannot be undone.');" title="Delete assessment" aria-label="Delete assessment">&#128465;</button></div>
                                 </th>
                                 {% endif %}
                                 {% endfor %}
@@ -1799,7 +1797,7 @@
                                 {% for ex in exams_list %}
                                 <th style="text-align:center; min-width:110px; background:#fffbeb; color:#92400e; border-bottom:2px solid #fde68a;">
                                     <div style="font-weight:800;">{{ ex.title }}</div>
-                                    <small style="color:#d97706; font-weight:600;">Max: {{ ex.total_points | int }}</small>
+                                    <div class="grid-item-tools"><label class="grid-max-editor" style="color:#d97706;">Max: <input class="grid-max-input" type="number" name="max_exam_{{ ex.exam_id }}" min="0.1" step="0.1" value="{{ ex.total_points }}" aria-label="Maximum score for {{ ex.title }}" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit maximum">&#9998;</button><button type="submit" class="grid-mini-action delete" formaction="{{ url_for('teacher.teacher_delete_class_record_item', section_id=section_id, subject_id=subject_id, period=period, item_type='assessment', item_id=ex.exam_id) }}" formmethod="post" onclick="return confirm('Delete this unused assessment? This action cannot be undone.');" title="Delete assessment" aria-label="Delete assessment">&#128465;</button></div>
                                 </th>
                                 {% endfor %}
                             {% else %}
@@ -1854,6 +1852,24 @@
 </div>
 
 <!-- ── Add Assessment Item Modal ── -->
+{% if period != 'final' %}
+{% set component_distribution = weights.distribution or {'ww_quiz_pct': 50, 'ww_monthly_exam_pct': 50, 'pt_activity_pct': 34, 'pt_participation_pct': 33, 'pt_attendance_pct': 33, 'qa_periodical_exam_pct': 100} %}
+{% set ww_total_weight = weights.quiz_pct|float %}
+{% set pt_total_weight = weights.activity_pct|float %}
+{% set qa_total_weight = weights.exam_pct|float %}
+{% set component_locked = submission_req.status in ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted'] %}
+<div id="componentModal" class="component-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="componentModalTitle" onclick="componentModalBackdrop(event)">
+  <div class="component-modal-card"><div class="component-modal-head"><div><h3 id="componentModalTitle">{{ PERIOD_LABELS.get(period, period) }} Components</h3><p>{{ context.subject_name }} &middot; {{ context.section_name }}</p></div><button type="button" class="component-modal-close" onclick="closeComponentModal()" aria-label="Close">&times;</button></div>
+    <form method="post" action="{{ url_for('teacher.grading_component_distribution', section_id=section_id, subject_id=subject_id, period=period) }}" id="componentForm" class="component-modal-body" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="return_to" value="class_record"><input type="hidden" name="distribution_mode" value="overall">
+      <div class="component-policy">Admin category: <strong>{{ weights.category_name }}</strong> &mdash; WW {{ weights.quiz_pct }}%, PT {{ weights.activity_pct }}%, QA {{ weights.exam_pct }}%.</div>{% if component_locked %}<div class="component-lock">This class record is locked. Component percentages can no longer be changed.</div>{% endif %}
+      <fieldset {% if component_locked %}disabled{% endif %} style="border:0;padding:0;margin:0;"><section class="component-group"><div class="component-group-title"><span>Written Works</span><span class="component-total" id="wwComponentTotal">{{ ww_total_weight|round(2) }}%</span></div><div class="component-rows"><label class="component-row"><span class="component-name">Quizzes</span><span class="component-value"><input class="component-input component-ww" type="number" name="ww_quiz_pct" min="0" max="{{ ww_total_weight }}" step=".01" value="{{ (component_distribution.ww_quiz_pct|float * ww_total_weight / 100)|round(2) }}" required><span class="component-percent">%</span></span></label><label class="component-row"><span class="component-name">Monthly Exams</span><span class="component-value"><input class="component-input component-ww" type="number" name="ww_monthly_exam_pct" min="0" max="{{ ww_total_weight }}" step=".01" value="{{ (component_distribution.ww_monthly_exam_pct|float * ww_total_weight / 100)|round(2) }}" required><span class="component-percent">%</span></span></label></div></section>
+      <section class="component-group"><div class="component-group-title"><span>Performance Tasks</span><span class="component-total" id="ptComponentTotal">{{ pt_total_weight|round(2) }}%</span></div><div class="component-rows"><label class="component-row"><span class="component-name">Activities</span><span class="component-value"><input class="component-input component-pt" type="number" name="pt_activity_pct" min="0" max="{{ pt_total_weight }}" step=".01" value="{{ (component_distribution.pt_activity_pct|float * pt_total_weight / 100)|round(2) }}" required><span class="component-percent">%</span></span></label><label class="component-row"><span class="component-name">Participation</span><span class="component-value"><input class="component-input component-pt" type="number" name="pt_participation_pct" min="0" max="{{ pt_total_weight }}" step=".01" value="{{ (component_distribution.pt_participation_pct|float * pt_total_weight / 100)|round(2) }}" required><span class="component-percent">%</span></span></label><label class="component-row"><span class="component-name">Attendance</span><span class="component-value"><input class="component-input component-pt" type="number" name="pt_attendance_pct" min="0" max="{{ pt_total_weight }}" step=".01" value="{{ (component_distribution.pt_attendance_pct|float * pt_total_weight / 100)|round(2) }}" required><span class="component-percent">%</span></span></label></div></section>
+      <section class="component-group"><div class="component-group-title"><span>Quarterly Assessment</span><span class="component-total valid">{{ qa_total_weight|round(2) }}%</span></div><div class="component-rows"><label class="component-row"><span class="component-name">Periodical Exam</span><span class="component-value"><input class="component-input" type="number" name="qa_periodical_exam_pct" value="{{ qa_total_weight|round(2) }}" readonly><span class="component-percent">%</span></span></label></div></section>
+      <div class="component-modal-actions"><button type="button" class="cr-btn" onclick="closeComponentModal()" style="background:#eef2f7;color:#475569;">Cancel</button><button type="submit" class="cr-btn cr-btn-solid" id="componentSaveButton" style="background:#2563eb;color:#fff;">Save Changes</button></div></fieldset>
+    </form></div>
+</div>
+{% endif %}
+
 <div id="batchModalOverlay" class="batch-modal-overlay" onclick="batchCloseOnBackdrop(event)">
     <div class="batch-modal-card" style="max-width:480px; padding:22px; border-radius:16px;">
         <div class="batch-modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">
@@ -1897,6 +1913,33 @@
 </div>
 
 <script>
+{% if period != 'final' %}
+const componentModal=document.getElementById('componentModal'),componentForm=document.getElementById('componentForm'),componentInputs=[...componentForm.querySelectorAll('.component-input')],componentOriginal=componentInputs.map(input=>input.value),componentSaveButton=document.getElementById('componentSaveButton');
+const wwComponentTarget=Number({{ ww_total_weight|tojson }}),ptComponentTarget=Number({{ pt_total_weight|tojson }});
+function componentTotal(selector,totalId,target){const inputs=[...document.querySelectorAll(selector)],values=inputs.map(input=>Number(input.value)),valid=values.every(value=>Number.isFinite(value)&&value>=0&&value<=target),total=valid?values.reduce((sum,value)=>sum+value,0):0,totalEl=document.getElementById(totalId);totalEl.textContent=total.toFixed(2)+'%';totalEl.classList.toggle('valid',valid&&Math.abs(total-target)<=.001);return valid&&Math.abs(total-target)<=.001}
+function updateComponentSave(){const valid=componentTotal('.component-ww','wwComponentTotal',wwComponentTarget)&&componentTotal('.component-pt','ptComponentTotal',ptComponentTarget),changed=componentInputs.some((input,index)=>input.value!==componentOriginal[index]);componentSaveButton.disabled=!(valid&&changed)}
+function openComponentModal(){componentModal.classList.add('show');document.body.style.overflow='hidden';updateComponentSave();setTimeout(()=>componentInputs[0].focus(),0)}
+function closeComponentModal(){componentModal.classList.remove('show');document.body.style.overflow=''}
+function componentModalBackdrop(event){if(event.target===componentModal)closeComponentModal()}
+componentInputs.forEach(input=>input.addEventListener('input',updateComponentSave));componentForm.addEventListener('submit',event=>{updateComponentSave();if(componentSaveButton.disabled){event.preventDefault();return}componentSaveButton.disabled=true;componentSaveButton.textContent='Saving...'});document.addEventListener('keydown',event=>{if(event.key==='Escape'&&componentModal.classList.contains('show'))closeComponentModal()});
+{% endif %}
+document.querySelectorAll('.grid-max-input').forEach(maxInput=>{
+    const syncScoreMaximum=()=>{
+        let scorePrefix='';
+        if(maxInput.name.startsWith('max_act_')) scorePrefix='score_act_'+maxInput.name.slice(8)+'_';
+        else if(maxInput.name.startsWith('max_quiz_')) scorePrefix='score_quiz_'+maxInput.name.slice(9)+'_';
+        else if(maxInput.name.startsWith('max_exam_')) scorePrefix='score_exam_'+maxInput.name.slice(9)+'_';
+        else if(maxInput.name==='max_participation') scorePrefix='score_part_';
+        else if(maxInput.name==='max_attendance') scorePrefix='score_att_';
+        if(!scorePrefix) return;
+        const newMaximum=Number(maxInput.value);
+        document.querySelectorAll(`input[name^="${scorePrefix}"]`).forEach(scoreInput=>{
+            if(Number.isFinite(newMaximum)&&newMaximum>0) scoreInput.max=String(newMaximum);
+        });
+    };
+    maxInput.addEventListener('input',syncScoreMaximum);
+});
+function enableGridMax(button){const input=button.parentElement.querySelector('.grid-max-input');if(!input)return;input.readOnly=false;input.classList.add('editing');input.focus();input.select();button.style.display='none'}
 function switchCategoryView(view) {
     document.querySelectorAll('.ctab').forEach(b => b.classList.remove('active'));
     const activeBtn = document.getElementById('ctab-' + view);
