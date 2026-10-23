@@ -231,6 +231,25 @@
     resize: vertical;
   }
 
+  .prefilled-note {
+    grid-column: 1 / -1;
+    padding: 11px 14px;
+    border-radius: 10px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+    font-size: .8rem;
+    font-weight: 650;
+  }
+
+  .form-control[readonly] {
+    background: #f1f5f9;
+    color: #334155;
+    cursor: default;
+  }
+
+  .required-mark { color: var(--err); }
+
   /* ── Custom Radio Group ── */
   .radio-group {
     display: flex;
@@ -395,6 +414,16 @@
     box-shadow: 0 6px 24px rgba(30, 58, 138, 0.45);
   }
 
+  .btn-draft:disabled,
+  .btn-submit:disabled {
+    background: #cbd5e1;
+    color: #64748b;
+    border-color: #cbd5e1;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+
   @media(max-width: 640px) {
     .fg-grid { grid-template-columns: 1fr; }
     .swafo-hero { flex-direction: column; text-align: center; padding: 28px 20px; }
@@ -445,10 +474,70 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" id="form_action" value="save">
 
-    <!-- I. PAMILYA / FAMILY BACKGROUND -->
+    <!-- I. PERSONAL INFORMATION -->
     <div class="swafo-card">
       <div class="swafo-card-head">
         <div class="swafo-card-badge">I</div>
+        <div>
+          <h2>Personal na Impormasyon / Personal Information</h2>
+          <p>Opisyal na impormasyon mula sa iyong approved enrollment record</p>
+        </div>
+      </div>
+      <div class="fg-grid">
+        <div class="prefilled-note">
+          Awtomatikong kinuha ang impormasyong ito sa enrollment. Maaari mo itong itama rito; ang pagbabago ay mase-save rin sa iyong official enrollment record.
+        </div>
+        <div class="form-group">
+          <label>Pangalan <span class="required-mark">*</span></label>
+          <input type="text" name="student_first_name" class="form-control" value="{{ student_info.student_first_name or '' }}" maxlength="100" required>
+        </div>
+        <div class="form-group">
+          <label>Gitnang Pangalan</label>
+          <input type="text" name="student_middle_name" class="form-control" value="{{ student_info.student_middle_name or '' }}" maxlength="100">
+        </div>
+        <div class="form-group">
+          <label>Apelyido <span class="required-mark">*</span></label>
+          <input type="text" name="student_last_name" class="form-control" value="{{ student_info.student_last_name or '' }}" maxlength="100" required>
+        </div>
+        <div class="form-group">
+          <label>Palayaw</label>
+          <input type="text" name="nickname" value="{{ record.nickname if record and record.nickname else '' }}" class="form-control" maxlength="50" autocomplete="nickname" placeholder="Ilagay ang palayaw">
+        </div>
+        <div class="form-group">
+          <label>Kasarian <span class="required-mark">*</span></label>
+          <select name="gender" class="form-control" required>
+            <option value="">— Pumili —</option>
+            <option value="Male" {{ 'selected' if student_info.gender == 'Male' else '' }}>Male</option>
+            <option value="Female" {{ 'selected' if student_info.gender == 'Female' else '' }}>Female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Kapanganakan: Petsa <span class="required-mark">*</span></label>
+          <input type="date" id="studentDob" name="dob" class="form-control" value="{{ student_info.dob.isoformat() if student_info.dob else '' }}" required>
+        </div>
+        <div class="form-group">
+          <label>Edad</label>
+          <input type="text" id="studentAge" class="form-control" value="{{ student_info.age if student_info.age is not none else 'Hindi nakalagay' }}" readonly>
+        </div>
+        <div class="form-group">
+          <label>Kapanganakan: Lugar <span class="required-mark">*</span></label>
+          <input type="text" name="birthplace" class="form-control" value="{{ student_info.birthplace or '' }}" maxlength="255" required>
+        </div>
+        <div class="form-group">
+          <label>Tirahan <span class="required-mark">*</span></label>
+          <textarea name="address" class="form-control" rows="2" maxlength="500" required>{{ student_info.address or '' }}</textarea>
+        </div>
+        <div class="form-group">
+          <label>Cell Number</label>
+          <input type="tel" name="contact_number" class="form-control" value="{{ student_info.contact_number or '' }}" inputmode="numeric" maxlength="11" pattern="09[0-9]{9}" title="Gumamit ng 11-digit PH mobile number: 09XXXXXXXXX">
+        </div>
+      </div>
+    </div>
+
+    <!-- II. PAMILYA / FAMILY BACKGROUND -->
+    <div class="swafo-card">
+      <div class="swafo-card-head">
+        <div class="swafo-card-badge">II</div>
         <div>
           <h2>Pamilya / Family Background</h2>
           <p>Listahan at impormasyon tungkol sa mga miyembro ng pamilya</p>
@@ -543,10 +632,10 @@
       </div>
     </div>
 
-    <!-- II. KALUSUGAN -->
+    <!-- III. KALUSUGAN -->
     <div class="swafo-card">
       <div class="swafo-card-head">
-        <div class="swafo-card-badge">II</div>
+        <div class="swafo-card-badge">III</div>
         <div>
           <h2>Kalusugan / Health Condition</h2>
           <p>Impormasyon sa pisikal na kalusugan at karamdaman</p>
@@ -586,10 +675,10 @@
       </div>
     </div>
 
-    <!-- III. EDUKASYON -->
+    <!-- IV. EDUKASYON -->
     <div class="swafo-card">
       <div class="swafo-card-head">
-        <div class="swafo-card-badge">III</div>
+        <div class="swafo-card-badge">IV</div>
         <div>
           <h2>Edukasyon / Educational Attainment</h2>
           <p>Listahan ng mga paaralan na pinasukan at akademikong status</p>
@@ -608,8 +697,8 @@
             </tr>
           </thead>
           <tbody id="edBody">
-            {% set ed_data = record.education_history if record and record.education_history else [{'antas':'Kinder','paaralan':'','taon':'','katamo':''},{'antas':'Elementary','paaralan':'','taon':'','katamo':''},{'antas':'Junior High','paaralan':'','taon':'','katamo':''}] %}
-            {% for ed in ed_data %}
+            {% if record and record.education_history %}
+            {% for ed in record.education_history %}
             <tr>
               <td><input type="text" name="ed_antas[]" value="{{ ed.antas }}" class="table-input"></td>
               <td><input type="text" name="ed_paaralan[]" value="{{ ed.paaralan }}" class="table-input"></td>
@@ -618,6 +707,23 @@
               <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()">Remove</button></td>
             </tr>
             {% endfor %}
+            {% elif default_education_levels %}
+            {% for level in default_education_levels %}
+            <tr>
+              <td><input type="text" name="ed_antas[]" value="{{ level }}" class="table-input"></td>
+              <td><input type="text" name="ed_paaralan[]" class="table-input"></td>
+              <td><input type="text" name="ed_taon[]" class="table-input" style="width:90px;"></td>
+              <td><input type="text" name="ed_katamo[]" class="table-input"></td>
+              <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()">Remove</button></td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr class="education-empty-row">
+              <td colspan="5" style="padding:20px; text-align:center; color:var(--mu); font-size:.85rem;">
+                Wala pang completed educational level para sa kasalukuyang grade level.
+              </td>
+            </tr>
+            {% endif %}
           </tbody>
         </table>
       </div>
@@ -648,10 +754,10 @@
       </div>
     </div>
 
-    <!-- IV. RELIHIYON -->
+    <!-- V. RELIHIYON -->
     <div class="swafo-card">
       <div class="swafo-card-head">
-        <div class="swafo-card-badge">IV</div>
+        <div class="swafo-card-badge">V</div>
         <div>
           <h2>Relihiyon / Religious Background</h2>
           <p>Impormasyon sa pananampalataya at mga sakramento</p>
@@ -695,10 +801,10 @@
       </div>
     </div>
 
-    <!-- V. TAG-ARAW & SUBJECT PREFERENCES -->
+    <!-- VI. TAG-ARAW & SUBJECT PREFERENCES -->
     <div class="swafo-card">
       <div class="swafo-card-head">
-        <div class="swafo-card-badge">V</div>
+        <div class="swafo-card-badge">VI</div>
         <div>
           <h2>Asignatura / Subject Preferences & Summer</h2>
           <p>Mga asignatura sa tag-araw at mga hilig na paksa</p>
@@ -735,10 +841,10 @@
       </div>
     </div>
 
-    <!-- VI. BOKASYON & SARILI -->
+    <!-- VII. BOKASYON & SARILI -->
     <div class="swafo-card">
       <div class="swafo-card-head">
-        <div class="swafo-card-badge">VI</div>
+        <div class="swafo-card-badge">VII</div>
         <div>
           <h2>Bokasyon & Sariling Paglalarawan</h2>
           <p>Mga pangarap na kurso at paglalarawan sa sarili</p>
@@ -771,8 +877,8 @@
         {% endif %}
       </div>
       <div style="display: flex; gap: 12px; align-items: center;">
-        <button type="button" class="btn-draft" onclick="submitForm('save')">I-save bilang Draft</button>
-        <button type="button" class="btn-submit" onclick="submitForm('submit')">Isumite ang Record</button>
+        <button type="button" id="saveDraftButton" class="btn-draft" onclick="submitForm('save')" disabled>I-save bilang Draft</button>
+        <button type="button" id="submitRecordButton" class="btn-submit" onclick="submitForm('submit')" disabled>Isumite ang Record</button>
       </div>
     </div>
   </form>
@@ -780,12 +886,118 @@
 
 <script>
 function submitForm(action) {
+  const form = document.getElementById('swafoForm');
   document.getElementById('form_action').value = action;
+  if (!validateSwafoForm(action === 'submit')) return;
   if (action === 'submit' && !confirm('Isusumite na ang iyong SWAFO Cumulative Record. Sigurado ka ba?')) {
     return;
   }
-  document.getElementById('swafoForm').submit();
+  form.submit();
 }
+
+function validateSwafoForm(requireComplete) {
+  const form = document.getElementById('swafoForm');
+  form.querySelectorAll('[data-swafo-required]').forEach(el => el.removeAttribute('data-swafo-required'));
+  if (requireComplete) {
+    const radioNames = ['may_sariling_silid','natutulog_sa_bahay','naranasan_maglayas','malinaw_mata','maayos_pandinig','naiban_sakit','umakyat_antas','may_binyag','may_kumpil','kasali_samahan'];
+    for (const name of radioNames) {
+      if (!form.querySelector(`input[name="${name}"]:checked`)) {
+        alert('Pakikumpleto ang lahat ng Opo/Hindi na tanong bago isumite.');
+        form.querySelector(`input[name="${name}"]`)?.scrollIntoView({behavior:'smooth', block:'center'});
+        return false;
+      }
+    }
+    for (const name of ['uri_ng_kabuhayan','kalagayan_pag_aaral']) {
+      const field = form.elements[name];
+      if (!field?.value) {
+        alert('Pakikumpleto ang mga kinakailangang pagpipilian bago isumite.');
+        field?.focus();
+        return false;
+      }
+    }
+    const conditionalFields = [
+      ['naranasan_maglayas', 'Opo', 'dahilan_maglayas', 'Ilagay ang dahilan ng paglayas.'],
+      ['may_sariling_silid', 'Hindi', 'kasama_sa_silid', 'Ilagay kung sino ang kasama sa silid.'],
+      ['umakyat_antas', 'Opo', 'kung_opo_antas', 'Ilagay ang antas at dahilan ng pagkatigil.'],
+      ['may_binyag', 'Opo', 'parokya_binyag', 'Ilagay ang parokya ng binyag.'],
+      ['may_kumpil', 'Opo', 'parokya_kumpil', 'Ilagay ang parokya ng kumpil.']
+    ];
+    for (const [radio, expected, target, message] of conditionalFields) {
+      if (form.querySelector(`input[name="${radio}"]:checked`)?.value === expected && !form.elements[target]?.value.trim()) {
+        alert(message); form.elements[target]?.focus(); return false;
+      }
+    }
+  }
+  if (!form.reportValidity()) return false;
+  return true;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('swafoForm');
+  const draftButton = document.getElementById('saveDraftButton');
+  const submitButton = document.getElementById('submitRecordButton');
+  const limits = {
+    'fm_name[]':120, 'fm_estatus[]':100, 'fm_pinapasukan[]':150, 'fm_trabaho[]':150,
+    'ed_antas[]':80, 'ed_paaralan[]':180, 'ed_taon[]':4, 'ed_katamo[]':180,
+    'sum_asignatura[]':100, 'kamag_anak':500, 'kasama_sa_silid':150,
+    'dahilan_maglayas':500, 'piskal_na_kapansanan':300, 'karamdaman':300,
+    'kung_opo_antas':200, 'parokya_binyag':150, 'parokya_kumpil':150,
+    'relihiyon':100, 'pinakagusto_subject':100, 'inaayawan_subject':100,
+    'bokasyon_kurso':150, 'kaninong_kagustuhan':100, 'sarili_description':1000
+  };
+  const applyRules = root => {
+    root.querySelectorAll('input, textarea').forEach(field => {
+      if (limits[field.name]) field.maxLength = limits[field.name];
+      if (field.name === 'fm_edad[]') { field.min = '0'; field.max = '120'; field.step = '1'; }
+      if (field.name === 'ed_taon[]') { field.inputMode = 'numeric'; field.pattern = '\\d{4}'; field.title = 'Gumamit ng apat na digit na taon, halimbawa 2026.'; }
+      if (!field.readOnly && ['text','textarea'].includes(field.type === 'textarea' ? 'textarea' : field.type)) {
+        field.addEventListener('input', () => { field.value = field.value.replace(/[<>]/g, '').replace(/^\s+/, ''); });
+        field.addEventListener('blur', () => { field.value = field.value.trim().replace(/\s{2,}/g, ' '); });
+      }
+    });
+  };
+  applyRules(form);
+  const dob = document.getElementById('studentDob');
+  const age = document.getElementById('studentAge');
+  const today = new Date();
+  const minimumAgeDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+  dob.max = minimumAgeDate.toISOString().split('T')[0];
+  const refreshAge = () => {
+    if (!dob.value) { age.value = 'Hindi nakalagay'; return; }
+    const birth = new Date(`${dob.value}T00:00:00`);
+    let years = today.getFullYear() - birth.getFullYear();
+    if (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) years--;
+    age.value = Number.isFinite(years) ? years : 'Hindi nakalagay';
+  };
+  dob.addEventListener('change', refreshAge);
+  form.elements.contact_number?.addEventListener('input', event => {
+    event.target.value = event.target.value.replace(/\D/g, '').slice(0, 11);
+  });
+
+  const formState = () => {
+    const entries = [];
+    new FormData(form).forEach((value, key) => {
+      if (key !== 'csrf_token' && key !== 'action') entries.push([key, String(value)]);
+    });
+    return JSON.stringify(entries);
+  };
+  const initialState = formState();
+  const updateActionButtons = () => {
+    const unchanged = formState() === initialState;
+    draftButton.disabled = unchanged;
+    submitButton.disabled = unchanged;
+  };
+  form.addEventListener('input', updateActionButtons);
+  form.addEventListener('change', updateActionButtons);
+  form.addEventListener('focusout', () => setTimeout(updateActionButtons, 0));
+  new MutationObserver(mutations => {
+    mutations.forEach(m => m.addedNodes.forEach(node => {
+      if (node.nodeType === 1) applyRules(node.matches('input,textarea') ? node.parentElement : node);
+    }));
+    updateActionButtons();
+  }).observe(form, {childList:true, subtree:true});
+  updateActionButtons();
+});
 
 function addFamilyRow() {
   var row = '<tr>' +
@@ -800,6 +1012,7 @@ function addFamilyRow() {
 }
 
 function addEdRow() {
+  document.querySelector('#edBody .education-empty-row')?.remove();
   var row = '<tr>' +
     '<td><input type="text" name="ed_antas[]" class="table-input"></td>' +
     '<td><input type="text" name="ed_paaralan[]" class="table-input"></td>' +

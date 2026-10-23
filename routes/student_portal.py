@@ -11,6 +11,7 @@ from cloudinary_helper import upload_file
 from datetime import datetime, timezone, timedelta
 import json
 import pytz
+import re
 from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, size_price_map, price_for_size
 from utils.parent_sync import sync_all_users_for_enrollment_guardian_email
 from utils.assessment_resume import find_resumable_assessment_exam_id
@@ -4061,6 +4062,181 @@ def shs_electives():
 # ══════════════════════════════════════════
 # SWAFO — Student Cumulative Record
 # ══════════════════════════════════════════
+def _clean_swafo_text(value, label, max_length=255, required=False):
+    value = re.sub(r"\s+", " ", (value or "").strip())
+    if required and not value:
+        raise ValueError(f"Kailangan ang {label}.")
+    if len(value) > max_length:
+        raise ValueError(f"Ang {label} ay hanggang {max_length} characters lamang.")
+    if value and (re.search(r"[<>\x00-\x1f]", value) or "--" in value):
+        raise ValueError(f"May hindi pinapayagang character sa {label}.")
+    return value
+
+
+def _validate_swafo_personal_info(form):
+    personal = {}
+    name_pattern = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿÑñ' .-]+$")
+    for field, label, required in (
+        ("student_first_name", "pangalan", True),
+        ("student_middle_name", "gitnang pangalan", False),
+        ("student_last_name", "apelyido", True),
+    ):
+        value = _clean_swafo_text(form.get(field), label, 100, required)
+        if value and (not name_pattern.fullmatch(value) or ".." in value or "--" in value):
+            raise ValueError(f"Hindi valid ang {label}. Gumamit lamang ng mga letra, space, apostrophe, tuldok, at gitling.")
+        if required and len(value) < 2:
+            raise ValueError(f"Ang {label} ay dapat may hindi bababa sa 2 characters.")
+        personal[field] = value
+
+    gender = (form.get("gender") or "").strip()
+    if gender not in {"Male", "Female"}:
+        raise ValueError("Pumili ng valid na kasarian.")
+    personal["gender"] = gender
+
+    dob_text = (form.get("dob") or "").strip()
+    try:
+        dob = datetime.strptime(dob_text, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError("Maglagay ng valid na petsa ng kapanganakan.") from exc
+    today = datetime.now().date()
+    if dob > today:
+        raise ValueError("Hindi maaaring future date ang petsa ng kapanganakan.")
+    age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    if age < 3 or age > 120:
+        raise ValueError("Ang edad ng student ay dapat nasa 3 hanggang 120.")
+    personal["dob"] = dob
+
+    birthplace = _clean_swafo_text(form.get("birthplace"), "lugar ng kapanganakan", 255, True)
+    if not re.fullmatch(r"[A-Za-zÀ-ÖØ-öø-ÿÑñ0-9 .,'/-]+", birthplace):
+        raise ValueError("May hindi valid na character sa lugar ng kapanganakan.")
+    personal["birthplace"] = birthplace
+
+    address = _clean_swafo_text(form.get("address"), "tirahan", 500, True)
+    if len(address) < 5 or re.search(r"[+*$%@!=~^<>?{}\[\];|\\_]", address):
+        raise ValueError("Maglagay ng valid at kumpletong tirahan.")
+    personal["address"] = address
+
+    contact = re.sub(r"\D", "", form.get("contact_number") or "")
+    if contact and not re.fullmatch(r"09\d{9}", contact):
+        raise ValueError("Ang cell number ay dapat 11-digit PH mobile number (09XXXXXXXXX).")
+    personal["contact_number"] = contact
+    return personal
+
+
+def _completed_education_levels(grade_level):
+    grade = (grade_level or "").strip().lower()
+    match = re.search(r"\bgrade\s*(\d{1,2})\b", grade)
+    if not match:
+        return []
+    grade_number = int(match.group(1))
+    if grade_number >= 11:
+        return ["Kinder", "Elementary", "Junior High"]
+    if grade_number >= 7:
+        return ["Kinder", "Elementary"]
+    if grade_number >= 1:
+        return ["Kinder"]
+    return []
+
+
+def _validate_swafo_submission(form, require_complete=False):
+    yes_no_fields = {
+        "may_sariling_silid": "sariling silid-tulugan", "natutulog_sa_bahay": "pagtulog sa bahay",
+        "naranasan_maglayas": "karanasan sa paglayas", "malinaw_mata": "paningin",
+        "maayos_pandinig": "pandinig", "naiban_sakit": "malubhang sakit o operasyon",
+        "umakyat_antas": "pagkatigil sa pag-aaral", "may_binyag": "binyag",
+        "may_kumpil": "kumpil", "kasali_samahan": "samahang pang-relihiyon",
+    }
+    cleaned = {}
+    for field, label in yes_no_fields.items():
+        value = (form.get(field) or "").strip()
+        if value and value not in {"Opo", "Hindi"}:
+            raise ValueError(f"Hindi valid ang sagot para sa {label}.")
+        if require_complete and not value:
+            raise ValueError(f"Pumili ng sagot para sa {label}.")
+        cleaned[field] = value
+
+    for field, choices, label in (
+        ("uri_ng_kabuhayan", {"Mahirap", "Katamtaman", "Maunlad"}, "uri ng kabuhayan"),
+        ("kalagayan_pag_aaral", {"Mahusay", "Katamtaman", "Mahirap"}, "kalagayan ng pag-aaral"),
+    ):
+        value = (form.get(field) or "").strip()
+        if value and value not in choices:
+            raise ValueError(f"Hindi valid ang {label}.")
+        if require_complete and not value:
+            raise ValueError(f"Piliin ang {label}.")
+        cleaned[field] = value
+
+    text_limits = {
+        "nickname": (50, "palayaw"), "kamag_anak": (500, "mga kamag-anak"),
+        "kasama_sa_silid": (150, "kasama sa silid"), "dahilan_maglayas": (500, "dahilan ng paglayas"),
+        "piskal_na_kapansanan": (300, "pisikal na kapansanan"), "karamdaman": (300, "karamdaman"),
+        "kung_napatigil": (500, "dahilan ng pagkatigil"), "kung_opo_antas": (200, "antas ng pagkatigil"),
+        "parokya_binyag": (150, "parokya ng binyag"), "parokya_kumpil": (150, "parokya ng kumpil"),
+        "relihiyon": (100, "relihiyon"), "uri_samahan": (150, "uri ng samahan"),
+        "pinakagusto_subject": (100, "pinakagustong asignatura"), "inaayawan_subject": (100, "inaayawang asignatura"),
+        "bokasyon_kurso": (150, "bokasyon o kurso"), "kaninong_kagustuhan": (100, "kaninong kagustuhan"),
+        "sarili_description": (1000, "paglalarawan sa sarili"),
+    }
+    for field, (limit, label) in text_limits.items():
+        cleaned[field] = _clean_swafo_text(form.get(field), label, limit)
+
+    if cleaned["may_sariling_silid"] == "Hindi" and require_complete and not cleaned["kasama_sa_silid"]:
+        raise ValueError("Ilagay kung sino ang kasama sa silid.")
+    if cleaned["naranasan_maglayas"] == "Opo" and not cleaned["dahilan_maglayas"]:
+        raise ValueError("Ilagay ang dahilan ng paglayas.")
+    if cleaned["umakyat_antas"] == "Opo" and not cleaned["kung_opo_antas"]:
+        raise ValueError("Ilagay ang antas at dahilan ng pagkatigil sa pag-aaral.")
+    if cleaned["may_binyag"] == "Opo" and require_complete and not cleaned["parokya_binyag"]:
+        raise ValueError("Ilagay ang parokya ng binyag.")
+    if cleaned["may_kumpil"] == "Opo" and require_complete and not cleaned["parokya_kumpil"]:
+        raise ValueError("Ilagay ang parokya ng kumpil.")
+
+    family_members = []
+    family_lists = [form.getlist(key) for key in ("fm_name[]", "fm_edad[]", "fm_estatus[]", "fm_pinapasukan[]", "fm_trabaho[]")]
+    if max((len(items) for items in family_lists), default=0) > 20:
+        raise ValueError("Hanggang 20 miyembro lamang ang maaaring ilagay.")
+    for index in range(max((len(items) for items in family_lists), default=0)):
+        values = [(items[index] if index < len(items) else "") for items in family_lists]
+        if not any(str(value).strip() for value in values):
+            continue
+        age_text = str(values[1]).strip()
+        if age_text and (not age_text.isdigit() or not 0 <= int(age_text) <= 120):
+            raise ValueError(f"Ang edad ng miyembro #{index + 1} ay dapat 0 hanggang 120.")
+        family_members.append({
+            "name": _clean_swafo_text(values[0], f"pangalan ng miyembro #{index + 1}", 120, True),
+            "edad": age_text, "estatus": _clean_swafo_text(values[2], "antas ng edukasyon", 100),
+            "pinapasukan": _clean_swafo_text(values[3], "paaralan o opisina", 150),
+            "trabaho": _clean_swafo_text(values[4], "trabaho o hanapbuhay", 150),
+        })
+
+    education_history = []
+    education_lists = [form.getlist(key) for key in ("ed_antas[]", "ed_paaralan[]", "ed_taon[]", "ed_katamo[]")]
+    if max((len(items) for items in education_lists), default=0) > 15:
+        raise ValueError("Hanggang 15 education records lamang ang maaaring ilagay.")
+    current_year = datetime.now().year
+    for index in range(max((len(items) for items in education_lists), default=0)):
+        values = [(items[index] if index < len(items) else "") for items in education_lists]
+        if not any(str(value).strip() for value in values):
+            continue
+        if str(values[0]).strip() and not any(str(value).strip() for value in values[1:]):
+            if not require_complete:
+                continue
+        year = str(values[2]).strip()
+        if year and (not re.fullmatch(r"\d{4}", year) or not 1900 <= int(year) <= current_year + 15):
+            raise ValueError(f"Hindi valid ang taon sa education record #{index + 1}.")
+        education_history.append({
+            "antas": _clean_swafo_text(values[0], f"antas ng education record #{index + 1}", 80, True),
+            "paaralan": _clean_swafo_text(values[1], f"paaralan ng education record #{index + 1}", 180, True),
+            "taon": year, "katamo": _clean_swafo_text(values[3], "karangalan o award", 180),
+        })
+
+    summer_subjects = [_clean_swafo_text(value, "asignatura sa tag-araw", 100)
+                       for value in form.getlist("sum_asignatura[]") if value.strip()]
+    if len(summer_subjects) > 15:
+        raise ValueError("Hanggang 15 asignatura sa tag-araw lamang ang maaaring ilagay.")
+    return cleaned, family_members, education_history, summer_subjects
+
+
 @student_portal_bp.route("/student/swafo-record", methods=["GET", "POST"])
 def student_swafo_record():
     if not _require_student():
@@ -4078,42 +4254,31 @@ def student_swafo_record():
     try:
         if request.method == "POST":
             action = request.form.get("action", "save")
-
-            family_members = []
-            names = request.form.getlist("fm_name[]")
-            ages  = request.form.getlist("fm_edad[]")
-            edstats = request.form.getlist("fm_estatus[]")
-            pinapas = request.form.getlist("fm_pinapasukan[]")
-            trabaho = request.form.getlist("fm_trabaho[]")
-            for i, nm in enumerate(names):
-                if nm.strip():
-                    family_members.append({
-                        "name": nm.strip(),
-                        "edad": ages[i] if i < len(ages) else "",
-                        "estatus": edstats[i] if i < len(edstats) else "",
-                        "pinapasukan": pinapas[i] if i < len(pinapas) else "",
-                        "trabaho": trabaho[i] if i < len(trabaho) else "",
-                    })
-
-            education_history = []
-            ed_antas = request.form.getlist("ed_antas[]")
-            ed_paaralan = request.form.getlist("ed_paaralan[]")
-            ed_taon = request.form.getlist("ed_taon[]")
-            ed_katamo = request.form.getlist("ed_katamo[]")
-            for i, a in enumerate(ed_antas):
-                education_history.append({
-                    "antas": a,
-                    "paaralan": ed_paaralan[i] if i < len(ed_paaralan) else "",
-                    "taon": ed_taon[i] if i < len(ed_taon) else "",
-                    "katamo": ed_katamo[i] if i < len(ed_katamo) else "",
-                })
-
-            summer_subjects = [s.strip() for s in request.form.getlist("sum_asignatura[]") if s.strip()]
+            if action not in {"save", "submit"}:
+                raise ValueError("Hindi valid ang form action.")
+            personal = _validate_swafo_personal_info(request.form)
+            cleaned, family_members, education_history, summer_subjects = _validate_swafo_submission(
+                request.form, require_complete=(action == "submit")
+            )
             new_status = "submitted" if action == "submit" else "draft"
 
             cur.execute("""
+                UPDATE enrollments
+                SET student_first_name=%s, student_middle_name=%s, student_last_name=%s,
+                    gender=%s, dob=%s, birthplace=%s, address=%s, contact_number=%s
+                WHERE enrollment_id=%s AND branch_id=%s
+            """, (
+                personal["student_first_name"], personal["student_middle_name"] or None,
+                personal["student_last_name"], personal["gender"], personal["dob"],
+                personal["birthplace"], personal["address"], personal["contact_number"] or None,
+                enrollment_id, branch_id,
+            ))
+            if cur.rowcount != 1:
+                raise ValueError("Hindi mahanap ang active enrollment record.")
+
+            cur.execute("""
                 INSERT INTO swafo_records (
-                    enrollment_id, branch_id,
+                    enrollment_id, branch_id, nickname,
                     family_members, kamag_anak, may_sariling_silid, kasama_sa_silid,
                     uri_ng_kabuhayan, natutulog_sa_bahay, naranasan_maglayas, dahilan_maglayas,
                     piskal_na_kapansanan, malinaw_mata, maayos_pandinig, naiban_sakit, karamdaman,
@@ -4124,11 +4289,11 @@ def student_swafo_record():
                     bokasyon_kurso, kaninong_kagustuhan, sarili_description,
                     status, submitted_at, updated_at
                 ) VALUES (
-                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
                     CASE WHEN %s='submitted' THEN NOW() ELSE NULL END, NOW()
                 )
                 ON CONFLICT (enrollment_id) DO UPDATE SET
-                    family_members=EXCLUDED.family_members, kamag_anak=EXCLUDED.kamag_anak,
+                    nickname=EXCLUDED.nickname, family_members=EXCLUDED.family_members, kamag_anak=EXCLUDED.kamag_anak,
                     may_sariling_silid=EXCLUDED.may_sariling_silid, kasama_sa_silid=EXCLUDED.kasama_sa_silid,
                     uri_ng_kabuhayan=EXCLUDED.uri_ng_kabuhayan, natutulog_sa_bahay=EXCLUDED.natutulog_sa_bahay,
                     naranasan_maglayas=EXCLUDED.naranasan_maglayas, dahilan_maglayas=EXCLUDED.dahilan_maglayas,
@@ -4149,26 +4314,24 @@ def student_swafo_record():
                     submitted_at=CASE WHEN EXCLUDED.status='submitted' AND swafo_records.submitted_at IS NULL THEN NOW() ELSE swafo_records.submitted_at END,
                     updated_at=NOW()
             """, (
-                enrollment_id, branch_id,
-                json.dumps(family_members), request.form.get("kamag_anak",""),
-                request.form.get("may_sariling_silid",""), request.form.get("kasama_sa_silid",""),
-                request.form.get("uri_ng_kabuhayan",""), request.form.get("natutulog_sa_bahay",""),
-                request.form.get("naranasan_maglayas",""), request.form.get("dahilan_maglayas",""),
-                request.form.get("piskal_na_kapansanan",""), request.form.get("malinaw_mata",""),
-                request.form.get("maayos_pandinig",""), request.form.get("naiban_sakit",""),
-                request.form.get("karamdaman",""),
+                enrollment_id, branch_id, cleaned["nickname"],
+                json.dumps(family_members), cleaned["kamag_anak"],
+                cleaned["may_sariling_silid"], cleaned["kasama_sa_silid"],
+                cleaned["uri_ng_kabuhayan"], cleaned["natutulog_sa_bahay"],
+                cleaned["naranasan_maglayas"], cleaned["dahilan_maglayas"],
+                cleaned["piskal_na_kapansanan"], cleaned["malinaw_mata"],
+                cleaned["maayos_pandinig"], cleaned["naiban_sakit"], cleaned["karamdaman"],
                 json.dumps(education_history),
-                request.form.get("kalagayan_pag_aaral",""), request.form.get("kung_napatigil",""),
-                request.form.get("umakyat_antas",""), request.form.get("kung_opo_antas",""),
-                request.form.get("may_binyag",""), request.form.get("parokya_binyag",""),
-                request.form.get("may_kumpil",""), request.form.get("parokya_kumpil",""),
-                request.form.get("relihiyon",""), request.form.get("kasali_samahan",""),
-                request.form.get("uri_samahan",""), request.form.get("nakapag_kumpisal",""),
+                cleaned["kalagayan_pag_aaral"], cleaned["kung_napatigil"],
+                cleaned["umakyat_antas"], cleaned["kung_opo_antas"],
+                cleaned["may_binyag"], cleaned["parokya_binyag"],
+                cleaned["may_kumpil"], cleaned["parokya_kumpil"],
+                cleaned["relihiyon"], cleaned["kasali_samahan"],
+                cleaned["uri_samahan"], request.form.get("nakapag_kumpisal",""),
                 request.form.get("nakatanggap_komunyon",""),
                 json.dumps(summer_subjects),
-                request.form.get("pinakagusto_subject",""), request.form.get("inaayawan_subject",""),
-                request.form.get("bokasyon_kurso",""), request.form.get("kaninong_kagustuhan",""),
-                request.form.get("sarili_description",""),
+                cleaned["pinakagusto_subject"], cleaned["inaayawan_subject"],
+                cleaned["bokasyon_kurso"], cleaned["kaninong_kagustuhan"], cleaned["sarili_description"],
                 new_status, new_status,
             ))
             db.commit()
@@ -4177,10 +4340,25 @@ def student_swafo_record():
 
         cur.execute("SELECT * FROM swafo_records WHERE enrollment_id = %s", (enrollment_id,))
         record = cur.fetchone()
-        cur.execute("SELECT student_first_name, student_middle_name, student_last_name, grade_level FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
+        cur.execute("""
+            SELECT student_first_name, student_middle_name, student_last_name, grade_level,
+                   gender, dob, birthplace, address, contact_number,
+                   EXTRACT(YEAR FROM AGE(CURRENT_DATE, dob))::INTEGER AS age
+            FROM enrollments
+            WHERE enrollment_id = %s AND branch_id = %s
+        """, (enrollment_id, branch_id))
         student_info = cur.fetchone()
-        return render_template("student_swafo_form.html", record=record, student_info=student_info)
+        return render_template(
+            "student_swafo_form.html",
+            record=record,
+            student_info=student_info,
+            default_education_levels=_completed_education_levels(student_info.get("grade_level") if student_info else None),
+        )
 
+    except ValueError as e:
+        db.rollback()
+        flash(str(e), "error")
+        return redirect("/student/swafo-record")
     except Exception as e:
         db.rollback()
         flash(f"Nagkaroon ng error: {str(e)}", "error")

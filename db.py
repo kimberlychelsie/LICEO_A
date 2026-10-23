@@ -513,6 +513,7 @@ def get_db_connection():
                         record_id SERIAL PRIMARY KEY,
                         enrollment_id INTEGER UNIQUE REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
                         student_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+                        nickname VARCHAR(50),
                         family_members JSONB DEFAULT '[]'::jsonb,
                         health_info JSONB DEFAULT '{}'::jsonb,
                         education_history JSONB DEFAULT '[]'::jsonb,
@@ -1231,6 +1232,7 @@ def get_db_connection():
                         record_id           SERIAL PRIMARY KEY,
                         enrollment_id       INTEGER NOT NULL REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
                         branch_id           INTEGER NOT NULL,
+                        nickname            VARCHAR(50),
                         -- I. Family Background
                         family_members      JSONB DEFAULT '[]',
                         kamag_anak          TEXT,

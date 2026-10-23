@@ -266,6 +266,9 @@
     color: var(--tx);
     box-sizing: border-box;
     transition: all .2s;
+    resize: none;
+    max-height: 220px;
+    overflow-y: auto;
   }
 
   .notes-textarea:focus {
@@ -293,6 +296,14 @@
   .btn-save-notes:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 22px rgba(30, 58, 138, 0.4);
+  }
+
+  .btn-save-notes:disabled {
+    background: #cbd5e1;
+    color: #64748b;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
   }
 
   .disc-card {
@@ -502,10 +513,28 @@
     <!-- LEFT COLUMN: RECORD SECTIONS -->
     <div>
       
-      <!-- I. PAMILYA -->
+      <!-- I. PERSONAL INFORMATION -->
       <div class="record-card">
         <div class="record-card-title">
           <div class="card-num-badge">I</div>
+          <span>Personal na Impormasyon / Personal Information</span>
+        </div>
+        <div class="info-grid">
+          <div class="info-item"><label>Buong Pangalan</label><span>{{ student.student_name or '—' }}</span></div>
+          <div class="info-item"><label>Palayaw</label><span>{{ record.nickname if record and record.nickname else '—' }}</span></div>
+          <div class="info-item"><label>Kapanganakan: Petsa</label><span>{{ student.dob.strftime('%B %d, %Y') if student.dob else '—' }}</span></div>
+          <div class="info-item"><label>Edad</label><span>{{ student.age if student.age is not none else '—' }}</span></div>
+          <div class="info-item"><label>Kasarian</label><span>{{ student.gender or '—' }}</span></div>
+          <div class="info-item"><label>Kapanganakan: Lugar</label><span>{{ student.birthplace or '—' }}</span></div>
+          <div class="info-item"><label>Tirahan</label><span>{{ student.address or '—' }}</span></div>
+          <div class="info-item"><label>Cell Number</label><span>{{ student.contact_number or '—' }}</span></div>
+        </div>
+      </div>
+
+      <!-- II. PAMILYA -->
+      <div class="record-card">
+        <div class="record-card-title">
+          <div class="card-num-badge">II</div>
           <span>Pamilya / Family Background</span>
         </div>
 
@@ -548,10 +577,10 @@
         </div>
       </div>
 
-      <!-- II. KALUSUGAN -->
+      <!-- III. KALUSUGAN -->
       <div class="record-card">
         <div class="record-card-title">
-          <div class="card-num-badge">II</div>
+          <div class="card-num-badge">III</div>
           <span>Kalusugan / Health Condition</span>
         </div>
         <div class="info-grid">
@@ -562,10 +591,10 @@
         </div>
       </div>
 
-      <!-- III. EDUKASYON -->
+      <!-- IV. EDUKASYON -->
       <div class="record-card">
         <div class="record-card-title">
-          <div class="card-num-badge">III</div>
+          <div class="card-num-badge">IV</div>
           <span>Edukasyon / Educational History</span>
         </div>
 
@@ -604,10 +633,10 @@
         </div>
       </div>
 
-      <!-- IV. RELIHIYON -->
+      <!-- V. RELIHIYON -->
       <div class="record-card">
         <div class="record-card-title">
-          <div class="card-num-badge">IV</div>
+          <div class="card-num-badge">V</div>
           <span>Relihiyon / Religious Info</span>
         </div>
         <div class="info-grid">
@@ -618,10 +647,10 @@
         </div>
       </div>
 
-      <!-- V. BOKASYON & SARILI -->
+      <!-- VI. BOKASYON & SARILI -->
       <div class="record-card">
         <div class="record-card-title">
-          <div class="card-num-badge">V</div>
+          <div class="card-num-badge">VI</div>
           <span>Bokasyon & Sariling Paglalarawan</span>
         </div>
         <div class="info-grid">
@@ -640,12 +669,12 @@
         <div class="record-card-title" style="margin-bottom: 14px;">
           <span>SWAFO Teacher Review & Notes</span>
         </div>
-        <form method="POST" action="/teacher/swafo/student/{{ student.enrollment_id }}">
+        <form method="POST" action="/teacher/swafo/student/{{ student.enrollment_id }}" id="teacherNotesForm">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="action" value="notes">
           <label style="font-size: .8rem; font-weight: 800; color: var(--mu); text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: 8px;">Private SWAFO Remarks:</label>
-          <textarea name="teacher_notes" class="notes-textarea" placeholder="Isulat dito ang obserbasyon, counseling notes, o remarks para sa mag-aaral na ito...">{{ record.teacher_notes if record else '' }}</textarea>
-          <button type="submit" class="btn-save-notes">I-save ang Notes</button>
+          <textarea name="teacher_notes" id="teacherNotes" class="notes-textarea" rows="6" maxlength="2000" placeholder="Isulat dito ang obserbasyon, counseling notes, o remarks para sa mag-aaral na ito...">{{ record.teacher_notes if record else '' }}</textarea>
+          <button type="submit" id="saveTeacherNotes" class="btn-save-notes" disabled>I-save ang Notes</button>
         </form>
 
         <hr style="margin: 24px 0; border: none; border-top: 1.5px solid var(--bd);">
@@ -680,4 +709,18 @@
   </div>
 
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('teacherNotesForm');
+  const notes = document.getElementById('teacherNotes');
+  const saveButton = document.getElementById('saveTeacherNotes');
+  const initialNotes = notes.value;
+  const updateNotesButton = () => { saveButton.disabled = notes.value.trim() === initialNotes.trim(); };
+  notes.addEventListener('input', updateNotesButton);
+  form.addEventListener('submit', event => {
+    if (saveButton.disabled) event.preventDefault();
+  });
+  updateNotesButton();
+});
+</script>
 {% endblock %}

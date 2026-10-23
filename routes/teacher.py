@@ -8657,34 +8657,10 @@ def teacher_swafo_record_view(enrollment_id):
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        if request.method == "POST":
-            background_notes = request.form.get("background_notes", "").strip()
-            medical_alerts = request.form.get("medical_alerts", "").strip()
-            behavioral_notes = request.form.get("behavioral_notes", "").strip()
-            counseling_notes = request.form.get("counseling_notes", "").strip()
-
-            cur.execute("SELECT record_id FROM swafo_records WHERE enrollment_id = %s", (enrollment_id,))
-            rec = cur.fetchone()
-
-            if rec:
-                cur.execute("""
-                    UPDATE swafo_records
-                    SET background_notes = %s, medical_alerts = %s, behavioral_notes = %s, counseling_notes = %s, updated_at = NOW()
-                    WHERE enrollment_id = %s
-                """, (background_notes, medical_alerts, behavioral_notes, counseling_notes, enrollment_id))
-            else:
-                cur.execute("""
-                    INSERT INTO swafo_records (enrollment_id, branch_id, background_notes, medical_alerts, behavioral_notes, counseling_notes)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, (enrollment_id, session.get("branch_id"), background_notes, medical_alerts, behavioral_notes, counseling_notes))
-
-            db.commit()
-            flash("SWAFO cumulative record updated.", "success")
-            return redirect(f"/teacher/swafo/student/{enrollment_id}")
-
         cur.execute("""
             SELECT e.*, sec.section_name,
-                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name
+                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
+                EXTRACT(YEAR FROM AGE(CURRENT_DATE, e.dob))::INTEGER AS age
             FROM enrollments e
             LEFT JOIN sections sec ON e.section_id = sec.section_id
             WHERE e.enrollment_id = %s AND e.branch_id = %s
@@ -8694,6 +8670,34 @@ def teacher_swafo_record_view(enrollment_id):
         if not student:
             flash("Student record not found.", "error")
             return redirect("/teacher/swafo/students")
+
+        if request.method == "POST":
+            teacher_notes = request.form.get("teacher_notes", "").strip()
+            if len(teacher_notes) > 2000:
+                flash("SWAFO notes must not exceed 2,000 characters.", "error")
+                return redirect(f"/teacher/swafo/student/{enrollment_id}")
+            if re.search(r"[<>\x00-\x08\x0b\x0c\x0e-\x1f]", teacher_notes):
+                flash("SWAFO notes contain invalid characters.", "error")
+                return redirect(f"/teacher/swafo/student/{enrollment_id}")
+
+            cur.execute("SELECT record_id FROM swafo_records WHERE enrollment_id = %s", (enrollment_id,))
+            rec = cur.fetchone()
+
+            if rec:
+                cur.execute("""
+                    UPDATE swafo_records
+                    SET teacher_notes = %s, updated_at = NOW()
+                    WHERE enrollment_id = %s
+                """, (teacher_notes, enrollment_id))
+            else:
+                cur.execute("""
+                    INSERT INTO swafo_records (enrollment_id, branch_id, teacher_notes)
+                    VALUES (%s, %s, %s)
+                """, (enrollment_id, session.get("branch_id"), teacher_notes))
+
+            db.commit()
+            flash("SWAFO cumulative record updated.", "success")
+            return redirect(f"/teacher/swafo/student/{enrollment_id}")
 
         cur.execute("SELECT * FROM swafo_records WHERE enrollment_id = %s", (enrollment_id,))
         record = cur.fetchone()
