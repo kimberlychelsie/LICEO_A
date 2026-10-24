@@ -4753,7 +4753,6 @@ def registrar_subjects():
 
     if request.method == "POST":
         names = request.form.getlist("names")
-        categories = request.form.getlist("categories")
         subject_types = request.form.getlist("subject_types")
         tracks = request.form.getlist("tracks")
         section_ids = request.form.getlist("section_ids")
@@ -4767,7 +4766,7 @@ def registrar_subjects():
             for i in range(len(names)):
                 name = names[i].strip()
                 if not name: continue
-                deped_category = categories[i] if i < len(categories) else "language"
+                deped_category = "language"
                 subject_type = subject_types[i].upper() if i < len(subject_types) else "CORE"
                 track = tracks[i].strip() if i < len(tracks) and subject_type == "ELECTIVE" else None
                 term_name = terms[i].strip() if i < len(terms) and terms[i].strip() else None
@@ -4956,7 +4955,6 @@ def registrar_subject_edit(subject_id):
     branch_id = session.get("branch_id")
     new_name = (request.form.get("name") or "").strip()
     target_section_id_raw = request.form.get("section_id")
-    deped_category = request.form.get("deped_category", "language")
     subject_type = (request.form.get("subject_type") or "CORE").upper()
     track = (request.form.get("track") or "").strip() if subject_type == "ELECTIVE" else None
     term_name = (request.form.get("term_name") or "").strip() or None
@@ -4982,9 +4980,9 @@ def registrar_subject_edit(subject_id):
             actual_subject_id = existing["subject_id"]
             cursor.execute("""
                 UPDATE subjects 
-                SET name = %s, deped_category = %s, subject_type = %s, track = %s 
+                SET name = %s, subject_type = %s, track = %s
                 WHERE subject_id = %s
-            """, (new_name, deped_category, subject_type, track, actual_subject_id))
+            """, (new_name, subject_type, track, actual_subject_id))
 
             cursor.execute("""
                 UPDATE section_teachers
@@ -5007,9 +5005,9 @@ def registrar_subject_edit(subject_id):
             if other_usages > 0:
                 cursor.execute("""
                     INSERT INTO subjects (name, deped_category, subject_type, track)
-                    VALUES (%s, %s, %s, %s)
+                    VALUES (%s, 'language', %s, %s)
                     RETURNING subject_id
-                """, (new_name, deped_category, subject_type, track))
+                """, (new_name, subject_type, track))
                 new_sub_row = cursor.fetchone()
                 new_subject_id = new_sub_row["subject_id"]
 
@@ -5021,9 +5019,9 @@ def registrar_subject_edit(subject_id):
             else:
                 cursor.execute("""
                     UPDATE subjects 
-                    SET name = %s, deped_category = %s, subject_type = %s, track = %s 
+                    SET name = %s, subject_type = %s, track = %s
                     WHERE subject_id = %s
-                """, (new_name, deped_category, subject_type, track, subject_id))
+                """, (new_name, subject_type, track, subject_id))
 
                 cursor.execute("""
                     UPDATE section_teachers

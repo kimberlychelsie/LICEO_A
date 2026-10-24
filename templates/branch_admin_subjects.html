@@ -580,40 +580,14 @@
                     <h2 style="margin-top: 0;">Add New Subjects</h2>
                     <form method="post" action="{{ url_for('branch_admin.branch_admin_subjects') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="form-node"
-                            style="background: linear-gradient(145deg, #f8fafc, #f1f5f9); padding: 20px 24px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
-                            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
-                            <h3
-                                style="font-size: 0.8rem; color: var(--ma-primary); font-weight: 850; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
-                                <i class="fas fa-info-circle"></i> CATEGORY & GRADING GUIDE
-                            </h3>
-                            <a href="{{ url_for('branch_admin.grading_categories') }}" class="btn-prem btn-secondary" style="padding:8px 12px;font-size:.75rem;"><i class="fas fa-sliders-h"></i> Manage Categories</a>
-                            </div>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
-                                {% for category in grading_categories %}
-                                <div
-                                    style="font-size: 0.75rem; line-height: 1.6; padding: 12px; background: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-                                    <strong style="color: var(--ma-primary);">{{ category.name }}</strong><br>
-                                    <span style="font-weight: 800; color: #475569;">WW {{ category.ww_pct|int }}% | PT {{ category.pt_pct|int }}% | QA {{ category.qa_pct|int }}%</span>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-
                         <div class="form-node">
                             <label>Subjects to Add</label>
                             <div id="subjectEntries"
                                 style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
                                 <div class="subject-entry-row"
-                                    style="display: grid; grid-template-columns: 1fr 90px 85px 85px 95px 105px 95px 36px; gap: 6px; align-items: center;">
+                                    style="display: grid; grid-template-columns: 1fr 85px 85px 95px 105px 95px 36px; gap: 6px; align-items: center;">
                                     <input type="text" name="names" class="form-control" placeholder="Subject Name"
-                                        required oninput="autoDetectCategory(this)">
-                                    <select name="categories" class="form-control" required
-                                        style="font-size: 0.72rem; padding: 10px 6px;">
-                                        {% for category in grading_categories %}
-                                        <option value="{{ category.code }}">{{ category.name }} ({{ category.ww_pct|int }}/{{ category.pt_pct|int }}/{{ category.qa_pct|int }})</option>
-                                        {% endfor %}
-                                    </select>
+                                        required>
                                     <select name="subject_types" class="form-control" required
                                         onchange="toggleTrackInput(this)"
                                         style="font-size: 0.72rem; padding: 10px 6px;">
@@ -760,9 +734,6 @@
                         <td data-label="Identity">
                             <div style="font-weight: 700; color: var(--ma-primary);">{{ a.name }}</div>
                             <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
-                                <span class="badge-pill"
-                                    style="background: #dbeafe; color: #1e40af; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">{{ a.grading_category_name or a.deped_category|replace('_', ' ')|title }}</span>
-
                                 {% if 'Grade 11' in a.grade_level_name or 'Grade 12' in a.grade_level_name %}
                                 {% if a.subject_type == 'ELECTIVE' %}
                                 <span class="badge-pill"
@@ -824,7 +795,7 @@
                             {% if is_branch_active_status %}
                             <div style="display: flex; gap: 8px; justify-content: flex-end;">
                                 <button class="save-row-btn"
-                                    onclick='openEditModal({{ a.subject_id }}, {{ a.name | tojson }}, "{{ a.section_id }}", "{{ a.deped_category }}", "{{ a.subject_type }}", "{{ a.track or '' }}", "{{ a.pathway or '' }}", "{{ a.prerequisite_subject_id or '' }}", "{{ a.term_name or '' }}")'>
+                                    onclick='openEditModal({{ a.subject_id }}, {{ a.name | tojson }}, "{{ a.section_id }}", "{{ a.subject_type }}", "{{ a.track or '' }}", "{{ a.pathway or '' }}", "{{ a.prerequisite_subject_id or '' }}", "{{ a.term_name or '' }}")'>
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
 
@@ -919,15 +890,6 @@
                     <option value="">Select Grade & Section</option>
                     {% for sec in section_options %}
                     <option value="{{ sec.section_id }}">{{ sec.grade_level_name }} – {{ sec.section_name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-node">
-                <label>DepEd Category</label>
-                <select name="deped_category" id="edit_deped_category" class="form-control" required>
-                    {% for category in grading_categories %}
-                    <option value="{{ category.code }}">{{ category.name }} (WW {{ category.ww_pct|int }}%, PT {{ category.pt_pct|int }}%, QA {{ category.qa_pct|int }}%)</option>
                     {% endfor %}
                 </select>
             </div>
@@ -1215,11 +1177,10 @@
         }
     }
 
-    function openEditModal(subjectId, name, sectionId, category, subjectType, track, pathway, prereqId, termName) {
+    function openEditModal(subjectId, name, sectionId, subjectType, track, pathway, prereqId, termName) {
         document.getElementById('editForm').action = '/branch-admin/subjects/' + subjectId + '/edit';
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_section_id').value = sectionId;
-        document.getElementById('edit_deped_category').value = category || 'language';
         document.getElementById('edit_subject_type').value = subjectType || 'CORE';
 
         const trackSelect = document.getElementById('edit_track');
@@ -1241,7 +1202,6 @@
         initialSubjectData = {
             name: String(name).trim(),
             section: String(sectionId),
-            category: String(category || 'language'),
             type: String(subjectType || 'CORE'),
             track: String(track || ''),
             pathway: String(pathway || ''),
@@ -1335,13 +1295,12 @@
     }
 
     // Monitor changes
-    ['edit_name', 'edit_section_id', 'edit_deped_category', 'edit_subject_type', 'edit_track', 'edit_pathway', 'edit_prerequisite_subject_id', 'edit_term_name'].forEach(id => {
+    ['edit_name', 'edit_section_id', 'edit_subject_type', 'edit_track', 'edit_pathway', 'edit_prerequisite_subject_id', 'edit_term_name'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         const checkDirty = function () {
             const currentName = document.getElementById('edit_name').value.trim();
             const currentSection = document.getElementById('edit_section_id').value;
-            const currentCat = document.getElementById('edit_deped_category').value;
             const currentType = document.getElementById('edit_subject_type').value;
             const currentTrack = document.getElementById('edit_track').value;
             const currentPathway = document.getElementById('edit_pathway').value;
@@ -1351,7 +1310,6 @@
             const hasChanged = (
                 currentName !== initialSubjectData.name ||
                 currentSection !== initialSubjectData.section ||
-                currentCat !== initialSubjectData.category ||
                 currentType !== initialSubjectData.type ||
                 currentTrack !== initialSubjectData.track ||
                 currentPathway !== initialSubjectData.pathway ||
@@ -1370,14 +1328,9 @@
         const container = document.getElementById('subjectEntries');
         const newRow = document.createElement('div');
         newRow.className = 'subject-entry-row';
-        newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 90px 85px 85px 95px 105px 95px 36px; gap: 6px; align-items: center;';
+        newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 85px 85px 95px 105px 95px 36px; gap: 6px; align-items: center;';
         newRow.innerHTML = `
-            <input type="text" name="names" class="form-control" placeholder="Subject Name" required oninput="autoDetectCategory(this)">
-            <select name="categories" class="form-control" required style="font-size: 0.72rem; padding: 10px 6px;">
-                <option value="language">Language</option>
-                <option value="science_math">Sci / Math</option>
-                <option value="skills">Skills</option>
-            </select>
+            <input type="text" name="names" class="form-control" placeholder="Subject Name" required>
             <select name="subject_types" class="form-control" required onchange="toggleTrackInput(this)" style="font-size: 0.72rem; padding: 10px 6px;">
                 <option value="CORE">CORE</option>
                 <option value="ELECTIVE">ELECTIVE</option>
@@ -1444,22 +1397,6 @@ if (newTrackSelect) {
         });
     }
 
-    function autoDetectCategory(input) {
-        const name = input.value.trim().toLowerCase();
-        const row = input.closest('.subject-entry-row');
-        const select = row.querySelector('select');
-
-        const sciMath = ['math', 'science', 'maths', 'biology', 'chemistry', 'physics', 'algebra', 'geometry', 'calculus'];
-        const skills = ['epp', 'tle', 'mapeh', 'computer', 'ict', 'music', 'arts', 'pe', 'physical education', 'health', 'livelihood'];
-        const lang = ['filipino', 'english', 'araling', 'panlipunan', 'esp', 'religion', 'values', 'christian', 'cle', 'mother tongue'];
-
-        let suggested = null;
-        if (sciMath.some(k => name.includes(k))) suggested = 'science_math';
-        else if (skills.some(k => name.includes(k))) suggested = 'skills';
-        else if (lang.some(k => name.includes(k))) suggested = 'language';
-        if (suggested && Array.from(select.options).some(option => option.value === suggested)) select.value = suggested;
-    }
-
     // Bulk Section Helpers
     function selectAllSections(checked) {
         document.querySelectorAll('input[name="section_ids"]').forEach(cb => {
@@ -1488,8 +1425,7 @@ if (newTrackSelect) {
         if (editForm) {
             editForm.onsubmit = function () {
                 const name = document.getElementById('edit_name').value;
-                const cat = document.getElementById('edit_deped_category').value;
-                return validateSubject(name, cat);
+                return validateSubject(name);
             };
         }
     });

@@ -330,12 +330,14 @@
                         <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                         <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                     </svg>
-                    Exam Type <span style="color:red">*</span>
+                    Class Record Placement <span style="color:red">*</span>
                 </label>
-                <select name="exam_type" class="form-select" required id="examTypeSelect"
+                <select name="grading_slot" class="form-select" required id="examTypeSelect"
                     onchange="updateExamTypeHint()">
-                    <option value="exam" selected>Periodical Exam — counts as Quarterly Assessment (QA)</option>
-                    <option value="monthly_exam">Monthly Exam — counts as Written Works (WW)</option>
+                    <option value="ste_st1">Summative Test 1 — 30% of ST&amp;E</option>
+                    <option value="ste_st2">Summative Test 2 — 30% of ST&amp;E</option>
+                    <option value="ste_term_exam" selected>Term Exam — 40% of ST&amp;E</option>
+                    <option value="excluded">Practice Test — not included in the class record</option>
                 </select>
                 <small id="examTypeHint"
                     style="color:#64748b; margin-top:4px; display:flex; align-items: flex-start; gap: 6px;">
@@ -346,8 +348,7 @@
                         <line x1="12" y1="16" x2="12" y2="12"></line>
                         <line x1="12" y1="8" x2="12.01" y2="8"></line>
                     </svg>
-                    <span><strong>Periodical Exam</strong> scores go into <strong>Quarterly Assessment
-                            (20%)</strong>.</span>
+                    <span>The selected official slot determines its fixed share inside <strong>Summative Tests &amp; Term Exam</strong>.</span>
                 </small>
             </div>
 
@@ -504,11 +505,13 @@
     function updateExamTypeHint() {
         const val = document.getElementById('examTypeSelect').value;
         const hint = document.getElementById('examTypeHint');
-        if (val === 'monthly_exam') {
-            hint.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px; display:inline-block; vertical-align:middle; margin-right:6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></svg><span><strong>Monthly Exam</strong> scores go into <strong>Written Works (WW)</strong> — same bucket as Quizzes.</span>';
-        } else {
-            hint.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px; display:inline-block; vertical-align:middle; margin-right:6px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></svg><span><strong>Periodical Exam</strong> scores go into <strong>Quarterly Assessment (20%)</strong>.</span>';
-        }
+        const descriptions = {
+            ste_st1: '<strong>Summative Test 1</strong> contributes 30% inside ST&amp;E.',
+            ste_st2: '<strong>Summative Test 2</strong> contributes 30% inside ST&amp;E.',
+            ste_term_exam: '<strong>Term Exam</strong> contributes 40% inside ST&amp;E.',
+            excluded: '<strong>Practice Test</strong> will not affect the class record.'
+        };
+        hint.innerHTML = `<span>${descriptions[val] || ''} Scores and HPS are synchronized automatically.</span>`;
     }
 
     // Add spinner animation

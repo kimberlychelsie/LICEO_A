@@ -1347,6 +1347,7 @@
                     </form>
                 </div>
                 {% elif submission_req.status == 'approved_for_posting' %}
+                <div class="cr-pending-group">
                 <form action="{{ url_for('teacher.teacher_post_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
                     method="POST" class="cr-action-form"
                     onsubmit="return confirm('Publish {{ period }} Grading grades to the student portal? This will make grades visible to students and parents.');">
@@ -1355,10 +1356,23 @@
                         Post Grades
                     </button>
                 </form>
+                <form action="{{ url_for('teacher.teacher_unsubmit_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
+                    method="POST" class="cr-action-form"
+                    onsubmit="return confirm('Reopen this approved class record for editing? Registrar and Branch Admin approval will be reset, and the record must be submitted again.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="cr-btn cr-btn-ghost" style="background:rgba(239,68,68,0.25); color:#fca5a5; border-color:rgba(239,68,68,0.45); font-weight:700;">Reopen for Editing</button>
+                </form>
+                </div>
                 {% elif submission_req.status == 'posted' %}
-                <span class="cr-btn cr-btn-ghost" style="background:rgba(220,252,231,0.3); color:#86efac; border-color:rgba(220,252,231,0.5);">
-                    Grades Posted
-                </span>
+                <div class="cr-pending-group">
+                    <span class="cr-btn cr-btn-ghost" style="background:rgba(220,252,231,0.3); color:#86efac; border-color:rgba(220,252,231,0.5);">Grades Posted</span>
+                    <form action="{{ url_for('teacher.teacher_unsubmit_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
+                        method="POST" class="cr-action-form"
+                        onsubmit="return confirm('Reopen these posted grades for editing? WARNING: The currently published grades will remain visible to students and parents until the corrected class record is reviewed, approved, and posted again.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="cr-btn cr-btn-ghost" style="background:rgba(239,68,68,0.25); color:#fca5a5; border-color:rgba(239,68,68,0.45); font-weight:700;">Reopen for Editing</button>
+                    </form>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -1382,9 +1396,9 @@
             {% endfor %}
         </div>
         {% if period != 'final' %}
-        <button type="button" class="cr-btn period-components-btn" onclick="openComponentModal()" title="Configure {{ PERIOD_LABELS.get(period, period) }} grading components">
+        <button type="button" class="cr-btn period-components-btn" onclick="openComponentModal()" title="Configure {{ PERIOD_LABELS.get(period, period) }} grading weights">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-            Components
+            Grading Weights
         </button>
         {% endif %}
     </div>
@@ -1480,15 +1494,15 @@
     <div class="deped-strip">
         <div class="deped-strip-info">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-            <span style="font-weight:800; color:#1e40af;">DepEd K-12 Policy</span>
-            <span style="color:#64748b; font-size:0.8rem;">(DepEd Order No. 8, s. 2015)</span>
+            <span style="font-weight:800; color:#1e40af;">Teacher Grading Weights</span>
+            <span style="color:#64748b; font-size:0.8rem;">{{ '(Saved for this term)' if weights.configured else '(Default preview — save before submission)' }}</span>
         </div>
         <div class="deped-strip-badges">
-            <span class="deped-badge badge-ww" title="Quiz + Monthly Exam">Written Works: <strong>{{ weights.quiz_pct | int }}%</strong></span>
-            <span class="deped-badge badge-pt" title="Activities + Participation + Attendance">Performance Tasks: <strong>{{ weights.activity_pct | int }}%</strong></span>
-            <span class="deped-badge badge-qa" title="Periodical Exam">Term Assessment: <strong>{{ weights.exam_pct | int }}%</strong></span>
+            <span class="deped-badge badge-ww" title="Quiz, Written Activity, and Assignment">Written Works: <strong>{{ weights.quiz_pct | int }}%</strong></span>
+            <span class="deped-badge badge-pt" title="Recitation (plus Project and Assessment items)">Performance Tasks: <strong>{{ weights.activity_pct | int }}%</strong></span>
+            <span class="deped-badge badge-qa" title="ST1 30%, ST2 30%, Term Exam 40%">Summative Tests &amp; Term Exam: <strong>{{ weights.exam_pct | int }}%</strong></span>
         </div>
-        <button type="button" onclick="alert('Grade computation formula:\n\n• Written Works (WW): Quiz + Monthly Exam scores ({{ weights.quiz_pct | int }}%)\n• Performance Tasks (PT): Activities + Participation + Attendance ({{ weights.activity_pct | int }}%)\n• Term Assessment (TA): Periodical Exam scores ({{ weights.exam_pct | int }}%)\n\nTerm Grade uses the school base-70 formula: 70 + (Initial Grade × 30%). A recorded zero is equivalent to 70.')" class="deped-help-btn" title="View Computation Info">?</button>
+        <button type="button" onclick="alert('Grade computation formula:\n\n• Written Works (WW): pooled Quiz + Written Activity + Assignment scores/HPS ({{ weights.quiz_pct | int }}%)\n• Performance Tasks (PT): pooled Recitation (plus Project/Assessment) scores/HPS ({{ weights.activity_pct | int }}%)\n• Summative Tests &amp; Term Exam: ST1 30% + ST2 30% + Term Exam 40%, then weighted at {{ weights.exam_pct | int }}%\n\nThe Initial Grade is converted using the approved transmutation table. An Initial Grade from 0.00 to 4.67 is equivalent to 60.')" class="deped-help-btn" title="View Computation Info">?</button>
     </div>
     {% endif %}
 
@@ -1507,14 +1521,14 @@
         <button type="button" class="ctab active" id="ctab-summary" onclick="switchCategoryView('summary')">
             Class Record Summary
         </button>
-        <button type="button" class="ctab" id="ctab-pt" onclick="switchCategoryView('pt')">
-            Performance Tasks (Activities Breakdown)
-        </button>
         <button type="button" class="ctab" id="ctab-ww" onclick="switchCategoryView('ww')">
-            Written Works (Quizzes Breakdown)
+            Written Works Breakdown
+        </button>
+        <button type="button" class="ctab" id="ctab-pt" onclick="switchCategoryView('pt')">
+            Performance Tasks Breakdown
         </button>
         <button type="button" class="ctab" id="ctab-qa" onclick="switchCategoryView('qa')">
-            Term Assessment
+            Summative Tests &amp; Term Exam
         </button>
     </div>
 
@@ -1534,21 +1548,21 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                 Written Works
                             </div>
-                            <small>Quiz + Monthly Exam · {{ weights.quiz_pct | int }}%</small>
+                            <small>Quiz + Activity + Assignment · {{ weights.quiz_pct | int }}%</small>
                         </th>
                         <th class="th-pt">
                             <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
                                 Performance Tasks
                             </div>
-                            <small>Activity + Participation + Attendance · {{ weights.activity_pct | int }}%</small>
+                            <small>Recitation · {{ weights.activity_pct | int }}%</small>
                         </th>
                         <th class="th-qa">
                             <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                                Term Assessment
+                                Summative Tests &amp; Term Exam
                             </div>
-                            <small>Periodical Exam · {{ weights.exam_pct | int }}%</small>
+                            <small>ST1 30% + ST2 30% + Exam 40% · {{ weights.exam_pct | int }}%</small>
                         </th>
                         <th>
                             <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
@@ -1567,28 +1581,24 @@
 
                         <td class="col-ww score-cell" id="cell-ww-{{ r.enrollment_id }}">
                             <div class="score-display">
-                                <span class="score-value">{{ "%0.1f" | format(r.quiz | float) }}</span>
+                                <span class="score-value">{{ "%0.1f" | format((r.quiz | float) * (weights.quiz_pct | float) / 100) }}</span>
                                 {% if r.ww_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
                             </div>
                         </td>
 
                         <td class="col-pt score-cell" id="cell-pt-{{ r.enrollment_id }}">
                             <div class="score-display">
-                                <span class="score-value">{{ "%0.1f" | format(r.pt_score | float) }}</span>
+                                <span class="score-value">{{ "%0.1f" | format((r.pt_score | float) * (weights.activity_pct | float) / 100) }}</span>
                                 {% if r.pt_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
                             </div>
                             <div class="pt-breakdown">
-                                {% if r.has_activity %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
-                                {% if r.has_participation %}
-                                    · Par: {{ r.participation | int }}/{{ r.participation_total | default(10) | int }}
-                                {% endif %}
-                                {% if r.has_attendance %} · Att: {{ r.attendance | int }}/{{ r.attendance_total | default(10) | int }}{% endif %}
+                                {% if r.has_activity %}Rec: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
                             </div>
                         </td>
 
                         <td class="col-qa score-cell" id="cell-qa-{{ r.enrollment_id }}">
                             <div class="score-display">
-                                <span class="score-value">{{ "%0.1f" | format(r.exam | float) }}</span>
+                                <span class="score-value">{{ "%0.1f" | format((r.exam | float) * (weights.exam_pct | float) / 100) }}</span>
                                 {% if r.qa_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
                             </div>
                         </td>
@@ -1621,13 +1631,19 @@
             <div class="cview-header">
                 <h3 class="cview-title" style="color:#15803d;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-                    Performance Tasks (PT) — Activities Breakdown
+                    Performance Tasks (PT) — Recitation
                 </h3>
                 <div class="cview-actions">
-                    <button type="button" onclick="openBatchModal(); switchBatchMode('new_activity');" class="cr-btn" style="background:#16a34a; color:#fff; font-weight:800; border:none; box-shadow:0 4px 12px rgba(22,163,74,0.25);">
-                        + Add Activity
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('project');" class="cr-btn" style="background:#7c3aed; color:#fff; font-weight:800; border:none;">
+                        + Add Project
                     </button>
-                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#15803d; color:#fff; font-weight:800; padding:8px 18px;">
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('assessment');" class="cr-btn" style="background:#c2410c; color:#fff; font-weight:800; border:none;">
+                        + Add Assessment
+                    </button>
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('recitation');" class="cr-btn" style="background:#0f766e; color:#fff; font-weight:800; border:none;">
+                        + Add Recitation
+                    </button>
+                    <button type="submit" class="cr-btn cr-btn-solid grid-save-btn" id="savePtScoresBtn" style="background:#15803d; color:#fff; font-weight:800; padding:8px 18px;">
                         Save PT Scores
                     </button>
                 </div>
@@ -1642,17 +1658,24 @@
                             <th style="text-align:left; padding:10px 6px;">STUDENT NAME</th>
                             {% if activities_list %}
                                 {% for act in activities_list %}
+                                {% if act.grading_subtype == 'project' %}
+                                <th style="text-align:center; min-width:110px; background:#f5f3ff; color:#5b21b6; border-bottom:2px solid #ddd6fe;">
+                                    <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase;">Project</span>
+                                {% elif act.grading_subtype == 'assessment' %}
+                                <th style="text-align:center; min-width:110px; background:#fff7ed; color:#9a3412; border-bottom:2px solid #fed7aa;">
+                                    <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase;">Assessment</span>
+                                {% else %}
                                 <th style="text-align:center; min-width:110px; background:#f0fdf4; color:#166534; border-bottom:2px solid #bbf7d0;">
+                                    <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase;">Recitation</span>
+                                {% endif %}
                                     <div style="font-weight:800;">{{ act.title }}</div>
                                     <div class="grid-item-tools"><label class="grid-max-editor" style="color:#15803d;">Max: <input class="grid-max-input" type="number" name="max_act_{{ act.activity_id }}" min="0.1" step="0.1" value="{{ act.max_score }}" aria-label="Maximum score for {{ act.title }}" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit maximum">&#9998;</button><button type="submit" class="grid-mini-action delete" formaction="{{ url_for('teacher.teacher_delete_class_record_item', section_id=section_id, subject_id=subject_id, period=period, item_type='activity', item_id=act.activity_id) }}" formmethod="post" onclick="return confirm('Delete this unused activity? This action cannot be undone.');" title="Delete activity" aria-label="Delete activity">&#128465;</button></div>
                                 </th>
                                 {% endfor %}
                             {% else %}
-                                <th style="text-align:center; color:#94a3b8; font-style:italic;">No Activities Added Yet (Click + Add Activity)</th>
+                                <th style="text-align:center; color:#94a3b8; font-style:italic;">No Recitation Added Yet</th>
                             {% endif %}
-                            <th style="text-align:center; min-width:125px; background:#fffbeb; color:#92400e;">Participation<div class="grid-item-tools"><label class="grid-max-editor">Max: <input class="grid-max-input" type="number" name="max_participation" min="0.1" step="0.1" value="{{ (records[0].participation_total if records else 10) | default(10) }}" aria-label="Maximum participation score" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit participation maximum">&#9998;</button></div></th>
-                            <th style="text-align:center; min-width:125px; background:#eff6ff; color:#1e40af;">Attendance<div class="grid-item-tools"><label class="grid-max-editor">Max: <input class="grid-max-input" type="number" name="max_attendance" min="0.1" step="0.1" value="{{ (records[0].attendance_total if records else 10) | default(10) }}" aria-label="Maximum attendance score" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit attendance maximum">&#9998;</button></div></th>
-                            <th style="text-align:center; min-width:100px;">PT Total %</th>
+                            <th style="text-align:center; min-width:100px;">PT WS<div style="font-size:0.6rem;color:#64748b;font-weight:500;">{{ weights.activity_pct|int }}%</div></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1675,27 +1698,9 @@
                                 <td style="text-align:center; color:#94a3b8;">—</td>
                             {% endif %}
 
-                            <!-- Participation Input -->
-                            <td style="text-align:center; padding:6px;">
-                                <input type="number" step="0.1" min="0" max="{{ r.participation_total | default(10) }}"
-                                       name="score_part_{{ r.enrollment_id }}"
-                                       value="{{ r.participation if r.has_participation else '' }}"
-                                       placeholder="/{{ r.participation_total | default(10) | int }}"
-                                       class="grid-score-input" style="border-color:#fde68a; color:#b45309;">
-                            </td>
-
-                            <!-- Attendance Input -->
-                            <td style="text-align:center; padding:6px;">
-                                <input type="number" step="0.1" min="0" max="{{ r.attendance_total | default(10) }}"
-                                       name="score_att_{{ r.enrollment_id }}"
-                                       value="{{ r.attendance if r.has_attendance else '' }}"
-                                       placeholder="/{{ r.attendance_total | default(10) | int }}"
-                                       class="grid-score-input" style="border-color:#bfdbfe; color:#1d4ed8;">
-                            </td>
-
-                            <!-- PT Total % -->
+                            <!-- PT Weighted Score -->
                             <td style="text-align:center; font-weight:800; color:#16a34a; font-size:0.95rem;">
-                                {{ "%0.1f" | format(r.pt_score | float) }}%
+                                {{ "%0.1f" | format((r.pt_score | float) * (weights.activity_pct | float) / 100) }}
                             </td>
                         </tr>
                         {% endfor %}
@@ -1715,16 +1720,19 @@
             <div class="cview-header">
                 <h3 class="cview-title" style="color:#1d4ed8;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                    Written Works (WW) — Quizzes & Exams Breakdown
+                    Written Works (WW) — Quiz, Activity &amp; Assignment
                 </h3>
                 <div class="cview-actions">
                     <button type="button" onclick="openBatchModal(); switchBatchMode('quiz');" class="cr-btn" style="background:#2563eb; color:#fff; font-weight:800; border:none; box-shadow:0 4px 12px rgba(37,99,235,0.25);">
                         + Add Quiz
                     </button>
-                    <button type="button" onclick="openBatchModal(); switchBatchMode('monthly_exam');" class="cr-btn" style="background:#7c3aed; color:#fff; font-weight:800; border:none; box-shadow:0 4px 12px rgba(124,58,237,0.25);">
-                        + Add Monthly Exam
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('ww_activity');" class="cr-btn" style="background:#0ea5e9; color:#fff; font-weight:800; border:none;">
+                        + Add Written Activity
                     </button>
-                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#1d4ed8; color:#fff; font-weight:800; padding:8px 18px;">
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('ww_assignment');" class="cr-btn" style="background:#7c3aed; color:#fff; font-weight:800; border:none;">
+                        + Add Assignment
+                    </button>
+                    <button type="submit" class="cr-btn cr-btn-solid grid-save-btn" style="background:#1d4ed8; color:#fff; font-weight:800; padding:8px 18px;">
                         Save WW Scores
                     </button>
                 </div>
@@ -1737,26 +1745,25 @@
                             <th style="text-align:left; width:28px; padding:10px 4px 10px 10px;">#</th>
                             <th style="text-align:left; width:110px; padding:10px 6px;">STUDENT ID</th>
                             <th style="text-align:left; padding:10px 6px;">STUDENT NAME</th>
-                            {% if quizzes_list %}
+                            {% if quizzes_list or ww_activities_list %}
                                 {% for q in quizzes_list %}
-                                {% if q.exam_type == 'monthly_exam' %}
-                                <th style="text-align:center; min-width:115px; background:#f3e8ff; color:#6b21a8; border-bottom:2px solid #d8b4fe;">
-                                    <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase; background:#e9d5ff; color:#7e22ce; padding:2px 6px; border-radius:4px; letter-spacing:0.5px;">Monthly Exam</span>
-                                    <div style="font-weight:800; margin-top:3px;">{{ q.title }}</div>
-                                    <div class="grid-item-tools"><label class="grid-max-editor" style="color:#7c3aed;">Max: <input class="grid-max-input" type="number" name="max_quiz_{{ q.exam_id }}" min="0.1" step="0.1" value="{{ q.total_points }}" aria-label="Maximum score for {{ q.title }}" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit maximum">&#9998;</button><button type="submit" class="grid-mini-action delete" formaction="{{ url_for('teacher.teacher_delete_class_record_item', section_id=section_id, subject_id=subject_id, period=period, item_type='assessment', item_id=q.exam_id) }}" formmethod="post" onclick="return confirm('Delete this unused assessment? This action cannot be undone.');" title="Delete assessment" aria-label="Delete assessment">&#128465;</button></div>
-                                </th>
-                                {% else %}
                                 <th style="text-align:center; min-width:110px; background:#eff6ff; color:#1e40af; border-bottom:2px solid #bfdbfe;">
-                                    <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase; background:#dbeafe; color:#1d4ed8; padding:2px 6px; border-radius:4px; letter-spacing:0.5px;">Quiz</span>
+                                    <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase; background:#dbeafe; color:#1d4ed8; padding:2px 6px; border-radius:4px; letter-spacing:0.5px;">{{ 'Written Activity' if q.grading_slot == 'ww_activity' else ('Assignment' if q.grading_slot == 'ww_assignment' else 'Quiz') }}</span>
                                     <div style="font-weight:800; margin-top:3px;">{{ q.title }}</div>
                                     <div class="grid-item-tools"><label class="grid-max-editor" style="color:#2563eb;">Max: <input class="grid-max-input" type="number" name="max_quiz_{{ q.exam_id }}" min="0.1" step="0.1" value="{{ q.total_points }}" aria-label="Maximum score for {{ q.title }}" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit maximum">&#9998;</button><button type="submit" class="grid-mini-action delete" formaction="{{ url_for('teacher.teacher_delete_class_record_item', section_id=section_id, subject_id=subject_id, period=period, item_type='assessment', item_id=q.exam_id) }}" formmethod="post" onclick="return confirm('Delete this unused assessment? This action cannot be undone.');" title="Delete assessment" aria-label="Delete assessment">&#128465;</button></div>
                                 </th>
-                                {% endif %}
+                                {% endfor %}
+                                {% for act in ww_activities_list %}
+                                <th style="text-align:center; min-width:110px; background:#eff6ff; color:#1e40af; border-bottom:2px solid #bfdbfe;">
+                                    <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase;">{{ 'Assignment' if act.grading_subtype == 'assignment' else 'Written Activity' }}</span>
+                                    <div style="font-weight:800; margin-top:3px;">{{ act.title }}</div>
+                                    <div class="grid-item-tools"><label class="grid-max-editor">Max: <input class="grid-max-input" type="number" name="max_act_{{ act.activity_id }}" min="0.1" step="0.1" value="{{ act.max_score }}" aria-label="Maximum score for {{ act.title }}" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit maximum">&#9998;</button><button type="submit" class="grid-mini-action delete" formaction="{{ url_for('teacher.teacher_delete_class_record_item', section_id=section_id, subject_id=subject_id, period=period, item_type='activity', item_id=act.activity_id) }}" formmethod="post" onclick="return confirm('Delete this unused written-work item? This action cannot be undone.');" title="Delete item" aria-label="Delete item">&#128465;</button></div>
+                                </th>
                                 {% endfor %}
                             {% else %}
-                                <th style="text-align:center; color:#94a3b8; font-style:italic;">No Quizzes or Monthly Exams Added Yet</th>
+                                <th style="text-align:center; color:#94a3b8; font-style:italic;">No Written Work Items Added Yet</th>
                             {% endif %}
-                            <th style="text-align:center; min-width:100px;">WW Total %</th>
+                            <th style="text-align:center; min-width:100px;">WW WS<div style="font-size:0.6rem;color:#64748b;font-weight:500;">{{ weights.quiz_pct|int }}%</div></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1765,7 +1772,7 @@
                             <td style="text-align:left; padding:8px 4px 8px 10px; color:#94a3b8; font-weight:600;">{{ loop.index }}</td>
                             <td style="text-align:left; padding:8px 6px; font-weight:700; color:#1e293b; font-size:0.88rem; white-space:nowrap;">{{ r.student_number or ('LDMAJ_' ~ ('%04d'|format(r.enrollment_id|int))) }}</td>
                             <td style="text-align:left; padding:8px 6px; font-weight:700; color:var(--text); font-size:0.88rem; white-space:nowrap;">{{ r.student_name }}</td>
-                            {% if quizzes_list %}
+                            {% if quizzes_list or ww_activities_list %}
                                 {% for q in quizzes_list %}
                                 {% set score_key = r.enrollment_id ~ '_' ~ q.exam_id %}
                                 <td style="text-align:center; padding:6px;">
@@ -1775,12 +1782,18 @@
                                            class="grid-score-input" style="border-color:{% if q.exam_type == 'monthly_exam' %}#d8b4fe; color:#7c3aed;{% else %}#bfdbfe; color:#1d4ed8;{% endif %}">
                                 </td>
                                 {% endfor %}
+                                {% for act in ww_activities_list %}
+                                {% set score_key = r.enrollment_id ~ '_' ~ act.activity_id %}
+                                <td style="text-align:center; padding:6px;">
+                                    <input type="number" step="0.1" min="0" max="{{ act.max_score }}" name="score_act_{{ act.activity_id }}_{{ r.enrollment_id }}" value="{{ activity_scores_map.get(score_key, '') }}" class="grid-score-input" style="border-color:#bfdbfe; color:#1d4ed8;">
+                                </td>
+                                {% endfor %}
                             {% else %}
                                 <td style="text-align:center; color:#94a3b8;">—</td>
                             {% endif %}
 
                             <td style="text-align:center; font-weight:800; color:#2563eb; font-size:0.95rem;">
-                                {{ "%0.1f" | format(r.quiz | float) }}%
+                                {{ "%0.1f" | format((r.quiz | float) * (weights.quiz_pct | float) / 100) }}
                             </td>
                         </tr>
                         {% endfor %}
@@ -1790,7 +1803,7 @@
         </form>
     </div>
 
-    <!-- ── VIEW 4: Term Assessment (QA Breakdown Grid) ── -->
+    <!-- ── VIEW 4: Summative Tests & Term Exam Breakdown Grid ── -->
     <div id="cview-qa" class="cview-container" style="display:none;">
         <form action="{{ url_for('teacher.teacher_save_grid_scores', section_id=section_id, subject_id=subject_id) }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -1800,14 +1813,16 @@
             <div class="cview-header">
                 <h3 class="cview-title" style="color:#b45309;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-                    Term Assessment (QA) — Periodical Exam Breakdown
+                    Summative Tests &amp; Term Exam — ST1 30%, ST2 30%, Exam 40%
                 </h3>
                 <div class="cview-actions">
-                    <button type="button" onclick="openBatchModal(); switchBatchMode('term_exam');" class="cr-btn" style="background:#d97706; color:#fff; font-weight:800; border:none; box-shadow:0 4px 12px rgba(217,119,6,0.25);">
-                        + Add Periodical Exam
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('summative_test_1');" class="cr-btn" style="background:#d97706; color:#fff; font-weight:800; border:none;">+ Add ST1</button>
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('summative_test_2');" class="cr-btn" style="background:#d97706; color:#fff; font-weight:800; border:none;">+ Add ST2</button>
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('term_exam');" class="cr-btn" style="background:#92400e; color:#fff; font-weight:800; border:none;">
+                        + Add Term Exam
                     </button>
-                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#b45309; color:#fff; font-weight:800; padding:8px 18px;">
-                        Save QA Scores
+                    <button type="submit" class="cr-btn cr-btn-solid grid-save-btn" style="background:#b45309; color:#fff; font-weight:800; padding:8px 18px;">
+                        Save ST&amp;E Scores
                     </button>
                 </div>
             </div>
@@ -1822,14 +1837,15 @@
                             {% if exams_list %}
                                 {% for ex in exams_list %}
                                 <th style="text-align:center; min-width:110px; background:#fffbeb; color:#92400e; border-bottom:2px solid #fde68a;">
+                                    <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase;">{{ 'ST1 · 30%' if ex.grading_slot == 'ste_st1' else ('ST2 · 30%' if ex.grading_slot == 'ste_st2' else 'Term Exam · 40%') }}</span>
                                     <div style="font-weight:800;">{{ ex.title }}</div>
                                     <div class="grid-item-tools"><label class="grid-max-editor" style="color:#d97706;">Max: <input class="grid-max-input" type="number" name="max_exam_{{ ex.exam_id }}" min="0.1" step="0.1" value="{{ ex.total_points }}" aria-label="Maximum score for {{ ex.title }}" readonly></label><button type="button" class="grid-mini-action" onclick="enableGridMax(this)" title="Edit maximum" aria-label="Edit maximum">&#9998;</button><button type="submit" class="grid-mini-action delete" formaction="{{ url_for('teacher.teacher_delete_class_record_item', section_id=section_id, subject_id=subject_id, period=period, item_type='assessment', item_id=ex.exam_id) }}" formmethod="post" onclick="return confirm('Delete this unused assessment? This action cannot be undone.');" title="Delete assessment" aria-label="Delete assessment">&#128465;</button></div>
                                 </th>
                                 {% endfor %}
                             {% else %}
-                                <th style="text-align:center; color:#94a3b8; font-style:italic;">No Periodical Exam Added Yet</th>
+                                <th style="text-align:center; color:#94a3b8; font-style:italic;">Add ST1, ST2, and Term Exam</th>
                             {% endif %}
-                            <th style="text-align:center; min-width:100px;">QA Total %</th>
+                            <th style="text-align:center; min-width:100px;">ST&amp;E WS<div style="font-size:0.6rem;color:#64748b;font-weight:500;">{{ weights.exam_pct|int }}%</div></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1853,7 +1869,7 @@
                             {% endif %}
 
                             <td style="text-align:center; font-weight:800; color:#d97706; font-size:0.95rem;">
-                                {{ "%0.1f" | format(r.exam | float) }}%
+                                {{ "%0.1f" | format((r.exam | float) * (weights.exam_pct | float) / 100) }}
                             </td>
                         </tr>
                         {% endfor %}
@@ -1879,18 +1895,19 @@
 
 <!-- ── Add Assessment Item Modal ── -->
 {% if period != 'final' %}
-{% set component_distribution = weights.distribution or {'ww_quiz_pct': 50, 'ww_monthly_exam_pct': 50, 'pt_activity_pct': 34, 'pt_participation_pct': 33, 'pt_attendance_pct': 33, 'qa_periodical_exam_pct': 100} %}
 {% set ww_total_weight = weights.quiz_pct|float %}
 {% set pt_total_weight = weights.activity_pct|float %}
 {% set qa_total_weight = weights.exam_pct|float %}
 {% set component_locked = submission_req.status in ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted'] %}
 <div id="componentModal" class="component-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="componentModalTitle" onclick="componentModalBackdrop(event)">
-  <div class="component-modal-card"><div class="component-modal-head"><div><h3 id="componentModalTitle">{{ PERIOD_LABELS.get(period, period) }} Components</h3><p>{{ context.subject_name }} &middot; {{ context.section_name }}</p></div><button type="button" class="component-modal-close" onclick="closeComponentModal()" aria-label="Close">&times;</button></div>
-    <form method="post" action="{{ url_for('teacher.grading_component_distribution', section_id=section_id, subject_id=subject_id, period=period) }}" id="componentForm" class="component-modal-body" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="return_to" value="class_record"><input type="hidden" name="distribution_mode" value="overall">
-      <div class="component-policy">Admin category: <strong>{{ weights.category_name }}</strong> &mdash; WW {{ weights.quiz_pct }}%, PT {{ weights.activity_pct }}%, QA {{ weights.exam_pct }}%.</div>{% if component_locked %}<div class="component-lock">This class record is locked. Component percentages can no longer be changed.</div>{% endif %}
-      <fieldset {% if component_locked %}disabled{% endif %} style="border:0;padding:0;margin:0;"><section class="component-group"><div class="component-group-title"><span>Written Works</span><span class="component-total" id="wwComponentTotal">{{ ww_total_weight|round(2) }}%</span></div><div class="component-rows"><label class="component-row"><span class="component-name">Quizzes</span><span class="component-value"><input class="component-input component-ww" type="number" name="ww_quiz_pct" min="0" max="{{ ww_total_weight }}" step=".01" value="{{ (component_distribution.ww_quiz_pct|float * ww_total_weight / 100)|round(2) }}" required><span class="component-percent">%</span></span></label><label class="component-row"><span class="component-name">Monthly Exams</span><span class="component-value"><input class="component-input component-ww" type="number" name="ww_monthly_exam_pct" min="0" max="{{ ww_total_weight }}" step=".01" value="{{ (component_distribution.ww_monthly_exam_pct|float * ww_total_weight / 100)|round(2) }}" required><span class="component-percent">%</span></span></label></div></section>
-      <section class="component-group"><div class="component-group-title"><span>Performance Tasks</span><span class="component-total" id="ptComponentTotal">{{ pt_total_weight|round(2) }}%</span></div><div class="component-rows"><label class="component-row"><span class="component-name">Activities</span><span class="component-value"><input class="component-input component-pt" type="number" name="pt_activity_pct" min="0" max="{{ pt_total_weight }}" step=".01" value="{{ (component_distribution.pt_activity_pct|float * pt_total_weight / 100)|round(2) }}" required><span class="component-percent">%</span></span></label><label class="component-row"><span class="component-name">Participation</span><span class="component-value"><input class="component-input component-pt" type="number" name="pt_participation_pct" min="0" max="{{ pt_total_weight }}" step=".01" value="{{ (component_distribution.pt_participation_pct|float * pt_total_weight / 100)|round(2) }}" required><span class="component-percent">%</span></span></label><label class="component-row"><span class="component-name">Attendance</span><span class="component-value"><input class="component-input component-pt" type="number" name="pt_attendance_pct" min="0" max="{{ pt_total_weight }}" step=".01" value="{{ (component_distribution.pt_attendance_pct|float * pt_total_weight / 100)|round(2) }}" required><span class="component-percent">%</span></span></label></div></section>
-      <section class="component-group"><div class="component-group-title"><span>Quarterly Assessment</span><span class="component-total valid">{{ qa_total_weight|round(2) }}%</span></div><div class="component-rows"><label class="component-row"><span class="component-name">Periodical Exam</span><span class="component-value"><input class="component-input" type="number" name="qa_periodical_exam_pct" value="{{ qa_total_weight|round(2) }}" readonly><span class="component-percent">%</span></span></label></div></section>
+  <div class="component-modal-card"><div class="component-modal-head"><div><h3 id="componentModalTitle">{{ PERIOD_LABELS.get(period, period) }} Grading Weights</h3><p>{{ context.subject_name }} &middot; {{ context.section_name }}</p></div><button type="button" class="component-modal-close" onclick="closeComponentModal()" aria-label="Close">&times;</button></div>
+    <form method="post" action="{{ url_for('teacher.grading_component_distribution', section_id=section_id, subject_id=subject_id, period=period) }}" id="componentForm" class="component-modal-body" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="return_to" value="class_record">
+      <div class="component-policy">{{ 'Saved teacher configuration' if weights.configured else 'Initial default — save to configure this term' }}. Scores and HPS inside each component are pooled automatically.</div>{% if component_locked %}<div class="component-lock">This class record is locked. Close this window and use Cancel Submission or Reopen for Editing first.</div>{% endif %}
+      <fieldset {% if component_locked %}disabled{% endif %} style="border:0;padding:0;margin:0;"><section class="component-group"><div class="component-group-title"><span>Major Components</span><span class="component-total" id="overallWeightTotal">100.00%</span></div><div class="component-rows">
+        <label class="component-row"><span class="component-name">Written Works (WW)</span><span class="component-value"><input class="component-input component-weight" type="number" name="ww_pct" min="0" max="100" step=".01" value="{{ ww_total_weight|round(2) }}" required><span class="component-percent">%</span></span></label>
+        <label class="component-row"><span class="component-name">Performance Tasks (PT)</span><span class="component-value"><input class="component-input component-weight" type="number" name="pt_pct" min="0" max="100" step=".01" value="{{ pt_total_weight|round(2) }}" required><span class="component-percent">%</span></span></label>
+        <label class="component-row"><span class="component-name">Summative Tests &amp; Term Exam</span><span class="component-value"><input class="component-input component-weight" type="number" name="qa_pct" min="0" max="100" step=".01" value="{{ qa_total_weight|round(2) }}" required><span class="component-percent">%</span></span></label>
+      </div></section>
       <div class="component-modal-actions"><button type="button" class="cr-btn" onclick="closeComponentModal()" style="background:#eef2f7;color:#475569;">Cancel</button><button type="submit" class="cr-btn cr-btn-solid" id="componentSaveButton" style="background:#2563eb;color:#fff;">Save Changes</button></div></fieldset>
     </form></div>
 </div>
@@ -1912,7 +1929,7 @@
             <input type="hidden" name="active_tab" id="batchActiveTab" value="pt">
 
             <!-- Category Context Badge -->
-            <input type="hidden" name="input_type" id="modalInputType" value="new_activity">
+            <input type="hidden" name="input_type" id="modalInputType" value="recitation">
             <div style="display:flex; align-items:center; gap:8px;">
                 <span style="font-size:0.8rem; font-weight:600; color:#64748b;">Category:</span>
                 <span id="modalCategoryBadge" style="padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:800; text-transform:uppercase; background:#dcfce7; color:#15803d;">Performance Task (PT)</span>
@@ -1941,9 +1958,7 @@
 <script>
 {% if period != 'final' %}
 const componentModal=document.getElementById('componentModal'),componentForm=document.getElementById('componentForm'),componentInputs=[...componentForm.querySelectorAll('.component-input')],componentOriginal=componentInputs.map(input=>input.value),componentSaveButton=document.getElementById('componentSaveButton');
-const wwComponentTarget=Number({{ ww_total_weight|tojson }}),ptComponentTarget=Number({{ pt_total_weight|tojson }});
-function componentTotal(selector,totalId,target){const inputs=[...document.querySelectorAll(selector)],values=inputs.map(input=>Number(input.value)),valid=values.every(value=>Number.isFinite(value)&&value>=0&&value<=target),total=valid?values.reduce((sum,value)=>sum+value,0):0,totalEl=document.getElementById(totalId);totalEl.textContent=total.toFixed(2)+'%';totalEl.classList.toggle('valid',valid&&Math.abs(total-target)<=.001);return valid&&Math.abs(total-target)<=.001}
-function updateComponentSave(){const valid=componentTotal('.component-ww','wwComponentTotal',wwComponentTarget)&&componentTotal('.component-pt','ptComponentTotal',ptComponentTarget),changed=componentInputs.some((input,index)=>input.value!==componentOriginal[index]);componentSaveButton.disabled=!(valid&&changed)}
+function updateComponentSave(){const values=componentInputs.map(input=>Number(input.value)),numbersValid=values.every(value=>Number.isFinite(value)&&value>=0&&value<=100),total=numbersValid?values.reduce((sum,value)=>sum+value,0):0,totalValid=numbersValid&&Math.abs(total-100)<=.001,totalEl=document.getElementById('overallWeightTotal'),changed=componentInputs.some((input,index)=>Number(input.value)!==Number(componentOriginal[index]));totalEl.textContent=total.toFixed(2)+'%';totalEl.classList.toggle('valid',totalValid);componentSaveButton.disabled=!(totalValid&&changed)}
 function openComponentModal(){componentModal.classList.add('show');document.body.style.overflow='hidden';updateComponentSave();setTimeout(()=>componentInputs[0].focus(),0)}
 function closeComponentModal(){componentModal.classList.remove('show');document.body.style.overflow=''}
 function componentModalBackdrop(event){if(event.target===componentModal)closeComponentModal()}
@@ -1955,8 +1970,6 @@ document.querySelectorAll('.grid-max-input').forEach(maxInput=>{
         if(maxInput.name.startsWith('max_act_')) scorePrefix='score_act_'+maxInput.name.slice(8)+'_';
         else if(maxInput.name.startsWith('max_quiz_')) scorePrefix='score_quiz_'+maxInput.name.slice(9)+'_';
         else if(maxInput.name.startsWith('max_exam_')) scorePrefix='score_exam_'+maxInput.name.slice(9)+'_';
-        else if(maxInput.name==='max_participation') scorePrefix='score_part_';
-        else if(maxInput.name==='max_attendance') scorePrefix='score_att_';
         if(!scorePrefix) return;
         const newMaximum=Number(maxInput.value);
         document.querySelectorAll(`input[name^="${scorePrefix}"]`).forEach(scoreInput=>{
@@ -1992,7 +2005,7 @@ function openBatchModal(mode) {
     if (!overlay) return;
     overlay.classList.add('show');
     document.body.style.overflow = 'hidden';
-    switchBatchMode(mode || 'new_activity');
+    switchBatchMode(mode || 'recitation');
 }
 
 function closeBatchModal() {
@@ -2011,9 +2024,8 @@ function switchBatchMode(mode) {
     if (inputTypeHidden) inputTypeHidden.value = mode;
 
     let tabVal = 'pt';
-    if (mode === 'quiz' || mode === 'monthly_exam') tabVal = 'ww';
-    else if (mode === 'term_exam') tabVal = 'qa';
-    else if (mode === 'new_activity') tabVal = 'pt';
+    if (['quiz', 'ww_activity', 'ww_assignment'].includes(mode)) tabVal = 'ww';
+    else if (['summative_test_1', 'summative_test_2', 'term_exam'].includes(mode)) tabVal = 'qa';
 
     const hiddenTab = document.getElementById('batchActiveTab');
     if (hiddenTab) hiddenTab.value = tabVal;
@@ -2028,16 +2040,26 @@ function switchBatchMode(mode) {
 
     const actCount = parseInt("{{ act_count | default(0) }}") || 0;
     const quizCount = parseInt("{{ quiz_count | default(0) }}") || 0;
-    const meCount = parseInt("{{ monthly_exam_count | default(0) }}") || 0;
+    const wwActivityCount = parseInt("{{ ww_activity_count | default(0) }}") || 0;
 
-    if (mode === 'new_activity') {
-        if (modalHeaderTitle) modalHeaderTitle.textContent = 'Add New Activity';
-        if (modalSubmitBtn) { modalSubmitBtn.textContent = 'Add Activity'; modalSubmitBtn.style.background = '#16a34a'; }
-        if (catBadge) { catBadge.textContent = 'Performance Task (PT)'; catBadge.style.background = '#dcfce7'; catBadge.style.color = '#15803d'; }
-        titleLabel.textContent = 'Activity Title / Name';
+    if (mode === 'recitation' || mode === 'project' || mode === 'assessment') {
+        const parCfg = {
+            project:    { name: 'Project',    badge: 'Project',                    btn: '#7c3aed', bg: '#ede9fe', fg: '#6d28d9',
+                          count: parseInt("{{ activities_list | selectattr('grading_subtype', 'equalto', 'project') | list | length }}") || 0 },
+            assessment: { name: 'Assessment', badge: 'Assessment / Achievement',   btn: '#c2410c', bg: '#ffedd5', fg: '#9a3412',
+                          count: parseInt("{{ activities_list | selectattr('grading_subtype', 'equalto', 'assessment') | list | length }}") || 0 },
+            recitation: { name: 'Recitation', badge: 'Recitation',                 btn: '#0f766e', bg: '#dcfce7', fg: '#15803d',
+                          count: parseInt("{{ activities_list | selectattr('grading_subtype', 'equalto', 'recitation') | list | length }}") || 0 },
+        }[mode];
+        const itemName = parCfg.name;
+        const itemCount = parCfg.count;
+        if (modalHeaderTitle) modalHeaderTitle.textContent = 'Add ' + itemName;
+        if (modalSubmitBtn) { modalSubmitBtn.textContent = 'Add ' + itemName; modalSubmitBtn.style.background = parCfg.btn; }
+        if (catBadge) { catBadge.textContent = 'Performance Task (' + parCfg.badge + ')'; catBadge.style.background = parCfg.bg; catBadge.style.color = parCfg.fg; }
+        titleLabel.textContent = itemName + ' Title / Name';
         titleInput.setAttribute('name', 'activity_title');
-        titleInput.placeholder = 'e.g. Activity 1';
-        titleInput.value = 'Activity ' + (actCount + 1);
+        titleInput.placeholder = 'e.g. ' + itemName + ' 1';
+        titleInput.value = itemName + ' ' + (itemCount + 1);
         maxLabel.textContent = 'Max Score';
         maxInput.setAttribute('name', 'max_score');
         maxInput.value = '100';
@@ -2052,26 +2074,35 @@ function switchBatchMode(mode) {
         maxLabel.textContent = 'Max Score';
         maxInput.setAttribute('name', 'max_score');
         maxInput.value = '50';
-    } else if (mode === 'monthly_exam') {
-        if (modalHeaderTitle) modalHeaderTitle.textContent = 'Add New Monthly Exam';
-        if (modalSubmitBtn) { modalSubmitBtn.textContent = 'Add Monthly Exam'; modalSubmitBtn.style.background = '#7c3aed'; }
-        if (catBadge) { catBadge.textContent = 'Written Work (Monthly Exam)'; catBadge.style.background = '#f3e8ff'; catBadge.style.color = '#7e22ce'; }
-        titleLabel.textContent = 'Monthly Exam Title';
+    } else if (mode === 'ww_activity' || mode === 'ww_assignment') {
+        const itemName = mode === 'ww_assignment' ? 'Assignment' : 'Written Activity';
+        if (modalHeaderTitle) modalHeaderTitle.textContent = 'Add ' + itemName;
+        if (modalSubmitBtn) { modalSubmitBtn.textContent = 'Add ' + itemName; modalSubmitBtn.style.background = mode === 'ww_assignment' ? '#7c3aed' : '#0ea5e9'; }
+        if (catBadge) { catBadge.textContent = 'Written Work (' + itemName + ')'; catBadge.style.background = '#dbeafe'; catBadge.style.color = '#1d4ed8'; }
+        titleLabel.textContent = itemName + ' Title';
         titleInput.setAttribute('name', 'exam_title');
-        titleInput.placeholder = 'e.g. Monthly Exam 1';
-        titleInput.value = 'Monthly Exam ' + (meCount + 1);
+        titleInput.placeholder = 'e.g. ' + itemName + ' 1';
+        titleInput.value = itemName + ' ' + (wwActivityCount + 1);
         maxLabel.textContent = 'Max Score';
         maxInput.setAttribute('name', 'max_score');
         maxInput.value = '100';
-    } else if (mode === 'term_exam') {
-        if (modalHeaderTitle) modalHeaderTitle.textContent = 'Add New Periodical Exam';
-        if (modalSubmitBtn) { modalSubmitBtn.textContent = 'Add Periodical Exam'; modalSubmitBtn.style.background = '#d97706'; }
-        if (catBadge) { catBadge.textContent = 'Quarterly Assessment (QA)'; catBadge.style.background = '#fef3c7'; catBadge.style.color = '#b45309'; }
-        titleLabel.textContent = 'Periodical Exam Title';
+    } else if (['summative_test_1', 'summative_test_2', 'term_exam'].includes(mode)) {
+        const labels = {
+            summative_test_1: ['Summative Test 1', 'ST1 · fixed 30%'],
+            summative_test_2: ['Summative Test 2', 'ST2 · fixed 30%'],
+            term_exam: ['Term Exam', 'Term Exam · fixed 40%']
+        };
+        const itemName = labels[mode][0];
+        if (modalHeaderTitle) modalHeaderTitle.textContent = 'Add ' + itemName;
+        if (modalSubmitBtn) { modalSubmitBtn.textContent = 'Add ' + itemName; modalSubmitBtn.style.background = '#d97706'; }
+        if (catBadge) { catBadge.textContent = labels[mode][1]; catBadge.style.background = '#fef3c7'; catBadge.style.color = '#b45309'; }
+        titleLabel.textContent = itemName + ' Title';
         titleInput.setAttribute('name', 'exam_title');
-        titleInput.placeholder = 'e.g. {{ period }} Term Periodical Exam';
-        titleInput.value = '{{ period }} Term Periodical Exam';
+        titleInput.placeholder = 'e.g. {{ period }} Term ' + itemName;
+        titleInput.value = '{{ period }} Term ' + itemName;
         maxLabel.textContent = 'Max Score';
+        maxInput.setAttribute('name', 'max_score');
+        maxInput.value = '100';
     }
 
     setTimeout(() => {
@@ -2101,27 +2132,15 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// ── School base-70 term-grade conversion ─────────────────────────────────────
-const TRANSMUTATION_RANGES = [
-    [98.40, 99.99, 99], [96.80, 98.39, 98], [95.20, 96.79, 97],
-    [93.60, 95.19, 96], [92.00, 93.59, 95], [90.40, 91.99, 94],
-    [88.80, 90.39, 93], [87.20, 88.79, 92], [85.60, 87.19, 91],
-    [84.00, 85.59, 90], [82.40, 83.99, 89], [80.80, 82.39, 88],
-    [79.20, 80.79, 87], [77.60, 79.19, 86], [76.00, 77.59, 85],
-    [74.40, 75.99, 84], [72.80, 74.39, 83], [71.20, 72.79, 82],
-    [69.60, 71.19, 81], [68.00, 69.59, 80], [66.40, 67.99, 79],
-    [64.80, 66.39, 78], [63.20, 64.79, 77], [61.60, 63.19, 76],
-    [60.00, 61.59, 75], [56.00, 59.99, 74], [52.00, 55.99, 73],
-    [48.00, 51.99, 72], [44.00, 47.99, 71], [40.00, 43.99, 70],
-    [36.00, 39.99, 69], [32.00, 35.99, 68], [28.00, 31.99, 67],
-    [24.00, 27.99, 66], [20.00, 23.99, 65], [16.00, 19.99, 64],
-    [12.00, 15.99, 63], [8.00, 11.99, 62],  [4.00, 7.99, 61],
-    [0.00, 3.99, 60]
-];
+// ── Approved initial-grade transmutation table ────────────────────────────────
+const TRANSMUTATION_RANGES = {{ transmutation_ranges | tojson }};
 
 function clientTransmute(initial) {
-    let x = Math.min(100, Math.max(0, parseFloat(initial) || 0));
-    return Math.min(100, Math.round(70 + (x * 0.30)));
+    const parsed = Number(initial);
+    if (!Number.isFinite(parsed)) return null;
+    const x = Math.round((Math.min(100, Math.max(0, parsed)) + Number.EPSILON) * 100) / 100;
+    const match = TRANSMUTATION_RANGES.find(([lower, upper]) => x >= lower && x <= upper);
+    return match ? match[2] : null;
 }
 
 
@@ -2217,14 +2236,16 @@ async function resetEdit(eid, field, sectionId, subjectId, period) {
 }
 
 function applyUpdatedScores(eid, changedField, data) {
+    const wMap = { ww: _sdWeights.ww_pct || 0, pt: _sdWeights.pt_pct || 0, qa: _sdWeights.qa_pct || 0 };
     const updateCell = (field, newVal, isOverridden) => {
         const display = document.querySelector(`#cell-${field}-${eid} .score-display`);
         if (!display) return;
         const valEl  = display.querySelector('.score-value');
         const badgeEl = display.querySelector('.edited-badge');
-        if (valEl) valEl.textContent = parseFloat(newVal).toFixed(1);
+        const ws = (parseFloat(newVal) * (wMap[field] || 0) / 100).toFixed(1);
+        if (valEl) valEl.textContent = ws;
         const inp = document.getElementById(`input-${field}-${eid}`);
-        if (inp) inp.value = parseFloat(newVal).toFixed(1);
+        if (inp) inp.value = ws;
         if (isOverridden && !badgeEl) {
             const badge = document.createElement('span');
             badge.className = 'edited-badge';
@@ -2317,7 +2338,7 @@ function sdRenderModal(data) {
     html += sdBuildSection(
         'Written Works',
         'ww',
-        `Quizzes + Monthly Exams — Weight: ${_sdWeights.ww_pct}%`,
+        `Quiz + Written Activity + Assignment — Weight: ${_sdWeights.ww_pct}%`,
         data.ww_avg,
         wwItems,
         'quiz_monthly',
@@ -2325,38 +2346,22 @@ function sdRenderModal(data) {
     );
 
     // ── Performance Tasks section ──────────────────────────────────────────────
-    const ptItems = [
-        ...(data.activities || []).map(a => ({ ...a, item_type: 'activity' })),
-        data.participation && {
-            item_type: 'participation',
-            title: 'Participation Rating',
-            score: data.participation.score,
-            total: data.participation.max,
-            has_result: data.participation.has_result,
-        },
-        data.attendance && {
-            item_type: 'attendance',
-            title: 'Attendance Rating',
-            score: data.attendance.score,
-            total: data.attendance.max,
-            has_result: data.attendance.has_result,
-        },
-    ].filter(Boolean);
+    const ptItems = (data.activities || []).map(a => ({ ...a, item_type: 'activity' }));
     html += sdBuildSection(
         'Performance Tasks',
         'pt',
-        `Activities + Participation + Attendance — Weight: ${_sdWeights.pt_pct}%`,
+        `Recitation — Weight: ${_sdWeights.pt_pct}%`,
         data.pt_avg,
         ptItems,
-        'activity_par_att',
+        'activity',
         data.is_locked
     );
 
-    // ── Term Assessment section ────────────────────────────────────────────────
+    // ── Summative Tests & Term Exam section ───────────────────────────────────
     html += sdBuildSection(
-        'Term Assessment',
+        'Summative Tests & Term Exam',
         'qa',
-        `Periodical Exam — Weight: ${_sdWeights.qa_pct}%`,
+        `ST1 30% + ST2 30% + Term Exam 40% — Weight: ${_sdWeights.qa_pct}%`,
         data.qa_avg,
         data.periodical || [],
         'periodical',
@@ -2367,7 +2372,7 @@ function sdRenderModal(data) {
     if (!data.is_locked) {
         html += `<div style="padding:12px 24px 14px; font-size:0.79rem; color:#64748b; background:#f8fafc; border-top:1px solid #e2e8f0;">
             Scores shown are the actual raw values from each quiz, activity, and exam.
-            Saving a score here updates the component average (Written Works, Performance Tasks, or Term Assessment)
+            Saving a score here updates the component average (Written Works, Performance Tasks, or Summative Tests & Term Exam)
             which is then used to compute the final term grade.
         </div>`;
     }
@@ -2422,15 +2427,8 @@ function sdBuildScoreRow(item, isLocked, colorClass) {
 
     const disabledAttr = isLocked ? 'disabled' : '';
 
-    // Participation and Attendance are read-only here (managed in dedicated pages)
-    const isReadOnly = (item.item_type === 'participation' || item.item_type === 'attendance');
-
     let actionsHtml = '';
-    if (isReadOnly) {
-        actionsHtml = `<span style="font-size:0.78rem; color:#94a3b8; font-style:italic;">
-            ${item.item_type === 'participation' ? 'Set in Participation page' : 'Set in Attendance page'}
-        </span>`;
-    } else if (isLocked) {
+    if (isLocked) {
         actionsHtml = `<span style="font-size:0.78rem; color:#94a3b8; font-style:italic;">Locked</span>`;
     } else {
         actionsHtml = `
@@ -2507,19 +2505,18 @@ function sdLiveRecompute() {
     });
     const qaAvg = qaTotalPts > 0 ? qaTotalScore / qaTotalPts * 100 : null;
 
-    // PT items (activities only from inputs; participation/attendance stay as loaded)
-    const ptComponents = [];
+    // PT items: pool every raw score and HPS.
+    let ptTotalScore = 0, ptTotalPts = 0;
     (data.activities || []).forEach(item => {
         const rowKey = item.activity_id ? `act-${item.activity_id}` : 'misc';
         const inp = document.getElementById(`sdinput-${rowKey}`);
         const val = inp ? parseFloat(inp.value) : (item.has_result ? item.score : null);
         if (val !== null && val !== undefined && !isNaN(val)) {
-            ptComponents.push(val / parseFloat(item.total || 100) * 100);
+            ptTotalScore += val;
+            ptTotalPts += parseFloat(item.total || 100);
         }
     });
-    if (data.participation?.has_result) ptComponents.push(Math.min(100, data.participation.score * 10));
-    if (data.attendance?.has_result)    ptComponents.push(Math.min(100, (data.attendance.score / (data.attendance.total || 10)) * 100));
-    const ptAvg = ptComponents.length > 0 ? ptComponents.reduce((a,b) => a+b, 0) / ptComponents.length : null;
+    const ptAvg = ptTotalPts > 0 ? ptTotalScore / ptTotalPts * 100 : null;
 
     sdUpdateSummaryBar(wwAvg, ptAvg, qaAvg, _sdWeights);
 }
@@ -2637,8 +2634,8 @@ async function sdSaveRow(rowKey, colorClass, examId, activityId, maxScore) {
             if (totalPts > 0) payload.qa = totalScore / totalPts * 100;
 
         } else if (colorClass === 'pt') {
-            // Recompute PT average with this activity's new score
-            const ptComponents = [];
+            // Recompute pooled PT percentage with this activity's new score.
+            let totalScore = 0, totalPts = 0;
             (data.activities || []).forEach(item => {
                 const rk = item.activity_id ? `act-${item.activity_id}` : 'misc';
                 let score;
@@ -2649,13 +2646,11 @@ async function sdSaveRow(rowKey, colorClass, examId, activityId, maxScore) {
                     score = otherInp ? parseFloat(otherInp.value) : (item.has_result ? item.score : null);
                 }
                 if (score !== null && score !== undefined && !isNaN(score)) {
-                    ptComponents.push(score / parseFloat(item.total || 100) * 100);
+                    totalScore += score;
+                    totalPts += parseFloat(item.total || 100);
                 }
             });
-            if (data.participation?.has_result) ptComponents.push(Math.min(100, data.participation.score * 10));
-            if (data.attendance?.has_result)    ptComponents.push(Math.min(100, (data.attendance.score / (data.attendance.total || 10)) * 100));
-            if (ptComponents.length > 0)
-                payload.pt = ptComponents.reduce((a,b) => a+b, 0) / ptComponents.length;
+            if (totalPts > 0) payload.pt = totalScore / totalPts * 100;
         }
 
         // Call existing override endpoint
@@ -2735,6 +2730,109 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+
+/* ── Dirty-tracking for grid save forms (PT / WW / QA) ─────────────── */
+(function() {
+    const formIds = ['cview-pt', 'cview-ww', 'cview-qa'];
+    const snapshots = new Map();
+
+    function snapshotForm(form) {
+        const snap = {};
+        form.querySelectorAll('input[type="number"], input[type="text"], select, textarea').forEach(el => {
+            if (el.name && !el.name.startsWith('csrf_') && el.name !== 'period' && el.name !== 'active_tab') {
+                snap[el.name] = el.value;
+            }
+        });
+        return snap;
+    }
+
+    function isDirty(form) {
+        const snap = snapshots.get(form);
+        if (!snap) return true; // no snapshot = allow submit
+        const inputs = form.querySelectorAll('input[type="number"], input[type="text"], select, textarea');
+        for (const el of inputs) {
+            if (el.name && !el.name.startsWith('csrf_') && el.name !== 'period' && el.name !== 'active_tab') {
+                if ((snap[el.name] ?? '') !== el.value) return true;
+            }
+        }
+        return false;
+    }
+
+    function showNoChangeToast() {
+        let toast = document.getElementById('noChangeToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'noChangeToast';
+            toast.style.cssText = 'position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:10px;font-size:0.9rem;font-weight:600;z-index:99999;opacity:0;transition:opacity 0.3s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = 'No changes to save.';
+        toast.style.opacity = '1';
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+    }
+
+    function setSaveState(form) {
+        const dirty = isDirty(form);
+        form.querySelectorAll('.grid-save-btn').forEach(btn => {
+            btn.disabled = !dirty;
+            btn.style.opacity = dirty ? '' : '0.5';
+            btn.style.filter = dirty ? '' : 'grayscale(1)';
+            btn.style.cursor = dirty ? '' : 'not-allowed';
+            btn.title = dirty ? '' : 'No unsaved changes';
+        });
+    }
+
+    // Take initial snapshots once DOM is ready and after switching tabs
+    function initSnapshots() {
+        formIds.forEach(id => {
+            const container = document.getElementById(id);
+            if (!container) return;
+            const form = container.querySelector('form');
+            if (form && !snapshots.has(form)) {
+                snapshots.set(form, snapshotForm(form));
+                setSaveState(form);
+                form.addEventListener('input', () => setSaveState(form));
+                form.addEventListener('change', () => setSaveState(form));
+                // Enter inside a score or maximum-score input must never submit the form.
+                form.addEventListener('keydown', function(e) {
+                    if (e.key !== 'Enter') return;
+                    const t = e.target;
+                    if (t && t.matches && t.matches('.grid-score-input, .grid-max-input, input[type="number"]')) {
+                        e.preventDefault();
+                        if (t.classList.contains('grid-max-input')) t.blur();
+                    }
+                });
+                form.addEventListener('submit', function(e) {
+                    // Allow delete buttons (formaction overrides) to always submit
+                    const submitter = e.submitter;
+                    if (submitter && submitter.getAttribute('formaction')) return;
+                    if (!isDirty(form)) {
+                        e.preventDefault();
+                        showNoChangeToast();
+                    }
+                });
+            }
+        });
+    }
+
+    // Snapshot on load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSnapshots);
+    } else {
+        initSnapshots();
+    }
+
+    // Re-snapshot after tab switch (the forms may not be in DOM until tab is shown)
+    const origSwitch = window.switchCategoryView;
+    if (origSwitch) {
+        window.switchCategoryView = function() {
+            origSwitch.apply(this, arguments);
+            setTimeout(initSnapshots, 50);
+        };
+    }
+})();
 
 
 </script>

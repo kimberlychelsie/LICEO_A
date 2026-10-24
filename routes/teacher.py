@@ -1,4 +1,6 @@
 import re
+import math
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify, send_file, abort
 from db import (
     get_db_connection,
@@ -9,7 +11,6 @@ from utils.send_email import send_email
 import psycopg2.extras
 from utils.grading_configuration import (
     get_assignment_grading_weights,
-    get_teacher_component_distribution,
     dynamic_grading_schema_available,
 )
 from cloudinary_helper import upload_file
@@ -1958,6 +1959,10 @@ def create_activity():
             subject_id = request.form.get("subject_id")
             section_ids = request.form.getlist("section_ids")
             category = request.form.get("category", "")
+            grading_component, grading_subtype = _validated_activity_placement(
+                request.form.get("grading_component"),
+                request.form.get("grading_subtype") or category,
+            )
             instructions = request.form.get("instructions", "").strip()
             max_score = int(request.form.get("max_score", 100))
             due_date = request.form.get("due_date", "")
@@ -2002,22 +2007,28 @@ def create_activity():
                 cur.execute("""
                     SELECT 1 FROM section_teachers st
                     JOIN sections s ON st.section_id = s.section_id
-                    WHERE st.teacher_id = %s AND st.section_id = %s AND s.year_id = %s
-                    """, (user_id, section_id, year_id))
+                    WHERE st.teacher_id = %s AND st.section_id = %s AND st.subject_id = %s
+                      AND s.branch_id = %s AND s.year_id = %s
+                    """, (user_id, section_id, subject_id, branch_id, year_id))
                 if not cur.fetchone():
                     flash("You do not have permission to add activities to this section/year.", "error")
                     return redirect(url_for("teacher.create_activity", subject_id=subject_id))
+                if _is_class_record_locked(cur, section_id, subject_id, grading_period, year_id):
+                    flash("Cannot add an activity because this class record is locked or posted.", "error")
+                    return redirect(url_for("teacher.create_activity", subject_id=subject_id, period=grading_period))
                 
                 cur.execute('''
                     INSERT INTO activities (
                         branch_id, section_id, subject_id, teacher_id, 
                         title, category, instructions, max_score, due_date, 
-                        status, allowed_file_types, attachment_path, grading_period, batch_id, year_id
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        status, allowed_file_types, attachment_path, grading_period, batch_id, year_id,
+                        grading_component, grading_subtype
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING activity_id
                 ''', (branch_id, section_id, subject_id, user_id, 
                       title, category, instructions, max_score, due_date or None, 
-                      status, allowed_file_types, attachment_path, grading_period, batch_id, year_id))
+                      status, allowed_file_types, attachment_path, grading_period, batch_id, year_id,
+                      grading_component, grading_subtype))
                 activity_id = cur.fetchone()['activity_id']
                 
                 if status == 'Published':
@@ -2117,6 +2128,10 @@ def edit_activity(activity_id):
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             category = request.form.get("category", "")
+            grading_component, grading_subtype = _validated_activity_placement(
+                request.form.get("grading_component") or activity.get("grading_component") or "pt",
+                request.form.get("grading_subtype") or category or activity.get("grading_subtype"),
+            )
             instructions = request.form.get("instructions", "").strip()
             max_score = int(request.form.get("max_score", 100))
             due_date = request.form.get("due_date", "")
@@ -2140,6 +2155,18 @@ def edit_activity(activity_id):
             if grading_period not in unlocked_periods:
                 flash(f"{PERIOD_LABELS.get(grading_period, grading_period)} is not open yet based on the Academic Calendar.", "error")
                 return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
+            if _is_class_record_locked(
+                cur, activity['section_id'], activity['subject_id'],
+                activity['grading_period'], year_id
+            ) or (
+                grading_period != activity['grading_period']
+                and _is_class_record_locked(
+                    cur, activity['section_id'], activity['subject_id'],
+                    grading_period, year_id
+                )
+            ):
+                flash("Cannot edit this activity because the affected class record is locked or posted.", "error")
+                return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
             
             attachment_path = activity['attachment_path']
             if 'attachment' in request.files:
@@ -2155,10 +2182,12 @@ def edit_activity(activity_id):
             UPDATE activities SET
                 title = %s, category = %s, instructions = %s, max_score = %s, 
                 due_date = %s, status = %s, allowed_file_types = %s, attachment_path = %s,
-                grading_period = %s, updated_at = NOW()
+                grading_period = %s, grading_component = %s, grading_subtype = %s,
+                updated_at = NOW()
             WHERE activity_id = %s
             ''', (title, category, instructions, max_score, due_date or None, 
-                status, allowed_file_types, attachment_path, grading_period, activity_id))
+                status, allowed_file_types, attachment_path, grading_period,
+                grading_component, grading_subtype, activity_id))
                   
             if status == 'Published' and activity['status'] != 'Published':
                 cur.execute("""
@@ -2698,8 +2727,16 @@ def teacher_exam_create():
         title           = (request.form.get("title") or "").strip()
         subject_id      = request.form.get("subject_id")
         section_ids     = request.form.getlist("section_ids")
-        exam_type_raw   = (request.form.get("exam_type") or "exam").strip()
-        exam_type       = exam_type_raw if exam_type_raw in ('exam', 'monthly_exam') else 'exam'
+        legacy_exam_type = (request.form.get("exam_type") or "exam").strip()
+        requested_slot = request.form.get("grading_slot")
+        if requested_slot:
+            grading_slot = _validated_exam_grading_slot(requested_slot)
+        else:
+            grading_slot = "ww_quiz" if legacy_exam_type == "monthly_exam" else "ste_term_exam"
+        if grading_slot not in {*STE_SLOT_WEIGHTS.keys(), "excluded", "ww_quiz"}:
+            flash("Invalid exam class-record placement.", "error")
+            return redirect(url_for("teacher.teacher_exam_create", subject_id=subject_id))
+        exam_type = "monthly_exam" if grading_slot == "ww_quiz" else "exam"
         duration_mins   = int(request.form.get("duration_mins", 60))
         scheduled_start = request.form.get("scheduled_start") or None
         max_attempts    = int(request.form.get("max_attempts", 1))
@@ -2747,15 +2784,41 @@ def teacher_exam_create():
             primary_exam_id = None
             for section_id in section_ids:
                 cur.execute("""
+                    SELECT 1
+                    FROM section_teachers st
+                    JOIN sections s ON s.section_id=st.section_id
+                    WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s
+                      AND s.branch_id=%s AND s.year_id=%s
+                """, (user_id, section_id, subject_id, branch_id, year_id))
+                if not cur.fetchone():
+                    raise ValueError("You do not have permission to create an exam for one of the selected classes.")
+                if _is_class_record_locked(cur, section_id, subject_id, grading_period, year_id):
+                    raise ValueError("Cannot create an exam because one of the selected class records is locked or posted.")
+                if grading_slot in STE_SLOT_WEIGHTS:
+                    cur.execute("""
+                        SELECT title FROM exams
+                        WHERE teacher_id=%s AND section_id=%s AND subject_id=%s
+                          AND grading_period=%s AND year_id=%s AND grading_slot=%s
+                          AND COALESCE(is_archived, FALSE)=FALSE
+                        LIMIT 1
+                    """, (user_id, section_id, subject_id, grading_period, year_id, grading_slot))
+                    occupied = cur.fetchone()
+                    if occupied:
+                        raise ValueError(
+                            f"{STE_SLOT_LABELS[grading_slot]} is already assigned to '{occupied['title']}' "
+                            "for one of the selected classes."
+                        )
+                cur.execute("""
                     INSERT INTO exams (
                         branch_id, section_id, subject_id, teacher_id,
                         title, exam_type, duration_mins,
                         scheduled_start,
                         max_attempts, passing_score,
                         randomize,
-                        instructions, status, grading_period, is_visible, batch_id, year_id, class_mode
+                        instructions, status, grading_period, is_visible, batch_id, year_id, class_mode,
+                        grading_slot
                     )
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s,%s,%s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s,%s,%s,%s)
                     RETURNING exam_id
                 """, (
                     branch_id, section_id, subject_id, user_id,
@@ -2763,7 +2826,7 @@ def teacher_exam_create():
                     scheduled_start,
                     max_attempts, passing_score,
                     randomize,
-                    instructions, grading_period, batch_id, year_id, class_mode
+                    instructions, grading_period, batch_id, year_id, class_mode, grading_slot
                 ))
                 exam_id = cur.fetchone()["exam_id"]
                 if primary_exam_id is None:
@@ -3412,14 +3475,19 @@ def teacher_quiz_create():
 
             primary_exam_id = None
             for section_id in section_ids:
-                # Validate section is in active year for this branch
                 cur.execute("""
-                    SELECT 1 FROM sections
-                    WHERE section_id=%s AND branch_id=%s AND year_id=%s
-                """, (section_id, branch_id, year_id))
+                    SELECT 1
+                    FROM section_teachers st
+                    JOIN sections s ON s.section_id=st.section_id
+                    WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s
+                      AND s.branch_id=%s AND s.year_id=%s
+                """, (user_id, section_id, subject_id, branch_id, year_id))
                 if not cur.fetchone():
-                    flash("Invalid section for this school year.", "error")
+                    flash("Invalid or unauthorized class assignment for this school year.", "error")
                     return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id))
+                if _is_class_record_locked(cur, section_id, subject_id, grading_period, year_id):
+                    flash("Cannot create a quiz because one of the selected class records is locked or posted.", "error")
+                    return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id, period=grading_period))
 
                 cur.execute("""
                     INSERT INTO exams (
@@ -3428,9 +3496,10 @@ def teacher_quiz_create():
                         scheduled_start,
                         max_attempts, passing_score,
                         randomize,
-                        instructions, status, grading_period, is_visible, batch_id, year_id, class_mode
+                        instructions, status, grading_period, is_visible, batch_id, year_id, class_mode,
+                        grading_slot
                     )
-                    VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s,%s,%s)
+                    VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s,%s,%s,'ww_quiz')
                     RETURNING exam_id
                 """, (
                     branch_id, section_id, subject_id, user_id,
@@ -4274,77 +4343,138 @@ PERIOD_LABELS = {
     "final": "Final Grade"
 }
 
+STE_SLOT_WEIGHTS = {
+    "ste_st1": 0.30,
+    "ste_st2": 0.30,
+    "ste_term_exam": 0.40,
+}
+STE_SLOT_LABELS = {
+    "ste_st1": "Summative Test 1",
+    "ste_st2": "Summative Test 2",
+    "ste_term_exam": "Term Exam",
+}
+EXAM_GRADING_SLOTS = {
+    "ww_quiz", "ww_activity", "ww_assignment",
+    *STE_SLOT_WEIGHTS.keys(), "excluded",
+}
+ACTIVITY_GRADING_COMPONENTS = {"ww", "pt", "excluded"}
+ACTIVITY_GRADING_SUBTYPES = {
+    "activity", "assignment", "participation", "recitation", "project", "assessment", "other"
+}
+LOCKED_GRADE_STATUSES = {
+    "pending_registrar", "pending_admin", "approved_for_posting", "posted"
+}
+
+
+def _is_class_record_locked(cur, section_id, subject_id, period, year_id):
+    cur.execute("""
+        SELECT status
+        FROM grade_submission_requests
+        WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+        LIMIT 1
+    """, (section_id, subject_id, period, year_id))
+    row = cur.fetchone()
+    return bool(row and row["status"] in LOCKED_GRADE_STATUSES)
+
+
+def _validated_exam_grading_slot(value, *, default="excluded"):
+    slot = (value or default).strip().lower()
+    if slot not in EXAM_GRADING_SLOTS:
+        raise ValueError("Invalid class-record placement selected.")
+    return slot
+
+
+def _validated_activity_placement(component, subtype):
+    component = (component or "pt").strip().lower()
+    subtype = (subtype or "activity").strip().lower()
+    subtype = {
+        "performance task": "activity",
+        "written activity": "activity",
+    }.get(subtype, subtype)
+    if component not in ACTIVITY_GRADING_COMPONENTS:
+        raise ValueError("Invalid activity grading component selected.")
+    if subtype not in ACTIVITY_GRADING_SUBTYPES:
+        raise ValueError("Invalid activity type selected.")
+    # Projects are always Performance Tasks (unless explicitly excluded).
+    if subtype == "project" and component != "excluded":
+        component = "pt"
+    return component, subtype
+
 TRANSMUTATION_RANGES = [
-    (98.40, 99.99, 99),
-    (96.80, 98.39, 98),
-    (95.20, 96.79, 97),
-    (93.60, 95.19, 96),
-    (92.00, 93.59, 95),
-    (90.40, 91.99, 94),
-    (88.80, 90.39, 93),
-    (87.20, 88.79, 92),
-    (85.60, 87.19, 91),
-    (84.00, 85.59, 90),
-    (82.40, 83.99, 89),
-    (80.80, 82.39, 88),
-    (79.20, 80.79, 87),
-    (77.60, 79.19, 86),
-    (76.00, 77.59, 85),
-    (74.40, 75.99, 84),
-    (72.80, 74.39, 83),
-    (71.20, 72.79, 82),
-    (69.60, 71.19, 81),
-    (68.00, 69.59, 80),
-    (66.40, 67.99, 79),
-    (64.80, 66.39, 78),
-    (63.20, 64.79, 77),
-    (61.60, 63.19, 76),
-    (60.00, 61.59, 75),
-    (56.00, 59.99, 74),
-    (52.00, 55.99, 73),
-    (48.00, 51.99, 72),
-    (44.00, 47.99, 71),
-    (40.00, 43.99, 70),
-    (36.00, 39.99, 69),
-    (32.00, 35.99, 68),
-    (28.00, 31.99, 67),
-    (24.00, 27.99, 66),
-    (20.00, 23.99, 65),
-    (16.00, 19.99, 64),
-    (12.00, 15.99, 63),
-    (8.00, 11.99, 62),
-    (4.00, 7.99, 61),
-    (0.00, 3.99, 60),
+    (0.00, 4.67, 60),
+    (4.68, 9.34, 61),
+    (9.35, 14.00, 62),
+    (14.01, 18.67, 63),
+    (18.68, 23.34, 64),
+    (23.35, 28.00, 65),
+    (28.01, 32.67, 66),
+    (32.68, 37.33, 67),
+    (37.34, 42.00, 68),
+    (42.01, 46.66, 69),
+    (46.67, 51.33, 70),
+    (51.34, 56.00, 71),
+    (56.01, 60.66, 72),
+    (60.67, 65.33, 73),
+    (65.34, 69.99, 74),
+    (70.00, 71.17, 75),
+    (71.18, 72.35, 76),
+    (72.36, 73.53, 77),
+    (73.54, 74.71, 78),
+    (74.72, 75.89, 79),
+    (75.90, 77.07, 80),
+    (77.08, 78.25, 81),
+    (78.26, 79.43, 82),
+    (79.44, 80.61, 83),
+    (80.62, 81.79, 84),
+    (81.80, 82.97, 85),
+    (82.98, 84.15, 86),
+    (84.16, 85.33, 87),
+    (85.34, 86.51, 88),
+    (86.52, 87.69, 89),
+    (87.70, 88.87, 90),
+    (88.88, 90.05, 91),
+    (90.06, 91.23, 92),
+    (91.24, 92.41, 93),
+    (92.42, 93.59, 94),
+    (93.60, 94.77, 95),
+    (94.78, 95.95, 96),
+    (95.96, 97.13, 97),
+    (97.14, 98.31, 98),
+    (98.32, 99.49, 99),
+    (99.50, 100.00, 100),
 ]
 
-def _get_deped_transmuted_grade(initial_grade):
-    """
-    School-approved base-70 formula (Initial 0-100 -> Term Grade 70-100).
-    Returns an integer term grade.
-    """
+
+def _normalize_initial_grade(initial_grade):
+    """Clamp and round an initial grade to two decimals using spreadsheet rounding."""
     try:
-        x = round(float(initial_grade), 2)
-    except (TypeError, ValueError):
+        value = Decimal(str(initial_grade))
+    except (InvalidOperation, TypeError, ValueError):
         return None
+    if not value.is_finite():
+        return None
+    value = min(Decimal("100"), max(Decimal("0"), value))
+    return float(value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
-    # Clamp to expected range.
-    if x < 0:
-        x = 0
-    if x > 100:
-        x = 100
-
-    # School-approved base-70 formula: 0 -> 70 and 100 -> 100.
-    # Round halves upward so the server matches JavaScript Math.round previews.
-    return min(100, int((70 + (x * 0.30)) + 0.5))
+def _get_deped_transmuted_grade(initial_grade):
+    """Convert a two-decimal initial grade using the approved transmutation table."""
+    x = _normalize_initial_grade(initial_grade)
+    if x is None:
+        return None
+    for lower, upper, transmuted in TRANSMUTATION_RANGES:
+        if lower <= x <= upper:
+            return transmuted
+    return None
 
 def _get_transmutation_band(initial_grade):
-    """Human-readable base-70 calculation for display/debugging."""
-    try:
-        x = round(float(initial_grade), 2)
-    except (TypeError, ValueError):
+    """Return the approved range used for a given initial grade."""
+    x = _normalize_initial_grade(initial_grade)
+    if x is None:
         return None
-    x = min(100, max(0, x))
-    return f"70 + ({x:.2f} x 0.30) => {_get_deped_transmuted_grade(x)}"
+    for lower, upper, transmuted in TRANSMUTATION_RANGES:
+        if lower <= x <= upper:
+            return f"{lower:.2f} to {upper:.2f} => {transmuted}"
+    return None
 
 
 def _get_teacher_assignments(cur, user_id, branch_id, year_id):
@@ -4361,7 +4491,7 @@ def _get_teacher_assignments(cur, user_id, branch_id, year_id):
     return cur.fetchall() or []
 
 
-# ── DepEd Grading Info (read-only — weights are auto-computed) ────────────────
+# ── Teacher grading-weight overview ───────────────────────────────────────────
 @teacher_bp.route("/teacher/grading-weights")
 def grading_weights():
     if not _require_teacher():
@@ -4380,11 +4510,12 @@ def grading_weights():
 
         assignments = _get_teacher_assignments(cur, user_id, branch_id, year_id)
 
-        # Build per-assignment auto weights (read-only, from DepEd category)
+        # Show the 1st Term configuration as a compact overview. Each term is
+        # configured independently from its class record.
         assignments_with_weights = []
         for a in assignments:
             w = get_assignment_grading_weights(
-                cur, branch_id, year_id, a["section_id"], a["subject_id"]
+                cur, user_id, branch_id, year_id, a["section_id"], a["subject_id"], "1st"
             )
             assignments_with_weights.append({
                 **dict(a),
@@ -4407,11 +4538,10 @@ def grading_weights():
 
 @teacher_bp.route("/teacher/grading-weights/set", methods=["POST"])
 def grading_weights_set():
-    # DEPRECATED — grading weights are now auto-computed from DepEd category
     if not _require_teacher():
         return redirect("/")
-    flash("Grading weights are now automatically set based on DepEd K-12 subject category.", "info")
-    return redirect(url_for("teacher.teacher_dashboard"))
+    flash("Open a term's class record and select Grading Weights to configure it.", "info")
+    return redirect(url_for("teacher.grading_weights"))
 
 
 @teacher_bp.route(
@@ -4441,12 +4571,13 @@ def grading_component_distribution(section_id, subject_id, period):
             WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s
               AND st.year_id=%s AND sec.branch_id=%s
             LIMIT 1
+            FOR UPDATE OF st
         """, (teacher_id, section_id, subject_id, year_id, branch_id))
         assignment = cur.fetchone()
         if not assignment:
             abort(403)
         weights = get_assignment_grading_weights(
-            cur, branch_id, year_id, section_id, subject_id
+            cur, teacher_id, branch_id, year_id, section_id, subject_id, period
         )
         cur.execute("""
             SELECT status FROM grade_submission_requests
@@ -4465,83 +4596,43 @@ def grading_component_distribution(section_id, subject_id, period):
         )
         if request.method == "POST":
             if locked:
-                flash("This class record is locked; its component distribution cannot be changed.", "error")
+                flash("This class record is locked; its grading weights cannot be changed.", "error")
                 return redirect(record_url if return_to_record else request.url)
-            fields = (
-                "ww_quiz_pct", "ww_monthly_exam_pct", "pt_activity_pct",
-                "pt_participation_pct", "pt_attendance_pct",
-                "qa_periodical_exam_pct",
-            )
+            fields = ("ww_pct", "pt_pct", "qa_pct")
             try:
                 values = {field: float(request.form.get(field) or 0) for field in fields}
             except ValueError:
                 values = {}
-            overall_mode = request.form.get("distribution_mode") == "overall"
-            ww_target = round(float(weights["ww"]) * 100, 2)
-            pt_target = round(float(weights["pt"]) * 100, 2)
-            qa_target = round(float(weights["qa"]) * 100, 2)
-            if not values or any(value < 0 or value > 100 for value in values.values()):
+            if not values or any(
+                not math.isfinite(value) or value < 0 or value > 100
+                for value in values.values()
+            ):
                 flash("Every percentage must be between 0 and 100.", "error")
-            elif round(values["ww_quiz_pct"] + values["ww_monthly_exam_pct"], 2) != (ww_target if overall_mode else 100):
-                flash(f"Quiz and Monthly Exam must total {ww_target if overall_mode else 100}%.", "error")
-            elif round(values["pt_activity_pct"] + values["pt_participation_pct"] + values["pt_attendance_pct"], 2) != (pt_target if overall_mode else 100):
-                flash(f"Activity, Participation, and Attendance must total {pt_target if overall_mode else 100}%.", "error")
-            elif values["qa_periodical_exam_pct"] != (qa_target if overall_mode else 100):
-                flash(f"Periodical Exam must remain {qa_target if overall_mode else 100}%.", "error")
+            elif abs(sum(values.values()) - 100) > 0.001:
+                flash("WW, PT, and QA must total exactly 100%.", "error")
             else:
-                if overall_mode:
-                    if ww_target > 0:
-                        values["ww_quiz_pct"] = round(values["ww_quiz_pct"] / ww_target * 100, 2)
-                        values["ww_monthly_exam_pct"] = round(100 - values["ww_quiz_pct"], 2)
-                    else:
-                        values["ww_quiz_pct"], values["ww_monthly_exam_pct"] = 50, 50
-                    if pt_target > 0:
-                        values["pt_activity_pct"] = round(values["pt_activity_pct"] / pt_target * 100, 2)
-                        values["pt_participation_pct"] = round(values["pt_participation_pct"] / pt_target * 100, 2)
-                        values["pt_attendance_pct"] = round(
-                            100 - values["pt_activity_pct"] - values["pt_participation_pct"], 2
-                        )
-                    else:
-                        values["pt_activity_pct"], values["pt_participation_pct"], values["pt_attendance_pct"] = 34, 33, 33
-                    values["qa_periodical_exam_pct"] = 100
                 cur.execute("""
-                    INSERT INTO teacher_component_distributions (
+                    INSERT INTO teacher_grading_weights (
                         teacher_id,branch_id,year_id,section_id,subject_id,grading_period,
-                        ww_quiz_pct,ww_monthly_exam_pct,pt_activity_pct,
-                        pt_participation_pct,pt_attendance_pct,qa_periodical_exam_pct
-                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        ww_pct,pt_pct,qa_pct
+                    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (teacher_id,section_id,subject_id,grading_period,year_id)
                     DO UPDATE SET
-                        ww_quiz_pct=EXCLUDED.ww_quiz_pct,
-                        ww_monthly_exam_pct=EXCLUDED.ww_monthly_exam_pct,
-                        pt_activity_pct=EXCLUDED.pt_activity_pct,
-                        pt_participation_pct=EXCLUDED.pt_participation_pct,
-                        pt_attendance_pct=EXCLUDED.pt_attendance_pct,
-                        qa_periodical_exam_pct=EXCLUDED.qa_periodical_exam_pct,
+                        branch_id=EXCLUDED.branch_id,
+                        ww_pct=EXCLUDED.ww_pct,
+                        pt_pct=EXCLUDED.pt_pct,
+                        qa_pct=EXCLUDED.qa_pct,
                         updated_at=NOW()
                 """, (
                     teacher_id, branch_id, year_id, section_id, subject_id, period,
                     *(values[field] for field in fields),
                 ))
                 db.commit()
-                flash("Component distribution saved.", "success")
+                flash(f"{period} Term grading weights saved.", "success")
                 return redirect(record_url if return_to_record else request.url)
             if return_to_record:
                 return redirect(record_url)
-        distribution = get_teacher_component_distribution(
-            cur, teacher_id, branch_id, year_id, section_id, subject_id, period
-        ) or {
-            "ww_quiz_pct": 50, "ww_monthly_exam_pct": 50,
-            "pt_activity_pct": 34, "pt_participation_pct": 33,
-            "pt_attendance_pct": 33, "qa_periodical_exam_pct": 100,
-        }
-        return render_template(
-            "teacher_grading_components.html", assignment=assignment,
-            distribution=distribution, weights=weights, period=period, locked=locked,
-            configured=get_teacher_component_distribution(
-                cur, teacher_id, branch_id, year_id, section_id, subject_id, period
-            ) is not None,
-        )
+        return redirect(record_url)
     finally:
         cur.close(); db.close()
 
@@ -4571,9 +4662,12 @@ def _assert_student_gradeable_for_period(cur, enrollment_id, section_id, period)
 def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period, year_id):
     """Compute grades using DepEd K-12 auto-weighting.
     School policy (client customization):
-      Written Works (WW)      = Quiz scores + Monthly Exam scores
-      Performance Tasks (PT)  = Activities + Participation + Attendance (averaged)
-      Quarterly Assessment (QA) = Periodical Exam scores only
+      Written Works (WW)      = pooled Quiz + Written Activity + Assignment scores/HPS
+      Performance Tasks (PT)  = pooled teacher-created PT records (Recitation,
+                                plus existing Project/Assessment items) scores/HPS.
+                                Legacy participation_scores / attendance_scores rows
+                                are preserved in the database but never affect grades.
+      Summative Tests & Term Exam = ST1 30% + ST2 30% + Term Exam 40%
     """
 
     # Check if subject is an elective
@@ -4647,140 +4741,129 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             s["student_number"] = f"{br_code}_{int(s['enrollment_id']):04d}"
 
     category_config = get_assignment_grading_weights(
-        cur, branch_id, year_id, section_id, subject_id
+        cur, user_id, branch_id, year_id, section_id, subject_id, period
     )
     category = category_config["code"]
     w = category_config
-    distribution = get_teacher_component_distribution(
-        cur, user_id, branch_id, year_id, section_id, subject_id, period
-    )
 
-    # Build a synthetic 'weights' dict for the template (read-only info)
+    # Build a synthetic 'weights' dict for existing class-record templates.
     weights = {
         'quiz_pct':          round(w['ww'] * 100, 1),
         'activity_pct':      round(w['pt'] * 100, 1),
         'exam_pct':          round(w['qa'] * 100, 1),
-        'participation_pct': 0,
-        'attendance_pct':    0,
         'deped_category':    category,
         'category_name':     category_config['name'],
-        'distribution':      distribution,
+        'configured':        category_config['configured'],
     }
 
     enrollment_ids = [s['enrollment_id'] for s in students]
     quiz_scores = {}
-    ww_source_scores = {}
-    exam_scores = {}
+    ww_exam_totals = {}
+    ww_activity_totals = {}
+    ste_source_scores = {}
 
     if enrollment_ids:
-        # Written Works sources are kept separate for configured distributions.
+        # Written Works: online quizzes/manual WW assessments are pooled by
+        # earned score and HPS. Legacy quiz/monthly-exam rows remain WW.
         cur.execute("""
-            SELECT er.enrollment_id, e.exam_type,
+            SELECT er.enrollment_id,
                    SUM(COALESCE(er.score, 0)) AS earned,
                    SUM(COALESCE(er.total_points, 0)) AS possible
             FROM exam_results er
             JOIN exams e ON er.exam_id = e.exam_id
             JOIN sections s ON e.section_id = s.section_id
             WHERE e.section_id = %s AND e.subject_id = %s
-              AND e.exam_type IN ('quiz', 'monthly_exam') AND e.grading_period = %s
-              AND s.year_id = %s
-              AND er.enrollment_id = ANY(%s)
-              AND er.status IN ('submitted', 'auto_submitted')
-            GROUP BY er.enrollment_id, e.exam_type
-        """, (section_id, subject_id, period, year_id, enrollment_ids))
-        for row in cur.fetchall():
-            eid = row['enrollment_id']
-            earned = float(row['earned'] or 0)
-            possible = float(row['possible'] or 0)
-            ww_source_scores.setdefault(eid, {})[row['exam_type']] = (
-                earned, possible,
-                (earned / possible * 100) if possible else 0,
-            )
-        for eid, sources in ww_source_scores.items():
-            earned = sum(item[0] for item in sources.values())
-            possible = sum(item[1] for item in sources.values())
-            quiz_scores[eid] = (earned / possible * 100) if possible else 0
-
-        # Quarterly Assessment: Periodical Exam scores ONLY
-        cur.execute("""
-            SELECT er.enrollment_id,
-                   COALESCE(
-                       (SUM(COALESCE(er.score, 0)) / NULLIF(SUM(COALESCE(er.total_points, 0)), 0)) * 100,
-                       0
-                   ) AS ps
-            FROM exam_results er
-            JOIN exams e ON er.exam_id = e.exam_id
-            JOIN sections s ON e.section_id = s.section_id
-            WHERE e.section_id = %s AND e.subject_id = %s
-              AND e.exam_type = 'exam' AND e.grading_period = %s
+              AND (
+                    e.grading_slot IN ('ww_quiz', 'ww_activity', 'ww_assignment')
+                    OR (e.grading_slot IS NULL AND e.exam_type IN ('quiz', 'monthly_exam'))
+                  )
+              AND e.grading_period = %s
               AND s.year_id = %s
               AND er.enrollment_id = ANY(%s)
               AND er.status IN ('submitted', 'auto_submitted')
             GROUP BY er.enrollment_id
         """, (section_id, subject_id, period, year_id, enrollment_ids))
         for row in cur.fetchall():
-            exam_scores[row['enrollment_id']] = float(row['ps'] or 0)
+            ww_exam_totals[row['enrollment_id']] = (
+                float(row['earned'] or 0), float(row['possible'] or 0)
+            )
 
-    # Performance Tasks: Activity scores
+        # Summative Tests & Term Exam: each official slot is normalized to its
+        # own HPS, then receives the fixed 30% / 30% / 40% internal share.
+        # A legacy non-quiz exam without a slot is treated as the Term Exam.
+        cur.execute("""
+            SELECT er.enrollment_id,
+                   COALESCE(e.grading_slot, 'ste_term_exam') AS grading_slot,
+                   SUM(COALESCE(er.score, 0)) AS earned,
+                   SUM(COALESCE(er.total_points, 0)) AS possible
+            FROM exam_results er
+            JOIN exams e ON er.exam_id = e.exam_id
+            JOIN sections s ON e.section_id = s.section_id
+            WHERE e.section_id = %s AND e.subject_id = %s
+              AND (
+                    e.grading_slot IN ('ste_st1', 'ste_st2', 'ste_term_exam')
+                    OR (e.grading_slot IS NULL AND e.exam_type = 'exam')
+                  )
+              AND e.grading_period = %s
+              AND s.year_id = %s
+              AND er.enrollment_id = ANY(%s)
+              AND er.status IN ('submitted', 'auto_submitted')
+            GROUP BY er.enrollment_id, COALESCE(e.grading_slot, 'ste_term_exam')
+        """, (section_id, subject_id, period, year_id, enrollment_ids))
+        for row in cur.fetchall():
+            ste_source_scores.setdefault(row['enrollment_id'], {})[row['grading_slot']] = (
+                float(row['earned'] or 0), float(row['possible'] or 0)
+            )
+
+    # WW activities and PT recitations are pooled by earned score and HPS.
+    # Legacy PT "activity" rows are preserved but excluded: Attendance has its
+    # own fixed score column and must never be inferred from an activity row.
     activity_scores = {}
     cur.execute("""
         SELECT asub.enrollment_id,
-               COALESCE(
-                   (SUM(COALESCE(ag.raw_score, 0)) / NULLIF(SUM(COALESCE(ag.max_score, 0)), 0)) * 100,
-                   0
-               ) AS ps
+               CASE WHEN COALESCE(a.grading_subtype, 'activity') = 'project' THEN 'pt'
+                    ELSE COALESCE(a.grading_component, 'pt') END AS grading_component,
+               SUM(COALESCE(ag.raw_score, 0)) AS earned,
+               SUM(COALESCE(ag.max_score, a.max_score, 0)) AS possible
         FROM activity_grades ag
         JOIN activity_submissions asub ON ag.submission_id = asub.submission_id
         JOIN activities a ON ag.activity_id = a.activity_id
         JOIN sections s ON a.section_id = s.section_id
         WHERE a.section_id = %s AND a.subject_id = %s AND a.grading_period = %s AND s.year_id = %s
-        GROUP BY asub.enrollment_id
+          AND (
+                (a.grading_component = 'ww'
+                 AND COALESCE(a.grading_subtype, 'activity') <> 'project')
+                OR (
+                    COALESCE(a.grading_component, 'pt') IN ('pt', 'ww')
+                    AND COALESCE(a.grading_subtype, 'activity') = 'project'
+                )
+                OR (
+                    COALESCE(a.grading_component, 'pt') = 'pt'
+                    AND COALESCE(a.grading_subtype, 'activity') IN ('recitation', 'assessment')
+                )
+              )
+        GROUP BY asub.enrollment_id,
+                 CASE WHEN COALESCE(a.grading_subtype, 'activity') = 'project' THEN 'pt'
+                      ELSE COALESCE(a.grading_component, 'pt') END
     """, (section_id, subject_id, period, year_id))
     act_raw = cur.fetchall() or []
     for row in act_raw:
-        activity_scores[row['enrollment_id']] = float(row['ps'] or 0)
-
-    # Get Date Range for the Period to compute Attendance/Participation
-    cur.execute("""
-        SELECT start_date, end_date 
-        FROM grading_period_ranges 
-        WHERE branch_id = %s AND year_id = %s AND period_name = %s
-    """, (branch_id, year_id, period))
-    range_row = cur.fetchone()
-    
-    total_school_days = 0
-    if range_row:
-        total_school_days = _count_school_days(cur, branch_id, year_id, range_row["start_date"], range_row["end_date"])
-
-    # Participation scores
-# {enrollment_id: (score, max_score)}
-    participation_scores = {}
-
-    cur.execute("""
-            SELECT
-                enrollment_id,
-                score,
-                COALESCE(max_score, 10) AS max_score
-    FROM participation_scores
-    WHERE subject_id = %s
-      AND grading_period = %s
-        """, (subject_id, period))
-
-    for row in cur.fetchall():
-        participation_scores[row['enrollment_id']] = (
-            float(row['score'] or 0),
-            float(row['max_score'] or 10)
+        target = ww_activity_totals if row['grading_component'] == 'ww' else activity_scores
+        target[row['enrollment_id']] = (
+            float(row['earned'] or 0),
+            float(row['possible'] or 0),
         )
 
-    # Attendance scores (from attendance_scores table)
-    attendance_scores = {}  # dict of {enrollment_id: (score, total_days)}
-    cur.execute("""
-        SELECT enrollment_id, score, COALESCE(total_days, 10) AS total_days
-        FROM attendance_scores
-        WHERE subject_id = %s AND grading_period = %s
-    """, (subject_id, period))
-    for row in cur.fetchall():
-        attendance_scores[row['enrollment_id']] = (float(row['score'] or 0), int(row['total_days'] or 10))
+    for eid in enrollment_ids:
+        exam_earned, exam_possible = ww_exam_totals.get(eid, (0, 0))
+        act_earned, act_possible = ww_activity_totals.get(eid, (0, 0))
+        earned, possible = exam_earned + act_earned, exam_possible + act_possible
+        if possible > 0:
+            quiz_scores[eid] = earned / possible * 100
+
+    # NOTE: participation_scores and attendance_scores are intentionally NOT
+    # read here. They were formerly fixed PT columns; the data is preserved
+    # for history but no longer contributes to Performance Tasks.
 
     def _cap_0_100(value):
         return max(0.0, min(100.0, float(value or 0)))
@@ -4802,61 +4885,24 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         eid = s['enrollment_id']
         ov  = override_map.get(eid)  # manual override row (or None)
 
-        if distribution:
-            source = ww_source_scores.get(eid, {})
-            quiz_value = source.get('quiz', (0, 0, 0))[2]
-            monthly_value = source.get('monthly_exam', (0, 0, 0))[2]
-            ww_score = _cap_0_100(
-                quiz_value * float(distribution['ww_quiz_pct']) / 100
-                + monthly_value * float(distribution['ww_monthly_exam_pct']) / 100
-            )
-        else:
-            ww_score = _cap_0_100(quiz_scores.get(eid, 0))
-        qa_score  = _cap_0_100(exam_scores.get(eid, 0))          # Quarterly Assessment (Periodical Exam)
-        act_score = _cap_0_100(activity_scores.get(eid, 0))
-        # Participation & Attendance
-        # Participation
-        par_data = participation_scores.get(eid, None)
-
-        par_raw = par_data[0] if par_data else None
-        par_total = par_data[1] if par_data else 10
-
-# Attendance
-        att_data = attendance_scores.get(eid, None)
-
-        att_raw = att_data[0] if att_data else None
-        att_total = att_data[1] if att_data else 10
-
-# Convert raw scores into percentages
-        par_score = (
-            _cap_0_100((par_raw / par_total) * 100)
-            if par_raw is not None and par_total > 0
-            else 0.0
+        ww_score = _cap_0_100(quiz_scores.get(eid, 0))
+        ste_slots = ste_source_scores.get(eid, {})
+        ste_slot_scores = {}
+        qa_score = 0.0
+        for slot, internal_weight in STE_SLOT_WEIGHTS.items():
+            earned, possible = ste_slots.get(slot, (0, 0))
+            slot_score = _cap_0_100(earned / possible * 100 if possible else 0)
+            ste_slot_scores[slot] = slot_score
+            qa_score += slot_score * internal_weight
+        qa_score = _cap_0_100(qa_score)
+        activity_earned, activity_possible = activity_scores.get(eid, (0, 0))
+        act_score = _cap_0_100(
+            activity_earned / activity_possible * 100 if activity_possible else 0
         )
-
-        att_score = (
-            _cap_0_100((att_raw / att_total) * 100)
-            if att_raw is not None and att_total > 0
-            else 0.0
-        )
-
-        # Performance Tasks = average of all available: Activity, Participation, Attendance
-        has_activity      = eid in activity_scores
-        has_participation = par_raw is not None
-        has_attendance    = att_raw is not None
-
-        if distribution:
-            pt_score = _cap_0_100(
-                act_score * float(distribution['pt_activity_pct']) / 100
-                + par_score * float(distribution['pt_participation_pct']) / 100
-                + att_score * float(distribution['pt_attendance_pct']) / 100
-            )
-        else:
-            pt_components = []
-            if has_activity:      pt_components.append(act_score)
-            if has_participation: pt_components.append(par_score)
-            if has_attendance:    pt_components.append(att_score)
-            pt_score = _cap_0_100(sum(pt_components) / len(pt_components) if pt_components else 0)
+        # Performance Tasks = pooled teacher-created PT records only
+        # (sum of earned scores / sum of HPS). No Participation/Attendance.
+        has_activity = eid in activity_scores and activity_possible > 0
+        pt_score = act_score if has_activity else 0.0
 
         # Apply teacher manual overrides to components (if set)
         ww_overridden = ov and ov['override_ww'] is not None
@@ -4869,29 +4915,19 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         if qa_overridden:
             qa_score = _cap_0_100(ov['override_qa'])
 
-        if distribution:
-            source = ww_source_scores.get(eid, {})
-            has_ww_score = (
-                (float(distribution['ww_quiz_pct']) == 0 or 'quiz' in source)
-                and (float(distribution['ww_monthly_exam_pct']) == 0 or 'monthly_exam' in source)
-            ) or bool(ww_overridden)
-            has_pt_score = (
-                (float(distribution['pt_activity_pct']) == 0 or has_activity)
-                and (float(distribution['pt_participation_pct']) == 0 or has_participation)
-                and (float(distribution['pt_attendance_pct']) == 0 or has_attendance)
-            ) or bool(pt_overridden)
-        else:
-            has_ww_score = (eid in quiz_scores) or bool(ww_overridden)
-            has_pt_score = has_activity or has_participation or has_attendance or bool(pt_overridden)
-        has_qa_score = (eid in exam_scores) or bool(qa_overridden)
-        has_any_score = has_ww_score or has_pt_score or has_qa_score
+        has_ww_score = (eid in quiz_scores) or bool(ww_overridden)
+        has_pt_score = has_activity or bool(pt_overridden)
+        has_any_ste_score = any(slot in ste_slots for slot in STE_SLOT_WEIGHTS)
+        has_qa_score = all(
+            slot in ste_slots and ste_slots[slot][1] > 0 for slot in STE_SLOT_WEIGHTS
+        ) or bool(qa_overridden)
+        has_any_score = has_ww_score or has_pt_score or has_any_ste_score or bool(qa_overridden)
 
         if has_any_score:
-            period_grade = round(
+            period_grade = _normalize_initial_grade(
                 ww_score  * w['ww'] +
                 pt_score  * w['pt'] +
-                qa_score  * w['qa'],
-                2
+                qa_score  * w['qa']
             )
             transmuted_grade = _get_deped_transmuted_grade(period_grade)
             transmutation_band = _get_transmutation_band(period_grade)
@@ -4904,21 +4940,15 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             'enrollment_id':   eid,
             'student_name':    s['student_name'],
             'student_number':  s.get('student_number', ''),
-            'quiz':            round(ww_score, 2),          # WW (Quiz + Monthly Exam)
+            'quiz':            round(ww_score, 2),          # Pooled WW items
             'activity':        round(act_score, 2),
-            'participation': round(par_raw or 0, 1),
-'participation_total': round(par_total, 1),
-
-'attendance': round(att_raw or 0, 1),
-'attendance_total': att_total,               # raw attendance total days for display
             'has_activity':    has_activity,
-            'has_participation': has_participation,
-            'has_attendance':  has_attendance,
             'has_ww_score':    has_ww_score,
             'has_pt_score':    has_pt_score,
             'has_qa_score':    has_qa_score,
             'pt_score':        round(pt_score, 2),          # Combined PT (0-100)
-            'exam':            round(qa_score, 2),          # QA (Periodical Exam)
+            'exam':            round(qa_score, 2),          # ST1 30% + ST2 30% + Term Exam 40%
+            'ste_slot_scores': ste_slot_scores,
             'period_grade':    period_grade,
             'transmuted_grade': transmuted_grade,
             'transmutation_band': transmutation_band,
@@ -4974,11 +5004,13 @@ def class_record(section_id, subject_id):
         context = cur.fetchone()
 
         activities_list = []
+        ww_activities_list = []
         quizzes_list = []
         exams_list = []
         activity_scores_map = {}
         quiz_scores_map = {}
         act_count = 0
+        ww_activity_count = 0
         quiz_count = 0
         monthly_exam_count = 0
         exam_count = 0
@@ -5069,30 +5101,72 @@ def class_record(section_id, subject_id):
 
             # Fetch detailed activity items & scores for dynamic table columns
             cur.execute("""
-                SELECT activity_id, title, max_score
+                SELECT activity_id, title, max_score, grading_subtype
                 FROM activities
                 WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
-                ORDER BY activity_id ASC
+                  AND (
+                        (COALESCE(grading_component, 'pt') = 'pt'
+                         AND COALESCE(grading_subtype, 'activity') IN ('recitation', 'assessment'))
+                     OR (COALESCE(grading_component, 'pt') IN ('pt', 'ww')
+                         AND grading_subtype = 'project')
+                  )
+                ORDER BY CASE grading_subtype WHEN 'project' THEN 0 WHEN 'assessment' THEN 1 ELSE 2 END, activity_id ASC
             """, (section_id, subject_id, period, year_id))
             activities_list = cur.fetchall() or []
 
             cur.execute("""
-                SELECT e.exam_id, e.title, e.exam_type, COALESCE(MAX(er.total_points), 100) AS total_points
+                SELECT activity_id, title, max_score, grading_subtype
+                FROM activities
+                WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+                  AND grading_component = 'ww'
+                  AND COALESCE(grading_subtype, 'activity') <> 'project'
+                ORDER BY activity_id ASC
+            """, (section_id, subject_id, period, year_id))
+            ww_activities_list = cur.fetchall() or []
+
+            cur.execute("""
+                SELECT e.exam_id, e.title, e.exam_type,
+                       COALESCE(e.grading_slot, 'ww_quiz') AS grading_slot,
+                       COALESCE(
+                           e.class_record_max_score,
+                           (SELECT NULLIF(SUM(q.points), 0) FROM exam_questions q WHERE q.exam_id=e.exam_id),
+                           MAX(er.total_points),
+                           100
+                       ) AS total_points
                 FROM exams e
                 LEFT JOIN exam_results er ON e.exam_id = er.exam_id
-                WHERE e.section_id=%s AND e.subject_id=%s AND e.grading_period=%s AND e.year_id=%s AND e.exam_type IN ('quiz', 'monthly_exam')
-                GROUP BY e.exam_id, e.title, e.exam_type
+                WHERE e.section_id=%s AND e.subject_id=%s AND e.grading_period=%s AND e.year_id=%s
+                  AND (
+                        e.grading_slot IN ('ww_quiz', 'ww_activity', 'ww_assignment')
+                        OR (e.grading_slot IS NULL AND e.exam_type IN ('quiz', 'monthly_exam'))
+                      )
+                GROUP BY e.exam_id, e.title, e.exam_type, e.class_record_max_score,
+                         COALESCE(e.grading_slot, 'ww_quiz')
                 ORDER BY e.exam_id ASC
             """, (section_id, subject_id, period, year_id))
             quizzes_list = cur.fetchall() or []
 
             cur.execute("""
-                SELECT e.exam_id, e.title, COALESCE(MAX(er.total_points), 100) AS total_points
+                SELECT e.exam_id, e.title,
+                       COALESCE(e.grading_slot, 'ste_term_exam') AS grading_slot,
+                       COALESCE(
+                           e.class_record_max_score,
+                           (SELECT NULLIF(SUM(q.points), 0) FROM exam_questions q WHERE q.exam_id=e.exam_id),
+                           MAX(er.total_points),
+                           100
+                       ) AS total_points
                 FROM exams e
                 LEFT JOIN exam_results er ON e.exam_id = er.exam_id
-                WHERE e.section_id=%s AND e.subject_id=%s AND e.grading_period=%s AND e.year_id=%s AND e.exam_type = 'exam'
-                GROUP BY e.exam_id, e.title
-                ORDER BY e.exam_id ASC
+                WHERE e.section_id=%s AND e.subject_id=%s AND e.grading_period=%s AND e.year_id=%s
+                  AND (
+                        e.grading_slot IN ('ste_st1', 'ste_st2', 'ste_term_exam')
+                        OR (e.grading_slot IS NULL AND e.exam_type = 'exam')
+                      )
+                GROUP BY e.exam_id, e.title, e.class_record_max_score,
+                         COALESCE(e.grading_slot, 'ste_term_exam')
+                ORDER BY CASE COALESCE(e.grading_slot, 'ste_term_exam')
+                    WHEN 'ste_st1' THEN 1 WHEN 'ste_st2' THEN 2 ELSE 3 END,
+                    e.exam_id ASC
             """, (section_id, subject_id, period, year_id))
             exams_list = cur.fetchall() or []
 
@@ -5119,6 +5193,7 @@ def class_record(section_id, subject_id):
                 quiz_scores_map[f"{r['enrollment_id']}_{r['exam_id']}"] = float(r['score'] or 0)
 
             act_count = len(activities_list)
+            ww_activity_count = len(ww_activities_list)
             quiz_count = len([q for q in quizzes_list if q.get('exam_type') == 'quiz'])
             monthly_exam_count = len([q for q in quizzes_list if q.get('exam_type') == 'monthly_exam'])
             exam_count = len(exams_list)
@@ -5131,11 +5206,13 @@ def class_record(section_id, subject_id):
             weights=weights,
             period=period,
             activities_list=activities_list,
+            ww_activities_list=ww_activities_list,
             quizzes_list=quizzes_list,
             exams_list=exams_list,
             activity_scores_map=activity_scores_map,
             quiz_scores_map=quiz_scores_map,
             act_count=act_count,
+            ww_activity_count=ww_activity_count,
             quiz_count=quiz_count,
             monthly_exam_count=monthly_exam_count,
             exam_count=exam_count,
@@ -5143,6 +5220,7 @@ def class_record(section_id, subject_id):
             approval_history=approval_history if period != 'final' else [],
             approval_history_enabled=approval_history_enabled if period != 'final' else False,
             approval_history_is_legacy=approval_history_is_legacy if period != 'final' else False,
+            transmutation_ranges=TRANSMUTATION_RANGES,
             grading_periods=['1st', '2nd', '3rd', 'final'])
     finally:
         cur.close()
@@ -5253,7 +5331,7 @@ def class_record_export(section_id, subject_id):
                     "Student Name": r.get("student_name"),
                     "Written Works (WW)": r.get("quiz"),
                     "Performance Tasks (PT)": r.get("pt_score"),
-                    "Term Assessment (TA)": r.get("exam"),
+                    "Summative Tests & Term Exam": r.get("exam"),
                     "Term Grade (Transmuted)": r.get("transmuted_grade"),
                     "Remarks": remarks,
                 })
@@ -5262,16 +5340,14 @@ def class_record_export(section_id, subject_id):
                     "Student ID": student_id_str,
                     "Student Name": r.get("student_name"),
                     "WW Raw": r.get("quiz"),
-                    "PT Activity": r.get("activity"),
-                    "PT Participation": r.get("participation"),
-                    "PT Attendance": r.get("attendance"),
+                    "PT Recitation": r.get("activity"),
                     "PT Combined": r.get("pt_score"),
-                    "QA Raw": r.get("exam"),
+                    "ST&E Combined": r.get("exam"),
                     "Initial Grade": r.get("period_grade"),
                     "Transmuted Grade": r.get("transmuted_grade"),
                     "WW Weight %": weights.get("quiz_pct"),
                     "PT Weight %": weights.get("activity_pct"),
-                    "QA Weight %": weights.get("exam_pct"),
+                    "ST&E Weight %": weights.get("exam_pct"),
                     "Subject": context.get("subject_name"),
                     "Section": f"{context.get('grade_level_name')} - {context.get('section_name')}",
                     "Period": PERIOD_LABELS.get(period, period),
@@ -5469,25 +5545,23 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
         submission_status = sub_req['status'] if sub_req else 'draft'
 
         w = get_assignment_grading_weights(
-            cur, branch_id, year_id, section_id, subject_id
-        )
-        distribution = get_teacher_component_distribution(
             cur, user_id, branch_id, year_id, section_id, subject_id, period
         )
         weights = {
             'ww_pct':  round(w['ww'] * 100, 1),
             'pt_pct':  round(w['pt'] * 100, 1),
             'qa_pct':  round(w['qa'] * 100, 1),
-            'distribution': distribution,
         }
 
-        # ── Written Works: individual quizzes and monthly exams ───────────────
+        # ── Written Works: quiz/activity/assignment assessments ───────────────
         cur.execute("""
             SELECT e.exam_id, e.title, e.exam_type,
+                   COALESCE(e.grading_slot, 'ww_quiz') AS grading_slot,
                    er.score,
                    COALESCE(
+                       e.class_record_max_score,
                        er.total_points,
-                       (SELECT COALESCE(SUM(q.points), 100) FROM exam_questions q WHERE q.exam_id = e.exam_id),
+                       (SELECT NULLIF(SUM(q.points), 0) FROM exam_questions q WHERE q.exam_id = e.exam_id),
                        100
                    ) AS total,
                    er.status AS result_status
@@ -5497,10 +5571,13 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
                   AND er.enrollment_id = %s
                   AND er.status IN ('submitted', 'auto_submitted')
             WHERE e.section_id = %s AND e.subject_id = %s
-              AND e.exam_type IN ('quiz', 'monthly_exam')
+              AND (
+                    e.grading_slot IN ('ww_quiz', 'ww_activity', 'ww_assignment')
+                    OR (e.grading_slot IS NULL AND e.exam_type IN ('quiz', 'monthly_exam'))
+                  )
               AND e.grading_period = %s
               AND e.is_archived = FALSE
-            ORDER BY e.exam_type DESC, e.created_at ASC
+            ORDER BY e.created_at ASC
         """, (enrollment_id, section_id, subject_id, period))
         ww_rows = cur.fetchall() or []
 
@@ -5513,19 +5590,22 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
                 'score':   float(row['score']) if row['score'] is not None else None,
                 'total':   float(row['total']) if row['total'] else 100.0,
                 'has_result': row['score'] is not None,
+                'label': {
+                    'ww_activity': 'Written Activity',
+                    'ww_assignment': 'Assignment',
+                }.get(row['grading_slot'], 'Quiz'),
             }
-            if row['exam_type'] == 'quiz':
-                quizzes.append(item)
-            else:
-                monthly.append(item)
+            quizzes.append(item)
 
-        # ── Term Assessment: periodical exams ─────────────────────────────────
+        # ── Summative Tests & Term Exam ───────────────────────────────────────
         cur.execute("""
             SELECT e.exam_id, e.title,
+                   COALESCE(e.grading_slot, 'ste_term_exam') AS grading_slot,
                    er.score,
                    COALESCE(
+                       e.class_record_max_score,
                        er.total_points,
-                       (SELECT COALESCE(SUM(q.points), 100) FROM exam_questions q WHERE q.exam_id = e.exam_id),
+                       (SELECT NULLIF(SUM(q.points), 0) FROM exam_questions q WHERE q.exam_id = e.exam_id),
                        100
                    ) AS total,
                    er.status AS result_status
@@ -5535,10 +5615,15 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
                   AND er.enrollment_id = %s
                   AND er.status IN ('submitted', 'auto_submitted')
             WHERE e.section_id = %s AND e.subject_id = %s
-              AND e.exam_type = 'exam'
+              AND (
+                    e.grading_slot IN ('ste_st1', 'ste_st2', 'ste_term_exam')
+                    OR (e.grading_slot IS NULL AND e.exam_type = 'exam')
+                  )
               AND e.grading_period = %s
               AND e.is_archived = FALSE
-            ORDER BY e.created_at ASC
+            ORDER BY CASE COALESCE(e.grading_slot, 'ste_term_exam')
+                WHEN 'ste_st1' THEN 1 WHEN 'ste_st2' THEN 2 ELSE 3 END,
+                e.created_at ASC
         """, (enrollment_id, section_id, subject_id, period))
         periodical = []
         for row in (cur.fetchall() or []):
@@ -5548,11 +5633,15 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
                 'score':   float(row['score']) if row['score'] is not None else None,
                 'total':   float(row['total']) if row['total'] else 100.0,
                 'has_result': row['score'] is not None,
+                'label': STE_SLOT_LABELS.get(row['grading_slot'], 'Term Exam'),
             })
 
         # ── Performance Tasks: activities ────────────────────────────────────
         cur.execute("""
             SELECT a.activity_id, a.title,
+                   CASE WHEN a.grading_subtype = 'project' AND COALESCE(a.grading_component, 'pt') <> 'excluded'
+                        THEN 'pt' ELSE COALESCE(a.grading_component, 'pt') END AS grading_component,
+                   COALESCE(a.grading_subtype, 'activity') AS grading_subtype,
                    COALESCE(ag.raw_score, NULL) AS score,
                    COALESCE(ag.max_score, a.max_score, 100) AS total
             FROM activities a
@@ -5568,54 +5657,31 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
         """, (enrollment_id, section_id, subject_id, period))
         activities = []
         for row in (cur.fetchall() or []):
-            activities.append({
+            item = {
                 'activity_id': row['activity_id'],
                 'title':       row['title'],
                 'score':       float(row['score']) if row['score'] is not None else None,
                 'total':       float(row['total']) if row['total'] else 100.0,
                 'has_result':  row['score'] is not None,
-            })
+                'label': 'Assignment' if row['grading_subtype'] == 'assignment' else (
+                    'Recitation' if row['grading_subtype'] == 'recitation' else (
+                        'Project' if row['grading_subtype'] == 'project' else (
+                            'Assessment' if row['grading_subtype'] == 'assessment' else 'Activity'
+                        )
+                    )
+                ),
+                'item_type': 'activity',
+            }
+            if row['grading_component'] == 'ww':
+                monthly.append(item)
+            elif (
+                row['grading_component'] == 'pt'
+                and row['grading_subtype'] in ('recitation', 'project', 'assessment')
+            ):
+                activities.append(item)
 
-        # ── Participation ─────────────────────────────────────────────────────
-        cur.execute("""
-            SELECT
-                score,
-                COALESCE(max_score, 10) AS max_score
-            FROM participation_scores
-            WHERE subject_id = %s
-            AND grading_period = %s
-            AND enrollment_id = %s
-        """, (subject_id, period, enrollment_id))
-
-        par_row = cur.fetchone()
-
-        participation = {
-            'score': (
-                float(par_row['score'])
-                if par_row and par_row['score'] is not None
-                else None
-            ),
-            'max': (
-                float(par_row['max_score'])
-                if par_row and par_row['max_score'] is not None
-                else 10
-            ),
-            'has_result': (
-                par_row is not None
-                and par_row['score'] is not None
-            ),
-        }
-
-        cur.execute("""
-            SELECT score, COALESCE(total_days, 10) as total_days FROM attendance_scores
-            WHERE subject_id=%s AND grading_period=%s AND enrollment_id=%s
-        """, (subject_id, period, enrollment_id))
-        att_row = cur.fetchone()
-        attendance = {
-            'score': float(att_row['score']) if att_row and att_row['score'] is not None else None,
-            'max':   int(att_row['total_days']) if att_row and att_row['total_days'] is not None else 10,
-            'has_result': att_row is not None and att_row['score'] is not None,
-        }
+        # Participation / Attendance are no longer PT components; their legacy
+        # rows are preserved but not loaded, displayed, or edited here.
 
         # ── Existing component overrides (to know what's been manually set) ──
         cur.execute("""
@@ -5638,58 +5704,29 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
             possible = sum(i['total'] for i in items if i['score'] is not None)
             return round(earned / possible * 100, 2) if possible else None
 
-        quiz_avg = _source_average(quizzes)
-        monthly_avg = _source_average(monthly)
-        if distribution:
-            ww_avg = round(
-                (quiz_avg or 0) * float(distribution['ww_quiz_pct']) / 100
-                + (monthly_avg or 0) * float(distribution['ww_monthly_exam_pct']) / 100,
-                2,
-            )
-        else:
-            ww_total_score = sum(i['score'] for i in (quizzes + monthly) if i['score'] is not None)
-            ww_total_pts = sum(i['total'] for i in (quizzes + monthly) if i['score'] is not None)
-            ww_avg = round(ww_total_score / ww_total_pts * 100, 2) if ww_total_pts else None
+        ww_total_score = sum(i['score'] for i in (quizzes + monthly) if i['score'] is not None)
+        ww_total_pts = sum(i['total'] for i in (quizzes + monthly) if i['score'] is not None)
+        ww_avg = round(ww_total_score / ww_total_pts * 100, 2) if ww_total_pts else None
 
-        # QA average: periodical exams
-        qa_total_score = sum(i['score'] for i in periodical if i['score'] is not None)
-        qa_total_pts   = sum(i['total'] for i in periodical if i['score'] is not None)
-        qa_avg = round(qa_total_score / qa_total_pts * 100, 2) if qa_total_pts else None
+        ste_by_slot = {item['label']: item for item in periodical}
+        qa_avg = 0.0
+        qa_complete = True
+        for slot, share in (('Summative Test 1', .30), ('Summative Test 2', .30), ('Term Exam', .40)):
+            item = ste_by_slot.get(slot)
+            if not item or item['score'] is None or not item['total']:
+                qa_complete = False
+                continue
+            qa_avg += (item['score'] / item['total'] * 100) * share
+        qa_avg = round(qa_avg, 2) if qa_complete else None
 
-        # PT average: activities + participation×10 + attendance×10
-        pt_components = []
+        # PT average: pooled teacher-created PT records (Recitation, etc.) only
+        pt_total_score = 0.0
+        pt_total_pts = 0.0
         for item in activities:
             if item['score'] is not None:
-                pt_components.append(_pct(item['score'], item['total']))
-        if participation['has_result']:
-            pt_components.append(
-                _pct(
-                    participation['score'],
-                    participation['max']
-                )
-            )
-        if attendance['has_result']:
-            pt_components.append(
-                _pct(
-                    attendance['score'],
-                    attendance['max']
-                )
-            )
-        if distribution:
-            activity_avg = round(sum(
-                _pct(item['score'], item['total']) for item in activities
-                if item['score'] is not None
-            ) / len([item for item in activities if item['score'] is not None]), 2) if any(
-                item['score'] is not None for item in activities
-            ) else None
-            pt_avg = round(
-                (activity_avg or 0) * float(distribution['pt_activity_pct']) / 100
-                + (_pct(participation['score'], participation['max']) if participation['has_result'] else 0) * float(distribution['pt_participation_pct']) / 100
-                + (_pct(attendance['score'], attendance['max']) if attendance['has_result'] else 0) * float(distribution['pt_attendance_pct']) / 100,
-                2,
-            )
-        else:
-            pt_avg = round(sum(pt_components) / len(pt_components), 2) if pt_components else None
+                pt_total_score += item['score']
+                pt_total_pts += item['total']
+        pt_avg = round(pt_total_score / pt_total_pts * 100, 2) if pt_total_pts else None
 
         if request.method == "POST":
             if is_locked:
@@ -5733,9 +5770,15 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
                 score = %s,
                 status = 'submitted',
                 total_points = (
-                    SELECT COALESCE(SUM(points), 100)
-                    FROM exam_questions
-                    WHERE exam_id = %s
+                    SELECT COALESCE(
+                        e.class_record_max_score,
+                        NULLIF(SUM(q.points), 0),
+                        100
+                    )
+                    FROM exams e
+                    LEFT JOIN exam_questions q ON q.exam_id=e.exam_id
+                    WHERE e.exam_id = %s
+                    GROUP BY e.exam_id, e.class_record_max_score
                 ),
                 submitted_at = NOW()
             WHERE result_id = %s
@@ -5763,9 +5806,15 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
                 %s,
                 'submitted',
                 (
-                    SELECT COALESCE(SUM(points), 100)
-                    FROM exam_questions
-                    WHERE exam_id = %s
+                    SELECT COALESCE(
+                        e.class_record_max_score,
+                        NULLIF(SUM(q.points), 0),
+                        100
+                    )
+                    FROM exams e
+                    LEFT JOIN exam_questions q ON q.exam_id=e.exam_id
+                    WHERE e.exam_id = %s
+                    GROUP BY e.exam_id, e.class_record_max_score
                 ),
                 NOW()
             )
@@ -5845,87 +5894,6 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
                                 VALUES (%s, %s, %s, %s, %s)
                             """, (submission_id, act_id, val, activity_max, percentage))
 
-                elif key == 'participation':
-
-    # Get the configured maximum participation score
-                    cur.execute("""
-        SELECT COALESCE(max_score, 10) AS max_score
-        FROM participation_scores
-        WHERE enrollment_id = %s
-          AND subject_id = %s
-          AND grading_period = %s
-        LIMIT 1
-    """, (
-        enrollment_id,
-        subject_id,
-        period
-    ))
-
-                    par_row = cur.fetchone()
-
-                    participation_max = (
-                        float(par_row["max_score"])
-                        if par_row
-                        else 10
-                    )
-
-    # Prevent score below 0 or above maximum
-                    val = max(
-                        0,
-                        min(participation_max, val)
-                    )
-
-                    cur.execute("""
-        INSERT INTO participation_scores (
-            teacher_id,
-            enrollment_id,
-            section_id,
-            subject_id,
-            grading_period,
-            score,
-            max_score,
-            updated_at
-        )
-        VALUES (
-            %s, %s, %s, %s, %s, %s, %s, NOW()
-        )
-
-        ON CONFLICT (
-            enrollment_id,
-            subject_id,
-            grading_period
-        )
-
-        DO UPDATE SET
-            score = EXCLUDED.score,
-            max_score = EXCLUDED.max_score,
-            teacher_id = EXCLUDED.teacher_id,
-            section_id = EXCLUDED.section_id,
-            updated_at = NOW()
-    """, (
-        user_id,
-        enrollment_id,
-        section_id,
-        subject_id,
-        period,
-        val,
-        participation_max
-                        ))
-                elif key == 'attendance':
-                    # Get existing total days if any
-                    cur.execute("SELECT COALESCE(total_days, 10) AS total_days FROM attendance_scores WHERE subject_id=%s AND grading_period=%s AND section_id=%s LIMIT 1", (subject_id, period, section_id))
-                    td_row = cur.fetchone()
-                    total_days = float(td_row['total_days']) if td_row else 10
-
-                    # Prevent attendance score below 0 or above total days
-                    val = max(0, min(total_days, val))
-
-                    cur.execute("""
-                        INSERT INTO attendance_scores (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, total_days, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
-                        ON CONFLICT (enrollment_id, subject_id, grading_period)
-                        DO UPDATE SET score = EXCLUDED.score, total_days = EXCLUDED.total_days, teacher_id = EXCLUDED.teacher_id, section_id = EXCLUDED.section_id, updated_at = NOW()
-                    """, (user_id, enrollment_id, section_id, subject_id, period, val, total_days))
             
             db.commit()
             flash("Scores successfully updated.", "success")
@@ -5943,8 +5911,6 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
             quizzes=quizzes,
             monthly=monthly,
             activities=activities,
-            participation=participation,
-            attendance=attendance,
             periodical=periodical,
             ww_avg=ww_avg,
             pt_avg=pt_avg,
@@ -5962,7 +5928,7 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
 
 @teacher_bp.route("/teacher/class-record/<int:section_id>/<int:subject_id>/batch-scores", methods=["POST"])
 def teacher_batch_save_scores(section_id, subject_id):
-    """Batch save scores (WW, PT, QA component scores, or new activity/participation/attendance) for all students at once."""
+    """Create and score WW, PT, or Summative Test & Term Exam items."""
     if not _require_teacher():
         return redirect("/")
 
@@ -5974,11 +5940,11 @@ def teacher_batch_save_scores(section_id, subject_id):
 
     if active_tab in ["summary", "pt", "ww", "qa"]:
         target_tab = active_tab
-    elif input_type in ["new_activity", "attendance", "participation"]:
+    elif input_type in ["recitation", "project", "assessment"]:
         target_tab = "pt"
-    elif input_type in ["quiz", "monthly_exam"]:
+    elif input_type in ["quiz", "ww_activity", "ww_assignment"]:
         target_tab = "ww"
-    elif input_type == "term_exam":
+    elif input_type in ["summative_test_1", "summative_test_2", "term_exam"]:
         target_tab = "qa"
     else:
         target_tab = "summary"
@@ -6011,26 +5977,46 @@ def teacher_batch_save_scores(section_id, subject_id):
             flash("Cannot edit scores: Grade submission is currently locked or posted.", "error")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period, tab=target_tab))
 
-        if input_type in ["quiz", "monthly_exam", "term_exam"]:
-            if input_type == "quiz":
-                title = request.form.get("exam_title", "Quiz").strip()
-                exam_type = "quiz"
-                label = "Quiz"
-            elif input_type == "monthly_exam":
-                title = request.form.get("exam_title", "Monthly Exam").strip()
-                exam_type = "monthly_exam"
-                label = "Monthly Exam"
-            else:
-                title = request.form.get("exam_title", "Term Exam").strip()
-                exam_type = "exam"
-                label = "Term Assessment Exam"
+        if input_type in ["quiz", "ww_activity", "ww_assignment", "summative_test_1", "summative_test_2", "term_exam"]:
+            item_config = {
+                "quiz": ("Quiz", "quiz", "ww_quiz"),
+                "ww_activity": ("Written Activity", "quiz", "ww_activity"),
+                "ww_assignment": ("Assignment", "quiz", "ww_assignment"),
+                "summative_test_1": ("Summative Test 1", "exam", "ste_st1"),
+                "summative_test_2": ("Summative Test 2", "exam", "ste_st2"),
+                "term_exam": ("Term Exam", "exam", "ste_term_exam"),
+            }
+            label, exam_type, grading_slot = item_config[input_type]
+            title = request.form.get("exam_title", label).strip()
             max_score = float(request.form.get("max_score", 100))
+            if max_score <= 0:
+                raise ValueError("Maximum score must be greater than zero.")
+
+            if grading_slot in STE_SLOT_WEIGHTS:
+                cur.execute("""
+                    SELECT title FROM exams
+                    WHERE teacher_id=%s AND section_id=%s AND subject_id=%s
+                      AND grading_period=%s AND year_id=%s AND grading_slot=%s
+                      AND COALESCE(is_archived, FALSE)=FALSE
+                    LIMIT 1
+                """, (user_id, section_id, subject_id, period, year_id, grading_slot))
+                occupied = cur.fetchone()
+                if occupied:
+                    flash(f"{STE_SLOT_LABELS[grading_slot]} is already assigned to '{occupied['title']}'.", "error")
+                    return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period, tab="qa"))
 
             cur.execute("""
-                INSERT INTO exams (branch_id, section_id, subject_id, teacher_id, title, exam_type, grading_period, year_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO exams (
+                    branch_id, section_id, subject_id, teacher_id, title,
+                    exam_type, grading_period, year_id, grading_slot,
+                    class_record_max_score
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING exam_id
-            """, (branch_id, section_id, subject_id, user_id, title, exam_type, period, year_id))
+            """, (
+                branch_id, section_id, subject_id, user_id, title,
+                exam_type, period, year_id, grading_slot, max_score
+            ))
             exam_id = cur.fetchone()['exam_id']
 
             cur.execute("""
@@ -6058,15 +6044,22 @@ def teacher_batch_save_scores(section_id, subject_id):
             db.commit()
             flash(f"Added {label} '{title}' with scores for {count} student(s).", "success")
 
-        elif input_type == "new_activity":
-            title = request.form.get("activity_title", "Activity").strip()
+        elif input_type in ("recitation", "project", "assessment"):
+            default_title = {"project": "Project", "assessment": "Assessment"}.get(input_type, "Recitation")
+            title = request.form.get("activity_title", default_title).strip() or default_title
             max_score = float(request.form.get("max_score", 100))
+            if max_score <= 0:
+                raise ValueError("Maximum score must be greater than zero.")
+            grading_subtype = input_type
 
             cur.execute("""
-                INSERT INTO activities (branch_id, section_id, subject_id, teacher_id, title, max_score, grading_period, year_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO activities (
+                    branch_id, section_id, subject_id, teacher_id, title,
+                    max_score, grading_period, year_id, grading_component, grading_subtype
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pt', %s)
                 RETURNING activity_id
-            """, (branch_id, section_id, subject_id, user_id, title, max_score, period, year_id))
+            """, (branch_id, section_id, subject_id, user_id, title, max_score, period, year_id, grading_subtype))
             act_id = cur.fetchone()['activity_id']
 
             cur.execute("""
@@ -6106,65 +6099,13 @@ def teacher_batch_save_scores(section_id, subject_id):
                         count += 1
 
             db.commit()
-            flash(f"Added activity '{title}' with scores for {count} student(s).", "success")
+            item_word = default_title.lower()
+            flash(f"Added {item_word} '{title}' with scores for {count} student(s).", "success")
 
-        elif input_type == "attendance":
-            total_days = float(request.form.get("total_days", 10))
-            cur.execute("""
-                SELECT e.enrollment_id
-                FROM enrollments e
-                JOIN sections s ON e.section_id = s.section_id
-                WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s
-                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-            """, (section_id, branch_id, year_id))
-            students = cur.fetchall() or []
-
-            count = 0
-            for s in students:
-                eid = s['enrollment_id']
-                score_str = request.form.get(f"att_{eid}", "").strip()
-                if score_str != "":
-                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
-                    val = max(0.0, min(total_days, float(score_str)))
-                    cur.execute("""
-                        INSERT INTO attendance_scores (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, total_days, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
-                        ON CONFLICT (enrollment_id, subject_id, grading_period)
-                        DO UPDATE SET score = EXCLUDED.score, total_days = EXCLUDED.total_days, teacher_id = EXCLUDED.teacher_id, section_id = EXCLUDED.section_id, updated_at = NOW()
-                    """, (user_id, eid, section_id, subject_id, period, val, total_days))
-                    count += 1
-
-            db.commit()
-            flash(f"Updated attendance scores for {count} student(s).", "success")
-
-        elif input_type == "participation":
-            max_score = float(request.form.get("max_score", 10))
-            cur.execute("""
-                SELECT e.enrollment_id
-                FROM enrollments e
-                JOIN sections s ON e.section_id = s.section_id
-                WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s
-                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-            """, (section_id, branch_id, year_id))
-            students = cur.fetchall() or []
-
-            count = 0
-            for s in students:
-                eid = s['enrollment_id']
-                score_str = request.form.get(f"part_{eid}", "").strip()
-                if score_str != "":
-                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
-                    val = max(0.0, min(max_score, float(score_str)))
-                    cur.execute("""
-                        INSERT INTO participation_scores (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, max_score, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
-                        ON CONFLICT (enrollment_id, subject_id, grading_period)
-                        DO UPDATE SET score = EXCLUDED.score, max_score = EXCLUDED.max_score, teacher_id = EXCLUDED.teacher_id, section_id = EXCLUDED.section_id, updated_at = NOW()
-                    """, (user_id, eid, section_id, subject_id, period, val, max_score))
-                    count += 1
-
-            db.commit()
-            flash(f"Updated participation scores for {count} student(s).", "success")
+        elif input_type in ("attendance", "participation"):
+            # Participation/Attendance are no longer Performance Task components.
+            # Existing rows are preserved, but no new grading scores are written.
+            flash("Participation and Attendance are no longer part of Performance Tasks. Add a Recitation instead.", "error")
 
     except Exception as e:
         db.rollback()
@@ -6270,38 +6211,24 @@ def teacher_save_grid_scores(section_id, subject_id):
                     raise ValueError("An assessment maximum could not be updated.")
                 if new_max < float(item["highest_score"] or 0):
                     raise ValueError(f"Assessment maximum cannot be below the existing score {item['highest_score']}.")
+                cur.execute(
+                    "UPDATE exams SET class_record_max_score=%s WHERE exam_id=%s",
+                    (new_max, exam_id),
+                )
                 cur.execute("UPDATE exam_results SET total_points=%s WHERE exam_id=%s", (new_max, exam_id))
 
-        if active_tab == "pt":
-            participation_max = posted_max("max_participation")
-            attendance_max = posted_max("max_attendance")
-            cur.execute("""
-                SELECT COALESCE(MAX(score), 0) AS highest_score FROM participation_scores
-                WHERE section_id=%s AND subject_id=%s AND grading_period=%s
-            """, (section_id, subject_id, period))
-            highest = float(cur.fetchone()["highest_score"] or 0)
-            if participation_max < highest:
-                raise ValueError(f"Participation maximum cannot be below the existing score {highest}.")
-            cur.execute("""
-                SELECT COALESCE(MAX(score), 0) AS highest_score FROM attendance_scores
-                WHERE section_id=%s AND subject_id=%s AND grading_period=%s
-            """, (section_id, subject_id, period))
-            highest = float(cur.fetchone()["highest_score"] or 0)
-            if attendance_max < highest:
-                raise ValueError(f"Attendance maximum cannot be below the existing score {highest}.")
-            cur.execute("""
-                UPDATE participation_scores SET max_score=%s, updated_at=NOW()
-                WHERE section_id=%s AND subject_id=%s AND grading_period=%s
-            """, (participation_max, section_id, subject_id, period))
-            cur.execute("""
-                UPDATE attendance_scores SET total_days=%s, updated_at=NOW()
-                WHERE section_id=%s AND subject_id=%s AND grading_period=%s
-            """, (attendance_max, section_id, subject_id, period))
+        # Participation/Attendance are no longer PT columns: any legacy
+        # max_participation / max_attendance / score_part_* / score_att_* fields
+        # are ignored so historical rows are never modified or deleted here.
 
         # Process all form fields submitted in the grid form
+        cleared_keys = []   # keys whose value was cleared (blank) → delete existing score
         for key, val_str in request.form.items():
             val_str = val_str.strip()
             if not val_str:
+                # Track blank score fields so we can delete existing records below
+                if key.startswith(("score_act_", "score_quiz_", "score_exam_")):
+                    cleared_keys.append(key)
                 continue
 
             try:
@@ -6369,7 +6296,16 @@ def teacher_save_grid_scores(section_id, subject_id):
                     if posted_exam_max:
                         ex_max = float(posted_exam_max)
                     else:
-                        cur.execute("SELECT COALESCE(MAX(total_points), 100) AS total_points FROM exam_results WHERE exam_id=%s", (ex_id,))
+                        cur.execute("""
+                            SELECT COALESCE(
+                                e.class_record_max_score,
+                                (SELECT NULLIF(SUM(q.points), 0) FROM exam_questions q WHERE q.exam_id=e.exam_id),
+                                (SELECT MAX(er.total_points) FROM exam_results er WHERE er.exam_id=e.exam_id),
+                                100
+                            ) AS total_points
+                            FROM exams e
+                            WHERE e.exam_id=%s
+                        """, (ex_id,))
                         ex_row = cur.fetchone()
                         ex_max = float(ex_row['total_points']) if (ex_row and ex_row.get('total_points')) else 100.0
                     val = max(0.0, min(ex_max, val))
@@ -6388,37 +6324,33 @@ def teacher_save_grid_scores(section_id, subject_id):
                         """, (ex_id, eid, val, ex_max))
                     updates_count += 1
 
-            elif key.startswith("score_part_"):
-                # Format: score_part_<enrollment_id>
+        # ── Delete scores that were cleared (input blanked out) ────────────
+        for key in cleared_keys:
+            if key.startswith("score_act_"):
                 parts = key.split("_")
-                if len(parts) == 3:
-                    eid = int(parts[2])
-                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
-                    max_part = float(request.form.get("max_participation", 10))
-                    val = max(0.0, min(max_part, val))
+                if len(parts) == 4:
+                    act_id, eid = int(parts[2]), int(parts[3])
                     cur.execute("""
-                        INSERT INTO participation_scores (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, max_score, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
-                        ON CONFLICT (enrollment_id, subject_id, grading_period)
-                        DO UPDATE SET score = EXCLUDED.score, max_score = EXCLUDED.max_score, teacher_id = EXCLUDED.teacher_id, section_id = EXCLUDED.section_id, updated_at = NOW()
-                    """, (user_id, eid, section_id, subject_id, period, val, max_part))
-                    updates_count += 1
+                        DELETE FROM activity_grades
+                        WHERE activity_id = %s
+                          AND submission_id IN (
+                              SELECT submission_id FROM activity_submissions
+                              WHERE activity_id = %s AND enrollment_id = %s
+                          )
+                    """, (act_id, act_id, eid))
+                    if cur.rowcount > 0:
+                        updates_count += 1
 
-            elif key.startswith("score_att_"):
-                # Format: score_att_<enrollment_id>
+            elif key.startswith("score_quiz_") or key.startswith("score_exam_"):
                 parts = key.split("_")
-                if len(parts) == 3:
-                    eid = int(parts[2])
-                    _assert_student_gradeable_for_period(cur, eid, section_id, period)
-                    total_days = float(request.form.get("max_attendance", 10))
-                    val = max(0.0, min(total_days, val))
+                if len(parts) == 4:
+                    ex_id, eid = int(parts[2]), int(parts[3])
                     cur.execute("""
-                        INSERT INTO attendance_scores (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, total_days, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
-                        ON CONFLICT (enrollment_id, subject_id, grading_period)
-                        DO UPDATE SET score = EXCLUDED.score, total_days = EXCLUDED.total_days, teacher_id = EXCLUDED.teacher_id, section_id = EXCLUDED.section_id, updated_at = NOW()
-                    """, (user_id, eid, section_id, subject_id, period, val, total_days))
-                    updates_count += 1
+                        DELETE FROM exam_results
+                        WHERE exam_id = %s AND enrollment_id = %s
+                    """, (ex_id, eid))
+                    if cur.rowcount > 0:
+                        updates_count += 1
 
         db.commit()
         flash(f"Successfully saved grid scores for {updates_count} item entry(ies).", "success")
@@ -6446,7 +6378,10 @@ def teacher_delete_class_record_item(section_id, subject_id, period, item_type, 
     if period not in GRADING_PERIODS or item_type not in ("activity", "assessment"):
         abort(404)
     user_id, branch_id = session.get("user_id"), session.get("branch_id")
-    target_tab = "pt" if item_type == "activity" else ("qa" if request.form.get("active_tab") == "qa" else "ww")
+    requested_tab = request.form.get("active_tab")
+    target_tab = requested_tab if requested_tab in ("pt", "ww", "qa") else (
+        "pt" if item_type == "activity" else "ww"
+    )
     redirect_url = url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period, tab=target_tab)
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -6613,7 +6548,8 @@ def mark_missing_score_zero(section_id, subject_id):
                 SELECT
                     e.exam_id,
                     COALESCE(
-                        SUM(q.points),
+                        e.class_record_max_score,
+                        NULLIF(SUM(q.points), 0),
                         100
                     ) AS total_points
                 FROM exams e
@@ -6626,7 +6562,7 @@ def mark_missing_score_zero(section_id, subject_id):
                   AND e.subject_id = %s
                   AND e.grading_period = %s
 
-                GROUP BY e.exam_id
+                GROUP BY e.exam_id, e.class_record_max_score
             """, (
                 item_id,
                 section_id,
@@ -6900,8 +6836,10 @@ def teacher_submit_grades(section_id, subject_id, period):
         cur.execute("""
             SELECT 1 FROM section_teachers st
             JOIN sections s ON st.section_id = s.section_id
-            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
-        """, (user_id, section_id, subject_id, year_id))
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s
+              AND s.year_id=%s AND s.branch_id=%s
+            FOR UPDATE OF st
+        """, (user_id, section_id, subject_id, year_id, branch_id))
         if not cur.fetchone():
             flash("Unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
@@ -6931,6 +6869,18 @@ def teacher_submit_grades(section_id, subject_id, period):
             cur, user_id, branch_id, section_id, subject_id, period, year_id
         )
 
+        if not weights.get("configured"):
+            flash(
+                "Configure and save this term's WW, PT, and Summative Tests & Term Exam weights before submitting grades.",
+                "error",
+            )
+            return redirect(url_for(
+                "teacher.class_record",
+                section_id=section_id,
+                subject_id=subject_id,
+                period=period,
+            ))
+
         if not records:
             flash("Cannot submit class record: No enrolled students found in this section.", "error")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
@@ -6938,14 +6888,14 @@ def teacher_submit_grades(section_id, subject_id, period):
         missing_components = []
         requires_ww = float(weights.get('quiz_pct') or 0) > 0
         requires_pt = float(weights.get('activity_pct') or 0) > 0
-        requires_qa = float(weights.get('exam_pct') or 0) > 0
+        requires_ste = float(weights.get('exam_pct') or 0) > 0
         for r in records:
             if requires_ww and not r.get('has_ww_score'):
                 missing_components.append("Written Works (WW)")
             if requires_pt and not r.get('has_pt_score'):
                 missing_components.append("Performance Tasks (PT)")
-            if requires_qa and not r.get('has_qa_score'):
-                missing_components.append("Term Assessment (QA)")
+            if requires_ste and not r.get('has_qa_score'):
+                missing_components.append("Summative Tests & Term Exam (ST1, ST2, and Term Exam)")
 
         if missing_components:
             unique_missing = list(dict.fromkeys(missing_components))
@@ -6957,14 +6907,17 @@ def teacher_submit_grades(section_id, subject_id, period):
         enrollment_ids = [s['enrollment_id'] for s in students]
 
         cur.execute("""
-            SELECT a.activity_id, a.title
+            SELECT a.activity_id, a.title,
+                   CASE WHEN a.grading_subtype = 'project' AND COALESCE(a.grading_component, 'pt') <> 'excluded'
+                        THEN 'pt' ELSE COALESCE(a.grading_component, 'pt') END AS grading_component,
+                   COALESCE(a.grading_subtype, 'activity') AS grading_subtype
             FROM activities a
             WHERE a.section_id=%s AND a.subject_id=%s AND a.grading_period=%s AND a.year_id=%s
         """, (section_id, subject_id, period, year_id))
         all_activities = cur.fetchall() or []
 
         cur.execute("""
-            SELECT e.exam_id, e.title, e.exam_type
+            SELECT e.exam_id, e.title, e.exam_type, e.grading_slot
             FROM exams e
             WHERE e.section_id=%s AND e.subject_id=%s AND e.grading_period=%s AND e.year_id=%s
         """, (section_id, subject_id, period, year_id))
@@ -6972,18 +6925,17 @@ def teacher_submit_grades(section_id, subject_id, period):
 
         unscored_items = []
 
-        distribution = weights.get('distribution') or {}
-        requires_activity = requires_pt and (
-            not distribution or float(distribution.get('pt_activity_pct') or 0) > 0
-        )
-        requires_quiz = requires_ww and (
-            not distribution or float(distribution.get('ww_quiz_pct') or 0) > 0
-        )
-        requires_monthly = requires_ww and (
-            not distribution or float(distribution.get('ww_monthly_exam_pct') or 0) > 0
-        )
-
-        for act in all_activities if requires_activity else []:
+        required_activities = [
+            act for act in all_activities
+            if (
+                act['grading_component'] == 'ww' and requires_ww
+            ) or (
+                act['grading_component'] == 'pt'
+                and act['grading_subtype'] in ('recitation', 'project', 'assessment')
+                and requires_pt
+            )
+        ]
+        for act in required_activities:
             cur.execute("""
                 SELECT COUNT(DISTINCT asub.enrollment_id) as scored_cnt
                 FROM activity_grades ag
@@ -6994,13 +6946,29 @@ def teacher_submit_grades(section_id, subject_id, period):
             row = cur.fetchone()
             scored_cnt = row['scored_cnt'] if row else 0
             if scored_cnt < len(students):
-                unscored_items.append(f"Activity '{act['title']}' ({len(students) - scored_cnt} student(s) missing score)")
+                item_label = {
+                    'assignment': 'Assignment',
+                    'recitation': 'Recitation',
+                    'project': 'Project',
+                    'assessment': 'Assessment',
+                }.get(act['grading_subtype'], 'Written Activity' if act['grading_component'] == 'ww' else 'Activity')
+                unscored_items.append(f"{item_label} '{act['title']}' ({len(students) - scored_cnt} student(s) missing score)")
 
-        required_exams = [ex for ex in all_exams if (
-            (ex['exam_type'] == 'quiz' and requires_quiz)
-            or (ex['exam_type'] == 'monthly_exam' and requires_monthly)
-            or (ex['exam_type'] not in ('quiz', 'monthly_exam') and requires_qa)
-        )]
+        def exam_slot(exam):
+            if exam.get('grading_slot'):
+                return exam['grading_slot']
+            if exam['exam_type'] in ('quiz', 'monthly_exam'):
+                return 'ww_quiz'
+            return 'ste_term_exam'
+
+        required_exams = [
+            ex for ex in all_exams
+            if (
+                exam_slot(ex) in ('ww_quiz', 'ww_activity', 'ww_assignment') and requires_ww
+            ) or (
+                exam_slot(ex) in STE_SLOT_WEIGHTS and requires_ste
+            )
+        ]
         for ex in required_exams:
             cur.execute("""
                 SELECT COUNT(DISTINCT enrollment_id) as scored_cnt
@@ -7011,7 +6979,13 @@ def teacher_submit_grades(section_id, subject_id, period):
             row = cur.fetchone()
             scored_cnt = row['scored_cnt'] if row else 0
             if scored_cnt < len(students):
-                item_label = "Quiz" if ex['exam_type'] == 'quiz' else ("Monthly Exam" if ex['exam_type'] == 'monthly_exam' else "Periodical Exam")
+                slot = exam_slot(ex)
+                item_label = {
+                    'ww_quiz': 'Quiz',
+                    'ww_activity': 'Written Activity',
+                    'ww_assignment': 'Assignment',
+                    **STE_SLOT_LABELS,
+                }.get(slot, 'Assessment')
                 unscored_items.append(f"{item_label} '{ex['title']}' ({len(students) - scored_cnt} student(s) missing score)")
 
         if unscored_items:
@@ -7057,7 +7031,7 @@ def teacher_submit_grades(section_id, subject_id, period):
 
 @teacher_bp.route("/teacher/unsubmit-grades/<int:section_id>/<int:subject_id>/<string:period>", methods=["POST"])
 def teacher_unsubmit_grades(section_id, subject_id, period):
-    """Cancel grade submission and return status to draft for editing."""
+    """Teacher-owned reopen flow for a locked class record."""
     if not _require_teacher(): return redirect("/")
     user_id   = session.get("user_id")
     branch_id = session.get("branch_id")
@@ -7074,8 +7048,10 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
         cur.execute("""
             SELECT 1 FROM section_teachers st
             JOIN sections s ON st.section_id = s.section_id
-            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
-        """, (user_id, section_id, subject_id, year_id))
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s
+              AND s.year_id=%s AND s.branch_id=%s
+            FOR UPDATE OF st
+        """, (user_id, section_id, subject_id, year_id, branch_id))
         if not cur.fetchone():
             flash("Unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
@@ -7083,28 +7059,75 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
         cur.execute("""
             SELECT id, status FROM grade_submission_requests
             WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+            FOR UPDATE
         """, (section_id, subject_id, period, year_id))
         req = cur.fetchone()
         if not req:
             flash("No submission request found.", "error")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
-        if req['status'] not in ['pending_registrar', 'pending_admin']:
-            flash(f"Cannot cancel submission: Current status is '{req['status']}'. Only pending submissions can be cancelled.", "error")
+        locked_statuses = ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted']
+        if req['status'] not in locked_statuses:
+            flash("This class record is already editable.", "info")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
-        cancel_remarks = 'Submission cancelled by teacher for editing.'
+        later_periods = {
+            '1st': ['2nd', '3rd'],
+            '2nd': ['3rd'],
+            '3rd': [],
+        }[period]
+        if later_periods:
+            cur.execute("""
+                SELECT grading_period, status
+                FROM grade_submission_requests
+                WHERE section_id=%s AND subject_id=%s AND year_id=%s
+                  AND grading_period=ANY(%s)
+                  AND status IN ('pending_registrar','pending_admin','approved_for_posting','posted')
+                ORDER BY CASE grading_period WHEN '3rd' THEN 1 WHEN '2nd' THEN 2 ELSE 3 END
+                LIMIT 1
+                FOR UPDATE
+            """, (section_id, subject_id, year_id, later_periods))
+            later_request = cur.fetchone()
+            if later_request:
+                flash(
+                    f"Reopen the {later_request['grading_period']} Term first. "
+                    "Locked later terms must be reopened in reverse order.",
+                    "error",
+                )
+                return redirect(url_for(
+                    "teacher.class_record", section_id=section_id,
+                    subject_id=subject_id, period=period,
+                ))
+
+        previous_status = req['status']
+        reopen_remarks = (
+            'Posted class record reopened by teacher. The last published grades remain visible until reposted.'
+            if previous_status == 'posted'
+            else 'Submission reopened by teacher for editing.'
+        )
         cur.execute("""
             UPDATE grade_submission_requests
-            SET status = 'draft', rejection_remarks = %s
+            SET status = 'draft',
+                submitted_at = NULL,
+                registrar_approved_by = NULL,
+                registrar_approved_at = NULL,
+                admin_approved_by = NULL,
+                admin_approved_at = NULL,
+                rejected_by = NULL,
+                rejected_at = NULL,
+                rejection_remarks = %s
             WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
-        """, (cancel_remarks, section_id, subject_id, period, year_id))
+        """, (reopen_remarks, section_id, subject_id, period, year_id))
         record_grade_history(
-            cur, req['id'], 'cancelled', req['status'], 'draft',
-            user_id, 'teacher', cancel_remarks
+            cur, req['id'],
+            'cancelled' if previous_status in ('pending_registrar', 'pending_admin') else 'reopened',
+            previous_status, 'draft', user_id, 'teacher', reopen_remarks
         )
         db.commit()
-        flash(f"Submission for {period} Grading has been cancelled. The class record is now editable again.", "success")
+        flash(
+            f"{period} Term class record reopened. You can now edit the scores and grading weights.",
+            "success",
+        )
     except Exception as e:
         db.rollback()
         flash(f"Error cancelling submission: {str(e)}", "error")
@@ -7133,8 +7156,10 @@ def teacher_post_grades(section_id, subject_id, period):
         cur.execute("""
             SELECT 1 FROM section_teachers st
             JOIN sections s ON st.section_id = s.section_id
-            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
-        """, (user_id, section_id, subject_id, year_id))
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s
+              AND s.year_id=%s AND s.branch_id=%s
+            FOR UPDATE OF st
+        """, (user_id, section_id, subject_id, year_id, branch_id))
         if not cur.fetchone():
             flash("Unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
@@ -7143,6 +7168,7 @@ def teacher_post_grades(section_id, subject_id, period):
         cur.execute("""
             SELECT id, status FROM grade_submission_requests
             WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+            FOR UPDATE
         """, (section_id, subject_id, period, year_id))
         req = cur.fetchone()
         if not req or req['status'] != 'approved_for_posting':

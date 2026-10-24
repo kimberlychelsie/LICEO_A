@@ -12,212 +12,13 @@ import psycopg2.extras
 import secrets
 import string
 import time
-import math
 from cloudinary_helper import upload_announcement_photo
 from utils.send_email import send_email
 from utils.parent_sync import sync_user_parent_links
 from utils.grade_approval_history import record_grade_history
-from utils.grading_configuration import dynamic_grading_schema_available
 
 branch_admin_bp = Blueprint("branch_admin", __name__)
 
-
-@branch_admin_bp.route("/branch-admin/grading-categories", methods=["GET", "POST"])
-def grading_categories():
-    if session.get("role") != "branch_admin":
-        return redirect("/")
-    branch_id = session.get("branch_id")
-    db = get_db_connection()
-    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    try:
-        cursor.execute("""
-            SELECT year_id FROM school_years
-            WHERE branch_id=%s AND is_active=TRUE LIMIT 1
-        """, (branch_id,))
-        year = cursor.fetchone()
-        if not year:
-            flash("No active school year.", "error")
-            return redirect(url_for("branch_admin.dashboard"))
-        year_id = year["year_id"]
-        if not dynamic_grading_schema_available(cursor):
-            flash("Apply the dynamic grading configuration migration first.", "error")
-            return redirect(url_for("branch_admin.branch_admin_subjects"))
-
-        search = (request.values.get("search") or "").strip()[:100]
-        status = (request.values.get("status") or "all").strip().lower()
-        if status not in ("all", "active", "inactive"):
-            status = "all"
-        try:
-            page = max(1, int(request.values.get("page") or 1))
-        except (TypeError, ValueError):
-            page = 1
-        # Keep the two-column layout visually balanced; page controls appear
-        # as soon as a fifth filtered category exists.
-        per_page = 4
-        form_data = {}
-        form_errors = {}
-
-        if request.method == "POST":
-            name = (request.form.get("name") or "").strip()
-            category_id = request.form.get("category_id")
-            form_data = {
-                "category_id": category_id or "", "name": name,
-                "ww_pct": request.form.get("ww_pct", ""),
-                "pt_pct": request.form.get("pt_pct", ""),
-                "qa_pct": request.form.get("qa_pct", ""),
-            }
-            try:
-                ww = float(request.form.get("ww_pct"))
-                pt = float(request.form.get("pt_pct"))
-                qa = float(request.form.get("qa_pct"))
-            except (TypeError, ValueError):
-                ww = pt = qa = -1
-                form_errors["weights"] = "Enter valid numbers for all three weights."
-            if category_id and not str(category_id).isdigit():
-                form_errors["form"] = "Invalid category selection. Refresh the page and try again."
-            if not name:
-                form_errors["name"] = "Category name is required."
-            elif len(name) > 120:
-                form_errors["name"] = "Category name must not exceed 120 characters."
-            if not form_errors.get("weights") and any(not math.isfinite(value) or value < 0 or value > 100 for value in (ww, pt, qa)):
-                form_errors["weights"] = "Each weight must be from 0 to 100."
-            if not form_errors.get("weights") and abs((ww + pt + qa) - 100) > 0.001:
-                form_errors["total"] = "WW, PT, and QA must total exactly 100%."
-            if not form_errors:
-                code = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")[:80]
-                if not code:
-                    form_errors["name"] = "Use at least one letter or number in the category name."
-            if not form_errors:
-                cursor.execute("""
-                    SELECT category_id FROM grading_categories
-                    WHERE branch_id=%s AND year_id=%s
-                      AND (LOWER(name)=LOWER(%s) OR code=%s)
-                      AND (%s IS NULL OR category_id<>%s)
-                    LIMIT 1
-                """, (
-                    branch_id, year_id, name, code,
-                    int(category_id) if category_id and str(category_id).isdigit() else None,
-                    int(category_id) if category_id and str(category_id).isdigit() else None,
-                ))
-                if cursor.fetchone():
-                    form_errors["name"] = "A category with this name already exists for the active school year."
-            if not form_errors:
-                if category_id and str(category_id).isdigit():
-                    cursor.execute("""
-                        SELECT EXISTS (
-                            SELECT 1
-                            FROM section_teachers st
-                            JOIN grade_submission_requests gsr
-                              ON gsr.section_id=st.section_id
-                             AND gsr.subject_id=st.subject_id
-                             AND gsr.year_id=st.year_id
-                            WHERE st.grading_category_id=%s
-                              AND gsr.status IN ('pending_registrar','pending_admin','approved_for_posting','posted')
-                        ) AS locked
-                    """, (int(category_id),))
-                    locked_row = cursor.fetchone()
-                    if locked_row and locked_row["locked"]:
-                        form_errors["form"] = "This category is used by a locked or posted class record. Create a new category instead."
-                    else:
-                        cursor.execute("""
-                            UPDATE grading_categories
-                            SET name=%s, code=%s, ww_pct=%s, pt_pct=%s, qa_pct=%s, updated_at=NOW()
-                            WHERE category_id=%s AND branch_id=%s AND year_id=%s
-                            RETURNING category_id
-                        """, (name, code, ww, pt, qa, int(category_id), branch_id, year_id))
-                        if not cursor.fetchone():
-                            form_errors["form"] = "Category was not found in this branch and school year."
-                else:
-                    cursor.execute("""
-                        INSERT INTO grading_categories
-                            (branch_id,year_id,code,name,ww_pct,pt_pct,qa_pct)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s)
-                    """, (branch_id, year_id, code, name, ww, pt, qa))
-                if not form_errors:
-                    db.commit()
-                    flash("Grading category saved.", "success")
-                    return redirect(url_for("branch_admin.grading_categories", search=search, status=status))
-
-        cursor.execute("""
-            SELECT COUNT(DISTINCT gc.category_id) AS total_categories,
-                   COUNT(DISTINCT gc.category_id) FILTER (WHERE gc.is_active) AS active_categories,
-                   COUNT(st.id) AS subject_assignments
-            FROM grading_categories gc
-            LEFT JOIN section_teachers st ON st.grading_category_id=gc.category_id
-            WHERE gc.branch_id=%s AND gc.year_id=%s
-        """, (branch_id, year_id))
-        summary = cursor.fetchone() or {}
-
-        filters = ["gc.branch_id=%s", "gc.year_id=%s"]
-        params = [branch_id, year_id]
-        if search:
-            filters.append("(gc.name ILIKE %s OR gc.code ILIKE %s)")
-            params.extend([f"%{search}%", f"%{search}%"])
-        if status != "all":
-            filters.append("gc.is_active=%s")
-            params.append(status == "active")
-        where_sql = " AND ".join(filters)
-        cursor.execute(f"SELECT COUNT(*) AS total FROM grading_categories gc WHERE {where_sql}", params)
-        total = int(cursor.fetchone()["total"])
-        pages = max(1, (total + per_page - 1) // per_page)
-        page = min(page, pages)
-        cursor.execute(f"""
-            SELECT gc.*, COUNT(st.id) AS assignment_count
-            FROM grading_categories gc
-            LEFT JOIN section_teachers st ON st.grading_category_id=gc.category_id
-            WHERE {where_sql}
-            GROUP BY gc.category_id
-            ORDER BY gc.is_active DESC, LOWER(gc.name), gc.category_id
-            LIMIT %s OFFSET %s
-        """, (*params, per_page, (page - 1) * per_page))
-        categories = cursor.fetchall() or []
-        return render_template(
-            "branch_admin_grading_categories.html", categories=categories,
-            search=search, status=status, page=page, pages=pages, total=total,
-            form_data=form_data, form_errors=form_errors, summary=summary,
-        )
-    except Exception as exc:
-        db.rollback()
-        flash(f"Unable to manage grading categories: {exc}", "error")
-        return redirect(url_for("branch_admin.branch_admin_subjects"))
-    finally:
-        cursor.close()
-        db.close()
-
-
-@branch_admin_bp.route("/branch-admin/grading-categories/<int:category_id>/toggle", methods=["POST"])
-def grading_category_toggle(category_id):
-    if session.get("role") != "branch_admin":
-        return redirect("/")
-    branch_id = session.get("branch_id")
-    db = get_db_connection()
-    cursor = db.cursor()
-    try:
-        cursor.execute("""
-            UPDATE grading_categories gc
-            SET is_active=NOT gc.is_active, updated_at=NOW()
-            FROM school_years sy
-            WHERE gc.category_id=%s AND gc.branch_id=%s
-              AND gc.year_id=sy.year_id AND sy.is_active=TRUE
-            RETURNING gc.is_active
-        """, (category_id, branch_id))
-        if not cursor.fetchone():
-            flash("Category not found.", "error")
-        else:
-            db.commit()
-            flash("Category status updated. Existing assignments are preserved.", "success")
-    except Exception as exc:
-        db.rollback()
-        flash(f"Unable to update category: {exc}", "error")
-    finally:
-        cursor.close(); db.close()
-    search = (request.form.get("return_search") or "").strip()[:100]
-    status = (request.form.get("return_status") or "all").strip().lower()
-    try:
-        page = max(1, int(request.form.get("return_page") or 1))
-    except (TypeError, ValueError):
-        page = 1
-    return redirect(url_for("branch_admin.grading_categories", search=search, status=status, page=page))
 
 # =======================
 # HELPERS
@@ -3011,7 +2812,6 @@ def branch_admin_subjects():
 
     if request.method == "POST":
         names = request.form.getlist("names")
-        categories = request.form.getlist("categories")
         section_ids = request.form.getlist("section_ids")
         subject_types = request.form.getlist("subject_types")
         tracks = request.form.getlist("tracks")
@@ -3027,7 +2827,9 @@ def branch_admin_subjects():
             for i in range(len(names)):
                 name = names[i].strip()
                 if not name: continue
-                deped_category = categories[i] if i < len(categories) else "language"
+                # Retained only as a legacy subject metadata default. Teachers own
+                # the actual WW/PT/QA weights for each class-record term.
+                deped_category = "language"
                 subject_type = subject_types[i] if i < len(subject_types) else "CORE"
                 track = tracks[i] if i < len(tracks) else None
                 pathway = pathways[i] if i < len(pathways) else None
@@ -3093,23 +2895,13 @@ def branch_admin_subjects():
 
                     cursor.execute("""
                         INSERT INTO section_teachers (
-                            section_id,
-                            teacher_id,
-                            subject_id,
-                            year_id,
-                            term_name,
-                            grading_category_id
+                            section_id, teacher_id, subject_id, year_id, term_name
                         )
-                        SELECT %s, NULL, %s, sec.year_id, %s, gc.category_id
+                        SELECT %s, NULL, %s, sec.year_id, %s
                         FROM sections sec
-                        JOIN grading_categories gc
-                          ON gc.branch_id=sec.branch_id
-                         AND gc.year_id=sec.year_id
-                         AND gc.code=%s
-                         AND gc.is_active=TRUE
                         WHERE sec.section_id = %s
                         ON CONFLICT DO NOTHING
-                    """, (sid, subject_id, term_name, deped_category, sid))
+                    """, (sid, subject_id, term_name, sid))
 
             db.commit()
             flash("Curriculum deployed!", "success")
@@ -3125,14 +2917,12 @@ def branch_admin_subjects():
 
     query = """
         SELECT st.id AS assignment_id, st.subject_id, sub.name,
-               COALESCE(gc.code, sub.deped_category) AS deped_category,
-               st.grading_category_id, COALESCE(gc.name, sub.deped_category) AS grading_category_name,
+               sub.deped_category,
                sub.subject_type, sub.track, sub.pathway,
                sub.prerequisite_subject_id, prereq.name AS prerequisite_name,
                s.section_id, s.section_name, g.name AS grade_level_name, st.is_archived, st.term_name
         FROM section_teachers st
         INNER JOIN subjects sub ON st.subject_id = sub.subject_id
-        LEFT JOIN grading_categories gc ON gc.category_id=st.grading_category_id
         LEFT JOIN subjects prereq ON sub.prerequisite_subject_id = prereq.subject_id
         INNER JOIN sections s ON st.section_id = s.section_id
         INNER JOIN grade_levels g ON s.grade_level_id = g.id
@@ -3147,15 +2937,6 @@ def branch_admin_subjects():
     
     cursor.execute(query, tuple(params))
     assignments = cursor.fetchall() or []
-
-    cursor.execute("""
-        SELECT gc.category_id, gc.code, gc.name, gc.ww_pct, gc.pt_pct, gc.qa_pct
-        FROM grading_categories gc
-        JOIN school_years sy ON sy.year_id=gc.year_id
-        WHERE gc.branch_id=%s AND sy.is_active=TRUE AND gc.is_active=TRUE
-        ORDER BY gc.name
-    """, (branch_id,))
-    grading_categories = cursor.fetchall() or []
 
     # Fetch all subjects in branch for prerequisite dropdown options
     cursor.execute("""
@@ -3205,7 +2986,6 @@ def branch_admin_subjects():
         pathways_by_track=pathways_by_track,
         all_branch_subjects=all_branch_subjects,
         active_term_label=active_term_label,
-        grading_categories=grading_categories,
     )
 
 @branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/<int:section_id>/toggle-archive", methods=["POST"])
@@ -3313,7 +3093,6 @@ def branch_admin_subject_edit(subject_id):
     branch_id = session.get("branch_id")
     new_name = (request.form.get("name") or "").strip()
     target_section_id_raw = request.form.get("section_id")
-    deped_category = request.form.get("deped_category", "language")
     subject_type = request.form.get("subject_type", "CORE")
     track = request.form.get("track")
     pathway = request.form.get("pathway")
@@ -3372,7 +3151,7 @@ def branch_admin_subject_edit(subject_id):
         """, (target_section_id, subject_id))
         locked_assignment = cursor.fetchone()
         if locked_assignment and locked_assignment["locked"]:
-            flash("This subject has a locked or posted class record and its grading category cannot be changed.", "error")
+            flash("This subject has a locked or posted class record and can no longer be changed.", "error")
             return redirect(url_for("branch_admin.branch_admin_subjects", section_id=target_section_id))
 
         # Check if new_name already exists in subjects catalog
@@ -3383,9 +3162,9 @@ def branch_admin_subject_edit(subject_id):
             actual_subject_id = existing["subject_id"]
             cursor.execute("""
                 UPDATE subjects 
-                SET name = %s, deped_category = %s, subject_type = %s, track = %s, pathway = %s, prerequisite_subject_id = %s 
+                SET name = %s, subject_type = %s, track = %s, pathway = %s, prerequisite_subject_id = %s
                 WHERE subject_id = %s
-            """, (new_name, deped_category, subject_type, track, pathway, prereq_id, actual_subject_id))
+            """, (new_name, subject_type, track, pathway, prereq_id, actual_subject_id))
 
             cursor.execute("""
                 UPDATE section_teachers
@@ -3408,9 +3187,9 @@ def branch_admin_subject_edit(subject_id):
             if other_usages > 0:
                 cursor.execute("""
                     INSERT INTO subjects (name, deped_category, subject_type, track, pathway, prerequisite_subject_id)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    VALUES (%s, 'language', %s, %s, %s, %s)
                     RETURNING subject_id
-                """, (new_name, deped_category, subject_type, track, pathway, prereq_id))
+                """, (new_name, subject_type, track, pathway, prereq_id))
                 new_sub_row = cursor.fetchone()
                 new_subject_id = new_sub_row["subject_id"]
 
@@ -3422,30 +3201,15 @@ def branch_admin_subject_edit(subject_id):
             else:
                 cursor.execute("""
                     UPDATE subjects 
-                    SET name = %s, deped_category = %s, subject_type = %s, track = %s, pathway = %s, prerequisite_subject_id = %s 
+                    SET name = %s, subject_type = %s, track = %s, pathway = %s, prerequisite_subject_id = %s
                     WHERE subject_id = %s
-                """, (new_name, deped_category, subject_type, track, pathway, prereq_id, subject_id))
+                """, (new_name, subject_type, track, pathway, prereq_id, subject_id))
 
                 cursor.execute("""
                     UPDATE section_teachers
                     SET section_id = %s, term_name = COALESCE(%s, term_name)
                     WHERE subject_id = %s AND section_id = %s
                 """, (target_section_id, term_name, subject_id, target_section_id))
-
-        cursor.execute("""
-            UPDATE section_teachers st
-            SET grading_category_id=gc.category_id
-            FROM sections sec
-            JOIN grading_categories gc
-              ON gc.branch_id=sec.branch_id AND gc.year_id=sec.year_id
-            WHERE st.section_id=sec.section_id
-              AND st.section_id=%s AND st.subject_id IN (%s, COALESCE(%s, %s))
-              AND sec.branch_id=%s AND gc.code=%s AND gc.is_active=TRUE
-        """, (
-            target_section_id, subject_id,
-            locals().get("actual_subject_id"), locals().get("new_subject_id"),
-            branch_id, deped_category,
-        ))
 
         db.commit()
         flash("Subject updated.", "success")

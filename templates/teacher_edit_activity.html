@@ -89,12 +89,22 @@
 
         <div class="grid grid-2">
             <div class="form-group">
-                <label class="form-label">Category</label>
+                <label class="form-label">Class Record Placement <span style="color:#ef4444">*</span></label>
+                <select name="grading_component" class="form-select" required>
+                    <option value="pt" {% if (activity.grading_component or 'pt') == 'pt' %}selected{% endif %}>Performance Tasks (PT)</option>
+                    <option value="ww" {% if activity.grading_component == 'ww' %}selected{% endif %}>Written Works (WW)</option>
+                    <option value="excluded" {% if activity.grading_component == 'excluded' %}selected{% endif %}>Practice / Not Included</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Item Type</label>
                 <select name="category" class="form-select">
                     <option value="Assignment" {% if activity.category=='Assignment' %}selected{% endif %}>Assignment
                     </option>
                     <option value="Project" {% if activity.category=='Project' %}selected{% endif %}>Project</option>
                     <option value="Activity" {% if activity.category=='Activity' %}selected{% endif %}>Activity</option>
+                    <option value="Participation" {% if activity.category=='Participation' %}selected{% endif %}>Participation</option>
+                    <option value="Recitation" {% if activity.category=='Recitation' %}selected{% endif %}>Recitation</option>
                     <option value="Performance Task" {% if activity.category=='Performance Task' %}selected{% endif %}>
                         Performance Task</option>
                 </select>
