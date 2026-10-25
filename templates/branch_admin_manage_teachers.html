@@ -1823,6 +1823,10 @@
                 <span
                   style="font-size:.65rem; background:linear-gradient(135deg,#e11d48,#be123c); color:#fff; padding:2px 8px; border-radius:8px; font-weight:800; letter-spacing:.03em;">DC</span>
                 {% endif %}
+                {% if t.is_academic_coordinator %}
+                <span
+                  style="font-size:.65rem; background:linear-gradient(135deg,#0f766e,#0d9488); color:#fff; padding:2px 8px; border-radius:8px; font-weight:800; letter-spacing:.03em;">ACADEMIC COORDINATOR</span>
+                {% endif %}
               </div>
             </td>
             <td style="font-size:.85rem; color:var(--mu);">
@@ -1912,6 +1916,15 @@
                         <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>
                       </svg>
                       <span>{% if t.is_dc %}Remove DC Role{% else %}Assign as DC Officer{% endif %}</span>
+                    </button>
+                  </form>
+
+                  <form method="POST" action="/branch-admin/manage-teachers/{{ t.user_id }}/toggle-academic-coordinator" style="margin:0;"
+                    onsubmit="return confirm('{% if t.is_academic_coordinator %}Remove {{ t.full_name or t.username }} from the Academic Coordinator role?{% else %}Assign {{ t.full_name or t.username }} as Academic Coordinator?{% endif %}');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="ma-dropdown-item" role="menuitem" style="color:#0f766e;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                      <span>{% if t.is_academic_coordinator %}Remove Academic Coordinator{% else %}Assign Academic Coordinator{% endif %}</span>
                     </button>
                   </form>
 

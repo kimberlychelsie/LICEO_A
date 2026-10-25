@@ -1,4 +1,10 @@
 {% extends "base.html" %}
+{% set review_role = review_role|default('Registrar') %}
+{% set review_pending_status = review_pending_status|default('pending_registrar') %}
+{% set review_list_endpoint = review_list_endpoint|default('registrar.registrar_grade_review') %}
+{% set review_approve_endpoint = review_approve_endpoint|default('registrar.registrar_approve_grade_request') %}
+{% set review_reject_endpoint = review_reject_endpoint|default('registrar.registrar_reject_grade_request') %}
+{% set review_forward_label = review_forward_label|default('Academic Coordinator') %}
 {% block title %}Review Class Record — {{ req_info.subject_name }}{% endblock %}
 
 {% block styles %}
@@ -211,17 +217,17 @@
                 </p>
             </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <a href="{{ url_for('registrar.registrar_grade_review') }}" class="cr-btn cr-btn-ghost">
+                <a href="{{ url_for(review_list_endpoint) }}" class="cr-btn cr-btn-ghost">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                     Back to Grade Review
                 </a>
 
-                {% if req_info.status == 'pending_registrar' %}
-                <form action="{{ url_for('registrar.registrar_approve_grade_request', req_id=req_info.id) }}" method="POST" style="display:inline;">
+                {% if req_info.status == review_pending_status %}
+                <form action="{{ url_for(review_approve_endpoint, req_id=req_info.id) }}" method="POST" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="cr-btn cr-btn-approve" onclick="return confirm('Approve and forward this class record to Branch Admin?');">
+                    <button type="submit" class="cr-btn cr-btn-approve" onclick="return confirm('Approve and forward this class record to {{ review_forward_label }}?');">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Approve & Forward to Admin
+                        Approve & Forward to {{ review_forward_label }}
                     </button>
                 </form>
                 <button type="button" class="cr-btn cr-btn-reject" onclick="openRejectModal()">
@@ -314,7 +320,7 @@
     <div class="reject-modal">
         <h3 style="margin:0 0 8px; font-weight:800; color:#0f172a;">Return to Teacher</h3>
         <p style="font-size:0.86rem; color:#64748b; margin-bottom:16px;">Please enter the reason for returning this class record to the teacher for correction.</p>
-        <form action="{{ url_for('registrar.registrar_reject_grade_request', req_id=req_info.id) }}" method="POST">
+        <form action="{{ url_for(review_reject_endpoint, req_id=req_info.id) }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="margin-bottom:18px;">
                 <textarea name="rejection_remarks" style="width:100%; height:96px; padding:12px; border-radius:12px; border:1.5px solid #cbd5e1; font-family:inherit; font-size:0.88rem; outline:none;" placeholder="Enter reason for rejection..." required></textarea>

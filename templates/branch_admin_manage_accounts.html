@@ -1019,6 +1019,15 @@
                             </button>
                         </form>
 
+                        <form method="POST" action="/branch-admin/manage-teachers/{{ a.user_id }}/toggle-academic-coordinator" style="margin:0;"
+                            onsubmit="return confirm('{% if a.is_academic_coordinator %}Remove {{ a.full_name or a.username }} from the Academic Coordinator role?{% else %}Assign {{ a.full_name or a.username }} as Academic Coordinator?{% endif %}');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="ma-dropdown-item" style="color:#0f766e;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                                <span>{% if a.is_academic_coordinator %}Remove Academic Coordinator{% else %}Assign Academic Coordinator{% endif %}</span>
+                            </button>
+                        </form>
+
                         <div class="ma-dropdown-divider"></div>
                         <div class="ma-dropdown-section-title">Account</div>
 

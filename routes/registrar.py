@@ -6502,19 +6502,23 @@ def registrar_approve_grade_request(req_id):
     try:
         cur.execute("""
             UPDATE grade_submission_requests
-            SET status = 'pending_admin',
+            SET status = 'pending_academic_coordinator',
                 registrar_approved_by = %s,
                 registrar_approved_at = NOW(),
                 rejection_remarks = NULL
             WHERE id = %s AND branch_id = %s AND status = 'pending_registrar'
-        """, (user_id, req_id, branch_id))
+              AND year_id = (
+                  SELECT year_id FROM school_years
+                  WHERE branch_id = %s AND is_active = TRUE LIMIT 1
+              )
+        """, (user_id, req_id, branch_id, branch_id))
         if cur.rowcount:
             record_grade_history(
                 cur, req_id, 'registrar_approved', 'pending_registrar',
-                'pending_admin', user_id, 'registrar'
+                'pending_academic_coordinator', user_id, 'registrar'
             )
         db.commit()
-        flash("Grade submission approved and forwarded to Branch Admin for final approval.", "success")
+        flash("Grade submission approved and forwarded to the Academic Coordinator.", "success")
     except Exception as e:
         db.rollback()
         flash(f"Error approving request: {str(e)}", "error")
@@ -6540,18 +6544,23 @@ def registrar_reject_grade_request(req_id):
     try:
         cur.execute("""
             SELECT status FROM grade_submission_requests
-            WHERE id = %s AND branch_id = %s
+            WHERE id = %s AND branch_id = %s AND status = 'pending_registrar'
+              AND year_id = (
+                  SELECT year_id FROM school_years
+                  WHERE branch_id = %s AND is_active = TRUE LIMIT 1
+              )
             FOR UPDATE
-        """, (req_id, branch_id))
+        """, (req_id, branch_id, branch_id))
         current = cur.fetchone()
-        cur.execute("""
-            UPDATE grade_submission_requests
-            SET status = 'rejected',
-                rejected_by = %s,
-                rejected_at = NOW(),
-                rejection_remarks = %s
-            WHERE id = %s AND branch_id = %s
-        """, (user_id, remarks, req_id, branch_id))
+        if current:
+            cur.execute("""
+                UPDATE grade_submission_requests
+                SET status = 'rejected',
+                    rejected_by = %s,
+                    rejected_at = NOW(),
+                    rejection_remarks = %s
+                WHERE id = %s AND branch_id = %s AND status = 'pending_registrar'
+            """, (user_id, remarks, req_id, branch_id))
         if current and cur.rowcount:
             record_grade_history(
                 cur, req_id, 'returned', current[0], 'rejected',
@@ -6586,7 +6595,11 @@ def registrar_view_class_record(req_id):
             JOIN subjects sub ON r.subject_id = sub.subject_id
             LEFT JOIN users u ON r.submitted_by = u.user_id
             WHERE r.id = %s AND r.branch_id = %s
-        """, (req_id, branch_id))
+              AND r.year_id = (
+                  SELECT year_id FROM school_years
+                  WHERE branch_id = %s AND is_active = TRUE LIMIT 1
+              )
+        """, (req_id, branch_id, branch_id))
         req_info = cur.fetchone()
         if not req_info:
             flash("Grade submission request not found.", "error")

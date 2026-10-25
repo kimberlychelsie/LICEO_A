@@ -127,6 +127,8 @@ def _activate_user_session(user, db, cursor, client_ip):
     # ── For teachers: load is_swafo flag into session ──
     if role == "teacher":
         session["is_swafo"] = bool(user.get("is_swafo", False))
+        session["is_dc"] = bool(user.get("is_dc", False))
+        session["is_academic_coordinator"] = bool(user.get("is_academic_coordinator", False))
 
     # ── For students: load enrollment session FIRST (before any redirects)
     if role == "student":
@@ -1472,4 +1474,4 @@ def resend_2fa():
     finally:
         cursor.close()
         db.close()
-
+

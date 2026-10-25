@@ -961,6 +961,7 @@ def branch_admin_manage_accounts():
                     u.user_id, u.username, u.role, u.user_roles, u.full_name, u.first_name, u.middle_name, u.last_name, u.gender,
                     u.email, COALESCE(g.name, u.grade_level) AS grade_level, u.status,
                     COALESCE(u.is_swafo, FALSE) AS is_swafo, COALESCE(u.is_dc, FALSE) AS is_dc,
+                    COALESCE(u.is_academic_coordinator, FALSE) AS is_academic_coordinator,
                     (SELECT STRING_AGG(DISTINCT s2.section_name, ', ') 
                      FROM section_teachers st2 
                      JOIN sections s2 ON st2.section_id = s2.section_id 
@@ -3146,7 +3147,7 @@ def branch_admin_subject_edit(subject_id):
             SELECT EXISTS (
                 SELECT 1 FROM grade_submission_requests
                 WHERE section_id=%s AND subject_id=%s
-                  AND status IN ('pending_registrar','pending_admin','approved_for_posting','posted')
+                  AND status IN ('pending_registrar','pending_academic_coordinator','pending_admin','approved_for_posting','posted')
             ) AS locked
         """, (target_section_id, subject_id))
         locked_assignment = cursor.fetchone()
@@ -3665,6 +3666,7 @@ Please log in and change your password immediately.
                 COALESCE(u.status, 'active') AS status,
                 COALESCE(u.is_swafo, FALSE) AS is_swafo,
                 COALESCE(u.is_dc, FALSE) AS is_dc,
+                COALESCE(u.is_academic_coordinator, FALSE) AS is_academic_coordinator,
                 (
                     SELECT STRING_AGG(DISTINCT g.name || ' - ' || s.section_name, ', ')
                     FROM sections s
@@ -3873,6 +3875,32 @@ def branch_admin_toggle_teacher_dc(user_id):
     except Exception as e:
         db.rollback()
         flash(f"Failed to update Discipline Officer assignment: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect(request.referrer or "/branch-admin/manage-teachers")
+
+@branch_admin_bp.route("/branch-admin/manage-teachers/<int:user_id>/toggle-academic-coordinator", methods=["POST"])
+def branch_admin_toggle_teacher_academic_coordinator(user_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("""
+            UPDATE users
+            SET is_academic_coordinator = NOT COALESCE(is_academic_coordinator, FALSE)
+            WHERE user_id = %s AND branch_id = %s
+              AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
+        """, (user_id, session.get("branch_id")))
+        if cursor.rowcount == 0:
+            flash("Teacher account not found in this branch.", "error")
+        else:
+            db.commit()
+            flash("Academic Coordinator assignment updated successfully.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to update Academic Coordinator assignment: {str(e)}", "error")
     finally:
         cursor.close()
         db.close()
@@ -4200,7 +4228,11 @@ def branch_admin_approve_grade_request(req_id):
                 admin_approved_at = NOW(),
                 rejection_remarks = NULL
             WHERE id = %s AND branch_id = %s AND status = 'pending_admin'
-        """, (user_id, req_id, branch_id))
+              AND year_id = (
+                  SELECT year_id FROM school_years
+                  WHERE branch_id = %s AND is_active = TRUE LIMIT 1
+              )
+        """, (user_id, req_id, branch_id, branch_id))
         if cur.rowcount:
             record_grade_history(
                 cur, req_id, 'admin_approved', 'pending_admin',
@@ -4233,18 +4265,23 @@ def branch_admin_reject_grade_request(req_id):
     try:
         cur.execute("""
             SELECT status FROM grade_submission_requests
-            WHERE id = %s AND branch_id = %s
+            WHERE id = %s AND branch_id = %s AND status = 'pending_admin'
+              AND year_id = (
+                  SELECT year_id FROM school_years
+                  WHERE branch_id = %s AND is_active = TRUE LIMIT 1
+              )
             FOR UPDATE
-        """, (req_id, branch_id))
+        """, (req_id, branch_id, branch_id))
         current = cur.fetchone()
-        cur.execute("""
-            UPDATE grade_submission_requests
-            SET status = 'rejected',
-                rejected_by = %s,
-                rejected_at = NOW(),
-                rejection_remarks = %s
-            WHERE id = %s AND branch_id = %s
-        """, (user_id, remarks, req_id, branch_id))
+        if current:
+            cur.execute("""
+                UPDATE grade_submission_requests
+                SET status = 'rejected',
+                    rejected_by = %s,
+                    rejected_at = NOW(),
+                    rejection_remarks = %s
+                WHERE id = %s AND branch_id = %s AND status = 'pending_admin'
+            """, (user_id, remarks, req_id, branch_id))
         if current and cur.rowcount:
             record_grade_history(
                 cur, req_id, 'returned', current[0], 'rejected',
@@ -4280,7 +4317,11 @@ def branch_admin_view_class_record(req_id):
             LEFT JOIN users u ON r.submitted_by = u.user_id
             LEFT JOIN users reg ON r.registrar_approved_by = reg.user_id
             WHERE r.id = %s AND r.branch_id = %s
-        """, (req_id, branch_id))
+              AND r.year_id = (
+                  SELECT year_id FROM school_years
+                  WHERE branch_id = %s AND is_active = TRUE LIMIT 1
+              )
+        """, (req_id, branch_id, branch_id))
         req_info = cur.fetchone()
         if not req_info:
             flash("Grade submission request not found.", "error")

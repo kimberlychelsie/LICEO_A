@@ -4362,7 +4362,8 @@ ACTIVITY_GRADING_SUBTYPES = {
     "activity", "assignment", "participation", "recitation", "project", "assessment", "other"
 }
 LOCKED_GRADE_STATUSES = {
-    "pending_registrar", "pending_admin", "approved_for_posting", "posted"
+    "pending_registrar", "pending_academic_coordinator", "pending_admin",
+    "approved_for_posting", "posted"
 }
 
 
@@ -4587,7 +4588,8 @@ def grading_component_distribution(section_id, subject_id, period):
         """, (section_id, subject_id, period, year_id))
         request_row = cur.fetchone()
         locked = bool(request_row and request_row["status"] in (
-            "pending_registrar", "pending_admin", "approved_for_posting", "posted"
+            "pending_registrar", "pending_academic_coordinator", "pending_admin",
+    "approved_for_posting", "posted"
         ))
         return_to_record = request.form.get("return_to") == "class_record"
         record_url = url_for(
@@ -5059,11 +5061,13 @@ def class_record(section_id, subject_id):
             cur.execute("""
                 SELECT r.*, submitter.full_name AS submitted_by_name,
                        registrar.full_name AS registrar_name,
+                       coordinator.full_name AS academic_coordinator_name,
                        admin.full_name AS admin_name,
                        rejector.full_name AS rejected_by_name, rejector.role AS rejected_by_role
                 FROM grade_submission_requests r
                 LEFT JOIN users submitter ON submitter.user_id = r.submitted_by
                 LEFT JOIN users registrar ON registrar.user_id = r.registrar_approved_by
+                LEFT JOIN users coordinator ON coordinator.user_id = r.academic_coordinator_approved_by
                 LEFT JOIN users admin ON admin.user_id = r.admin_approved_by
                 LEFT JOIN users rejector ON rejector.user_id = r.rejected_by
                 WHERE r.section_id=%s AND r.subject_id=%s AND r.grading_period=%s
@@ -5078,6 +5082,8 @@ def class_record(section_id, subject_id):
                 legacy_events = (
                     ('submitted', 'teacher', 'submitted_by_name', 'submitted_at', None),
                     ('registrar_approved', 'registrar', 'registrar_name', 'registrar_approved_at', None),
+                    ('academic_coordinator_approved', 'academic_coordinator',
+                     'academic_coordinator_name', 'academic_coordinator_approved_at', None),
                     ('admin_approved', 'branch_admin', 'admin_name', 'admin_approved_at', None),
                     ('returned', submission_req.get('rejected_by_role') or 'reviewer',
                      'rejected_by_name', 'rejected_at', submission_req.get('rejection_remarks')),
@@ -5540,7 +5546,7 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
             WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
         """, (section_id, subject_id, period, year_id))
         sub_req = cur.fetchone()
-        locked_statuses = ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted']
+        locked_statuses = ['pending_registrar', 'pending_academic_coordinator', 'pending_admin', 'approved_for_posting', 'posted']
         is_locked = bool(sub_req and sub_req['status'] in locked_statuses)
         submission_status = sub_req['status'] if sub_req else 'draft'
 
@@ -5973,7 +5979,7 @@ def teacher_batch_save_scores(section_id, subject_id):
             WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
         """, (section_id, subject_id, period, year_id))
         req = cur.fetchone()
-        if req and req['status'] in ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted']:
+        if req and req['status'] in ['pending_registrar', 'pending_academic_coordinator', 'pending_admin', 'approved_for_posting', 'posted']:
             flash("Cannot edit scores: Grade submission is currently locked or posted.", "error")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period, tab=target_tab))
 
@@ -6151,7 +6157,7 @@ def teacher_save_grid_scores(section_id, subject_id):
             WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
         """, (section_id, subject_id, period, year_id))
         req = cur.fetchone()
-        if req and req['status'] in ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted']:
+        if req and req['status'] in ['pending_registrar', 'pending_academic_coordinator', 'pending_admin', 'approved_for_posting', 'posted']:
             flash("Cannot edit scores: Grade submission is currently locked or posted.", "error")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period, tab=active_tab))
 
@@ -6396,7 +6402,7 @@ def teacher_delete_class_record_item(section_id, subject_id, period, item_type, 
             LIMIT 1
         """, (section_id, subject_id, period, year_id))
         submission = cur.fetchone()
-        if submission and submission["status"] in ("pending_registrar", "pending_admin", "approved_for_posting", "posted"):
+        if submission and submission["status"] in LOCKED_GRADE_STATUSES:
             flash("Cannot delete an item while this class record is locked or posted.", "error")
             return redirect(redirect_url)
         if item_type == "activity":
@@ -6530,6 +6536,7 @@ def mark_missing_score_zero(section_id, subject_id):
 
         if req and req["status"] in [
             "pending_registrar",
+            "pending_academic_coordinator",
             "pending_admin",
             "approved_for_posting",
             "posted"
@@ -7066,7 +7073,7 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
             flash("No submission request found.", "error")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
-        locked_statuses = ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted']
+        locked_statuses = ['pending_registrar', 'pending_academic_coordinator', 'pending_admin', 'approved_for_posting', 'posted']
         if req['status'] not in locked_statuses:
             flash("This class record is already editable.", "info")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
@@ -7082,7 +7089,7 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
                 FROM grade_submission_requests
                 WHERE section_id=%s AND subject_id=%s AND year_id=%s
                   AND grading_period=ANY(%s)
-                  AND status IN ('pending_registrar','pending_admin','approved_for_posting','posted')
+                  AND status IN ('pending_registrar','pending_academic_coordinator','pending_admin','approved_for_posting','posted')
                 ORDER BY CASE grading_period WHEN '3rd' THEN 1 WHEN '2nd' THEN 2 ELSE 3 END
                 LIMIT 1
                 FOR UPDATE
@@ -7111,6 +7118,8 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
                 submitted_at = NULL,
                 registrar_approved_by = NULL,
                 registrar_approved_at = NULL,
+                academic_coordinator_approved_by = NULL,
+                academic_coordinator_approved_at = NULL,
                 admin_approved_by = NULL,
                 admin_approved_at = NULL,
                 rejected_by = NULL,
@@ -7120,7 +7129,7 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
         """, (reopen_remarks, section_id, subject_id, period, year_id))
         record_grade_history(
             cur, req['id'],
-            'cancelled' if previous_status in ('pending_registrar', 'pending_admin') else 'reopened',
+            'cancelled' if previous_status in ('pending_registrar', 'pending_academic_coordinator', 'pending_admin') else 'reopened',
             previous_status, 'draft', user_id, 'teacher', reopen_remarks
         )
         db.commit()
@@ -8568,6 +8577,258 @@ def teacher_schedules():
 # ══════════════════════════════════════════
 # SWAFO — Teacher Views
 # ══════════════════════════════════════════
+def _require_academic_coordinator_teacher():
+    return session.get("role") == "teacher" and session.get("is_academic_coordinator")
+
+
+@teacher_bp.route("/teacher/academic-coordinator/grade-review")
+def academic_coordinator_grade_review():
+    if not _require_academic_coordinator_teacher():
+        flash("Access restricted to Academic Coordinators only.", "error")
+        return redirect("/teacher")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute(
+            "SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1",
+            (branch_id,),
+        )
+        year_row = cur.fetchone()
+        year_id = year_row["year_id"] if year_row else 0
+        cur.execute("""
+            SELECT MIN(g.id) AS id, MIN(g.name) AS name
+            FROM grade_submission_requests r
+            JOIN sections s ON s.section_id = r.section_id
+            JOIN grade_levels g ON g.id = s.grade_level_id
+            WHERE r.branch_id = %s AND r.year_id = %s
+              AND r.status = 'pending_academic_coordinator'
+            GROUP BY LOWER(TRIM(g.name))
+            ORDER BY MIN(g.display_order), MIN(g.name)
+        """, (branch_id, year_id))
+        grade_levels = cur.fetchall() or []
+        selected_grade_id = request.args.get("grade_level_id", type=int)
+        selected_section_id = request.args.get("section_id", type=int)
+        selected_period = request.args.get("period") or "1st"
+        selected_teacher_id = request.args.get("teacher_id", type=int)
+        if selected_grade_id not in {grade["id"] for grade in grade_levels}:
+            selected_grade_id = grade_levels[0]["id"] if grade_levels else None
+        cur.execute("""
+            SELECT s.section_id, s.section_name
+            FROM sections s
+            WHERE s.branch_id = %s AND s.year_id = %s
+              AND (%s IS NULL OR s.grade_level_id = %s)
+            ORDER BY s.section_name, s.section_id
+        """, (branch_id, year_id, selected_grade_id, selected_grade_id))
+        sections = cur.fetchall() or []
+        if selected_section_id not in {section["section_id"] for section in sections}:
+            selected_section_id = None
+        cur.execute("""
+            SELECT DISTINCT u.user_id, u.full_name
+            FROM grade_submission_requests r
+            JOIN users u ON u.user_id = r.submitted_by
+            WHERE r.branch_id = %s AND r.year_id = %s
+              AND r.status = 'pending_academic_coordinator'
+            ORDER BY u.full_name, u.user_id
+        """, (branch_id, year_id))
+        teachers = cur.fetchall() or []
+        if selected_teacher_id not in {teacher["user_id"] for teacher in teachers}:
+            selected_teacher_id = None
+        query = """
+            SELECT r.id, r.section_id, r.subject_id, r.grading_period, r.status,
+                   r.submitted_at, r.registrar_approved_at, r.rejection_remarks,
+                   s.section_name, g.name AS grade_level_name, sub.name AS subject_name,
+                   u.full_name AS teacher_name
+            FROM grade_submission_requests r
+            JOIN sections s ON s.section_id = r.section_id
+            JOIN grade_levels g ON g.id = s.grade_level_id
+            JOIN subjects sub ON sub.subject_id = r.subject_id
+            LEFT JOIN users u ON u.user_id = r.submitted_by
+            WHERE r.branch_id = %s AND r.year_id = %s
+              AND r.status = 'pending_academic_coordinator'
+        """
+        params = [branch_id, year_id]
+        if selected_grade_id:
+            query += " AND s.grade_level_id = %s"
+            params.append(selected_grade_id)
+        if selected_section_id:
+            query += " AND r.section_id = %s"
+            params.append(selected_section_id)
+        if selected_period:
+            query += " AND r.grading_period = %s"
+            params.append(selected_period)
+        if selected_teacher_id:
+            query += " AND r.submitted_by = %s"
+            params.append(selected_teacher_id)
+        query += " ORDER BY r.registrar_approved_at DESC NULLS LAST, r.id DESC"
+        cur.execute(query, params)
+        submissions = cur.fetchall() or []
+        return render_template(
+            "registrar_grade_review.html",
+            grade_levels=grade_levels, sections=sections, teachers=teachers,
+            submissions=submissions, selected_grade_id=selected_grade_id,
+            selected_section_id=selected_section_id, selected_period=selected_period,
+            selected_teacher_id=selected_teacher_id,
+            review_role="Academic Coordinator",
+            review_description="Review Registrar-verified class records before forwarding them to the Branch Admin/Principal.",
+            review_list_endpoint="teacher.academic_coordinator_grade_review",
+            review_detail_endpoint="teacher.academic_coordinator_view_class_record",
+        )
+    finally:
+        cur.close()
+        db.close()
+
+
+@teacher_bp.route("/teacher/academic-coordinator/grade-review/<int:req_id>/approve", methods=["POST"])
+def academic_coordinator_approve_grade_request(req_id):
+    if not _require_academic_coordinator_teacher():
+        return redirect("/")
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT status FROM grade_submission_requests
+            WHERE id = %s AND branch_id = %s
+              AND status = 'pending_academic_coordinator'
+              AND year_id = (
+                  SELECT year_id FROM school_years
+                  WHERE branch_id = %s AND is_active = TRUE LIMIT 1
+              )
+            FOR UPDATE
+        """, (req_id, branch_id, branch_id))
+        current = cur.fetchone()
+        if current:
+            cur.execute("""
+                UPDATE grade_submission_requests
+                SET status = 'pending_admin',
+                    academic_coordinator_approved_by = %s,
+                    academic_coordinator_approved_at = NOW(),
+                    rejection_remarks = NULL
+                WHERE id = %s AND branch_id = %s
+                  AND status = 'pending_academic_coordinator'
+            """, (user_id, req_id, branch_id))
+            if cur.rowcount:
+                record_grade_history(
+                    cur, req_id, 'academic_coordinator_approved',
+                    'pending_academic_coordinator', 'pending_admin',
+                    user_id, 'academic_coordinator'
+                )
+        db.commit()
+        if current:
+            flash("Grade submission approved and forwarded to the Branch Admin/Principal.", "success")
+        else:
+            flash("Only pending requests in the active school year can be approved.", "error")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error approving request: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(request.referrer or url_for("teacher.academic_coordinator_grade_review"))
+
+
+@teacher_bp.route("/teacher/academic-coordinator/grade-review/<int:req_id>/reject", methods=["POST"])
+def academic_coordinator_reject_grade_request(req_id):
+    if not _require_academic_coordinator_teacher():
+        return redirect("/")
+    remarks = request.form.get("rejection_remarks", "").strip()
+    if len(remarks) < 5:
+        flash("Please provide detailed return remarks (at least 5 characters).", "error")
+        return redirect(request.referrer or url_for("teacher.academic_coordinator_grade_review"))
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT status FROM grade_submission_requests
+            WHERE id = %s AND branch_id = %s
+              AND status = 'pending_academic_coordinator'
+              AND year_id = (
+                  SELECT year_id FROM school_years
+                  WHERE branch_id = %s AND is_active = TRUE LIMIT 1
+              )
+            FOR UPDATE
+        """, (req_id, branch_id, branch_id))
+        current = cur.fetchone()
+        if current:
+            cur.execute("""
+                UPDATE grade_submission_requests
+                SET status = 'rejected', rejected_by = %s,
+                    rejected_at = NOW(), rejection_remarks = %s
+                WHERE id = %s AND branch_id = %s
+                  AND status = 'pending_academic_coordinator'
+            """, (user_id, remarks, req_id, branch_id))
+            if cur.rowcount:
+                record_grade_history(
+                    cur, req_id, 'returned', 'pending_academic_coordinator',
+                    'rejected', user_id, 'academic_coordinator', remarks
+                )
+        db.commit()
+        if current:
+            flash("Grade submission returned to the Teacher with remarks.", "info")
+        else:
+            flash("Only pending requests in the active school year can be returned.", "error")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error returning request: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(request.referrer or url_for("teacher.academic_coordinator_grade_review"))
+
+
+@teacher_bp.route("/teacher/academic-coordinator/grade-review/<int:req_id>/class-record")
+def academic_coordinator_view_class_record(req_id):
+    if not _require_academic_coordinator_teacher():
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT r.*, s.section_name, g.name AS grade_level_name,
+                   sub.name AS subject_name, u.full_name AS teacher_name
+            FROM grade_submission_requests r
+            JOIN sections s ON s.section_id = r.section_id
+            JOIN grade_levels g ON g.id = s.grade_level_id
+            JOIN subjects sub ON sub.subject_id = r.subject_id
+            LEFT JOIN users u ON u.user_id = r.submitted_by
+            WHERE r.id = %s AND r.branch_id = %s
+              AND r.year_id = (
+                  SELECT year_id FROM school_years
+                  WHERE branch_id = %s AND is_active = TRUE LIMIT 1
+              )
+        """, (req_id, branch_id, branch_id))
+        req_info = cur.fetchone()
+        if not req_info:
+            flash("Grade submission request not found in the active branch/year.", "error")
+            return redirect(url_for("teacher.academic_coordinator_grade_review"))
+        if req_info['status'] != 'pending_academic_coordinator':
+            flash("This class record is not currently awaiting Academic Coordinator review.", "info")
+            return redirect(url_for("teacher.academic_coordinator_grade_review"))
+        _, weights, records = _compute_period_grades(
+            cur, req_info['submitted_by'], branch_id,
+            req_info['section_id'], req_info['subject_id'],
+            req_info['grading_period'], req_info['year_id']
+        )
+        return render_template(
+            "registrar_class_record_review.html",
+            req_info=req_info, weights=weights, records=records,
+            review_role="Academic Coordinator",
+            review_pending_status="pending_academic_coordinator",
+            review_list_endpoint="teacher.academic_coordinator_grade_review",
+            review_approve_endpoint="teacher.academic_coordinator_approve_grade_request",
+            review_reject_endpoint="teacher.academic_coordinator_reject_grade_request",
+            review_forward_label="Branch Admin/Principal",
+        )
+    finally:
+        cur.close()
+        db.close()
+
+
 def _require_swafo_teacher():
     return session.get("role") == "teacher" and session.get("is_swafo")
 

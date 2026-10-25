@@ -1,5 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Grade Review — Registrar{% endblock %}
+{% set review_role = review_role|default('Registrar') %}
+{% set review_description = review_description|default('Review teacher class records and verify student grades before forwarding to the Academic Coordinator.') %}
+{% set review_list_endpoint = review_list_endpoint|default('registrar.registrar_grade_review') %}
+{% set review_detail_endpoint = review_detail_endpoint|default('registrar.registrar_view_class_record') %}
+{% block title %}Grade Review — {{ review_role }}{% endblock %}
 
 {% block styles %}
 <style>
@@ -239,12 +243,12 @@
             <h1>
                 Grade <span style="color: #facc15; text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);">Review</span>
             </h1>
-            <p>Review teacher class records and verify student grades before forwarding to Branch Admin.</p>
+            <p>{{ review_description }}</p>
         </div>
     </div>
 
     <!-- Filter Bar -->
-    <form method="GET" action="{{ url_for('registrar.registrar_grade_review') }}" class="filter-card">
+    <form method="GET" action="{{ url_for(review_list_endpoint) }}" class="filter-card">
         <div class="filter-group">
             <label class="filter-label">Grade Level</label>
             <select name="grade_level_id" class="filter-select" onchange="this.form.submit()">
@@ -315,6 +319,8 @@
                     <td>
                         {% if sub.status == 'pending_registrar' %}
                         <span class="status-chip st-pending_registrar">Pending Review</span>
+                        {% elif sub.status == 'pending_academic_coordinator' %}
+                        <span class="status-chip st-pending_registrar">Pending Academic Review</span>
                         {% elif sub.status == 'pending_admin' %}
                         <span class="status-chip st-pending_admin">Forwarded to Admin</span>
                         {% elif sub.status in ['approved_for_posting', 'posted'] %}
@@ -326,7 +332,7 @@
                         {% endif %}
                     </td>
                     <td style="text-align:right;">
-                        <a href="{{ url_for('registrar.registrar_view_class_record', req_id=sub.id) }}"
+                        <a href="{{ url_for(review_detail_endpoint, req_id=sub.id) }}"
                            class="btn-review-link">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                             Review Class Record
