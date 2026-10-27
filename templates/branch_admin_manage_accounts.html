@@ -1188,21 +1188,6 @@
                             </button>
                         </form>
 
-                        <div class="ma-dropdown-divider"></div>
-
-                        <!-- Delete Account -->
-                        <form method="post"
-                            action="{{ url_for('branch_admin.branch_admin_delete_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_delete_student_account', account_id=a.account_id, role=role_filter) }}"
-                            style="margin:0;" onsubmit="return confirm('Permanent deletion cannot be undone. Proceed?')">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="ma-dropdown-item danger-action">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                </svg>
-                                <span>Delete Account</span>
-                            </button>
-                        </form>
                         {% endif %}
                         {% endif %}
                     </div>
@@ -1416,6 +1401,19 @@
             </form>
 
             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
+                {% if role_filter == 'student' %}
+                <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='student', show_archived='false' if show_archived else 'true') }}" class="btn-elegant"
+                    style="background: #ffffff; border: 1.5px solid var(--ma-border); color: var(--ma-muted); text-decoration: none; padding: 0 16px; height: 40px; display: flex; align-items: center; white-space: nowrap; border-radius: 12px; font-weight: 700; font-size: 0.85rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor"
+                        stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                        style="margin-right: 8px;">
+                        <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+                        <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+                        <path d="M10 12h4"></path>
+                    </svg>
+                    {{ 'Active Students' if show_archived else 'Archived Students' }}
+                </a>
+                {% else %}
                 <a href="/branch-admin/manage-accounts/archive" class="btn-elegant"
                     style="background: #ffffff; border: 1.5px solid var(--ma-border); color: var(--ma-muted); text-decoration: none; padding: 0 16px; height: 40px; display: flex; align-items: center; white-space: nowrap; border-radius: 12px; font-weight: 700; font-size: 0.85rem;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor"
@@ -1427,6 +1425,7 @@
                     </svg>
                     Archived Accounts
                 </a>
+                {% endif %}
 
                 {% if role_filter != 'student' %}
                 <div style="display: flex; align-items: center; background: #f8fafc; padding: 4px 12px 4px 20px; border-radius: 12px; border: 1.5px solid var(--ma-border); height: 44px;">

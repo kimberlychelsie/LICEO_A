@@ -931,9 +931,9 @@ def branch_admin_manage_accounts():
                 FROM student_accounts sa
                 JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
                 LEFT JOIN sections s ON e.section_id = s.section_id
-                WHERE sa.branch_id = %s AND COALESCE(sa.is_active, TRUE) = TRUE
+                WHERE sa.branch_id = %s AND COALESCE(sa.is_active, TRUE) = %s
             """
-            params = [branch_id]
+            params = [branch_id, not show_archived]
             if filter_grade:
                 query += " AND e.grade_level = %s"
                 params.append(filter_grade)
@@ -1238,6 +1238,15 @@ def branch_admin_delete_account(user_id):
     db = get_db_connection()
     cursor = db.cursor()
     try:
+        cursor.execute(
+            """SELECT 1 FROM users
+               WHERE user_id = %s AND branch_id = %s
+                 AND COALESCE(is_archived, FALSE) = TRUE""",
+            (user_id, session.get("branch_id")),
+        )
+        if not cursor.fetchone():
+            flash("Only archived accounts can be permanently deleted.", "error")
+            return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
         _safe_delete_user(cursor, user_id, session.get("branch_id"))
         db.commit()
         flash("Account deleted.", "success")
@@ -1338,9 +1347,30 @@ def branch_admin_archive_student_account(account_id):
     cursor = db.cursor()
     try:
         cursor.execute(
+            """SELECT enrollment_id, username FROM student_accounts
+               WHERE account_id = %s AND branch_id = %s
+               FOR UPDATE""",
+            (account_id, branch_id),
+        )
+        student_account = cursor.fetchone()
+        if not student_account:
+            flash("Student account not found.", "error")
+            return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role="student"))
+
+        enrollment_id, username = student_account
+        cursor.execute(
             """UPDATE student_accounts SET is_active = FALSE
                WHERE account_id = %s AND branch_id = %s""",
             (account_id, branch_id),
+        )
+        # Student logins also have a users-table shadow row. Keep both login
+        # identities synchronized so neither login path can bypass the archive.
+        cursor.execute(
+            """UPDATE users
+               SET status = 'inactive', is_archived = TRUE
+               WHERE branch_id = %s AND role = 'student'
+                 AND (enrollment_id = %s OR username = %s)""",
+            (branch_id, enrollment_id, username),
         )
         db.commit()
         flash("Student account archived (deactivated) successfully.", "success")
@@ -1394,9 +1424,28 @@ def branch_admin_unarchive_student_account(account_id):
     cursor = db.cursor()
     try:
         cursor.execute(
+            """SELECT enrollment_id, username FROM student_accounts
+               WHERE account_id = %s AND branch_id = %s
+               FOR UPDATE""",
+            (account_id, branch_id),
+        )
+        student_account = cursor.fetchone()
+        if not student_account:
+            flash("Student account not found.", "error")
+            return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role="student", show_archived="true"))
+
+        enrollment_id, username = student_account
+        cursor.execute(
             """UPDATE student_accounts SET is_active = TRUE
                WHERE account_id = %s AND branch_id = %s""",
             (account_id, branch_id),
+        )
+        cursor.execute(
+            """UPDATE users
+               SET status = 'active', is_archived = FALSE
+               WHERE branch_id = %s AND role = 'student'
+                 AND (enrollment_id = %s OR username = %s)""",
+            (branch_id, enrollment_id, username),
         )
         db.commit()
         flash("Student account restored to active status successfully.", "success")
@@ -1568,10 +1617,24 @@ def branch_admin_delete_student_account(account_id):
     cursor = db.cursor()
     try:
         # Also fetch the enrollment_id to delete the enrollment record
-        cursor.execute("SELECT enrollment_id FROM student_accounts WHERE account_id=%s AND branch_id=%s", (account_id, session.get("branch_id")))
+        cursor.execute(
+            """SELECT enrollment_id FROM student_accounts
+               WHERE account_id = %s AND branch_id = %s
+                 AND COALESCE(is_active, TRUE) = FALSE""",
+            (account_id, session.get("branch_id")),
+        )
         res = cursor.fetchone()
-        
-        cursor.execute("DELETE FROM student_accounts WHERE account_id=%s AND branch_id=%s", (account_id, session.get("branch_id")))
+
+        if not res:
+            flash("Only archived student accounts can be permanently deleted.", "error")
+            return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role="student"))
+
+        cursor.execute(
+            """DELETE FROM student_accounts
+               WHERE account_id = %s AND branch_id = %s
+                 AND COALESCE(is_active, TRUE) = FALSE""",
+            (account_id, session.get("branch_id")),
+        )
         
         if res:
             enrollment_id = res[0]

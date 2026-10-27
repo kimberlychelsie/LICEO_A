@@ -357,7 +357,10 @@ def login():
             user = cursor.fetchone()
 
             if user:
-                if str(user.get("status") or "active").lower() == "inactive":
+                if (
+                    str(user.get("status") or "active").lower() == "inactive"
+                    or bool(user.get("is_archived", False))
+                ):
                     flash("Account is inactive. Please contact your administrator.", "error")
                     return redirect(url_for("auth.login"))
 

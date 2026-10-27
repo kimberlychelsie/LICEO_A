@@ -366,20 +366,38 @@ def validate_user_session():
         db = get_db_connection()
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
-            cursor.execute("SELECT status, branch_id, role, user_roles, email, is_swafo, is_dc, is_academic_coordinator FROM users WHERE user_id = %s", (user_id,))
+            cursor.execute("SELECT status, branch_id, role, user_roles, email, username, enrollment_id, is_archived, is_swafo, is_dc, is_academic_coordinator FROM users WHERE user_id = %s", (user_id,))
             user = cursor.fetchone()
             if user:
                 session["is_swafo"] = bool(user.get("is_swafo", False))
                 session["is_dc"] = bool(user.get("is_dc", False))
                 session["is_academic_coordinator"] = bool(user.get("is_academic_coordinator", False))
             
-            if not user or user['status'] != 'active':
+            if not user or user['status'] != 'active' or bool(user.get('is_archived', False)):
                 session.clear()
                 flash("Your account is no longer active or has been retired. Please contact the administrator.", "error")
                 return redirect(url_for('auth.login'))
             
             # If account is a student account, restrict roles strictly to ["student"]
             if user.get("role") == "student" or session.get("role") == "student":
+                cursor.execute(
+                    """SELECT COALESCE(is_active, TRUE) AS is_active
+                       FROM student_accounts
+                       WHERE account_id = %s
+                          OR enrollment_id = %s
+                          OR username = %s
+                       LIMIT 1""",
+                    (
+                        session.get("student_account_id"),
+                        user.get("enrollment_id") or session.get("enrollment_id"),
+                        user.get("username"),
+                    ),
+                )
+                student_account = cursor.fetchone()
+                if student_account and not student_account.get("is_active", True):
+                    session.clear()
+                    flash("Your student account is archived. Please contact the administrator.", "error")
+                    return redirect(url_for('auth.login'))
                 session["roles"] = ["student"]
             else:
                 # Sync live assigned roles from DB into session for staff/parent accounts
