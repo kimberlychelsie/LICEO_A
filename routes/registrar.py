@@ -875,14 +875,14 @@ def registrar_enrollments():
                 flash(f"Enrollment #{display_no} approved.", "success")
             elif action == "correction_requested":
                 if email_status == "sent":
-                    flash(f"Enrollment #{display_no} marked for correction. Notification was accepted by SMTP.", "warning")
+                    flash(f"Correction request sent for Enrollment #{display_no}. The applicant was notified successfully.", "success")
                 elif email_status == "missing":
                     flash(f"Enrollment #{display_no} marked for correction, but no applicant email is available for notification.", "warning")
                 else:
                     flash(f"Enrollment #{display_no} marked for correction, but email notification could not be sent. Please contact the applicant manually.", "warning")
             else:
                 if email_status == "sent":
-                    flash(f"Enrollment #{display_no} rejected. Notification was accepted by SMTP.", "warning")
+                    flash(f"Enrollment #{display_no} was rejected successfully. The applicant was notified.", "success")
                 elif email_status == "missing":
                     flash(f"Enrollment #{display_no} rejected, but no applicant email is available for notification.", "warning")
                 else:

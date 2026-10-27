@@ -1597,6 +1597,9 @@
                     <textarea name="rejection_reason" id="rejectReason" required rows="4"
                         style="width:100%; height:72px; min-height:72px; max-height:72px; box-sizing:border-box; border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; font-size:0.9rem; resize:none; overflow-y:auto;"
                         placeholder="Type the reason..."></textarea>
+                    <div id="rejectImpactMessage" role="status"
+                        style="margin-top:10px; padding:9px 11px; border-radius:8px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; font-size:0.78rem; font-weight:700; line-height:1.4;">
+                    </div>
                     <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
                         <button type="button" class="btn btn-sm" onclick="closeRejectModal()"
                             style="background:#f1f5f9; color:#475569; border:1px solid var(--border);">Cancel</button>
@@ -1678,6 +1681,13 @@
             const reason = document.getElementById('rejectReason');
             reason.value = '';
             reason.placeholder = isCorrection ? 'Type the correction needed...' : 'Type the final rejection reason...';
+            const impactMessage = document.getElementById('rejectImpactMessage');
+            impactMessage.textContent = isCorrection
+                ? 'The applicant will receive this message and may correct and resubmit the application.'
+                : 'This is a final rejection. The applicant will receive this reason and cannot edit or resubmit this application.';
+            impactMessage.style.background = isCorrection ? '#fffbeb' : '#fef2f2';
+            impactMessage.style.borderColor = isCorrection ? '#fde68a' : '#fecaca';
+            impactMessage.style.color = isCorrection ? '#92400e' : '#991b1b';
             modal.style.display = 'block';
             setTimeout(() => reason.focus(), 0);
         }
