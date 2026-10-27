@@ -1396,7 +1396,7 @@
             {% endfor %}
         </div>
         {% if period != 'final' %}
-        <button type="button" class="cr-btn period-components-btn" onclick="openComponentModal()" title="Configure {{ PERIOD_LABELS.get(period, period ~ ' Term') }} grading weights">
+        <button type="button" class="cr-btn period-components-btn" onclick="openComponentModal()" title="Set {{ PERIOD_LABELS.get(period, period ~ ' Term') }} grading weights">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
             Grading Weights
         </button>
@@ -1484,14 +1484,14 @@
         <div class="deped-strip-info">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
             <span style="font-weight:800; color:#1e40af;">Teacher Grading Weights</span>
-            <span style="color:#64748b; font-size:0.8rem;">{{ '(Saved for this term)' if weights.configured else '(Default preview — save before submission)' }}</span>
+            <span style="color:#64748b; font-size:0.8rem;">{% if weights.configured %}(Saved for This Term){% elif weights.suggested_available %}(Suggested Defaults — Not Yet Saved){% else %}(No suggested percentages — set weights before submission){% endif %}</span>
         </div>
-        <div class="deped-strip-badges">
+        {% if weights.configured or weights.suggested_available %}<div class="deped-strip-badges">
             <span class="deped-badge badge-ww" title="Quiz, Written Activity, and Assignment">Written Works: <strong>{{ weights.quiz_pct | int }}%</strong></span>
             <span class="deped-badge badge-pt" title="Recitation (plus Project and Assessment items)">Performance Tasks: <strong>{{ weights.activity_pct | int }}%</strong></span>
             <span class="deped-badge badge-qa" title="ST1 30%, ST2 30%, Term Exam 40%">Summative Tests &amp; Term Exam: <strong>{{ weights.exam_pct | int }}%</strong></span>
-        </div>
-        <button type="button" onclick="alert('Grade computation formula:\n\n• Written Works (WW): pooled Quiz + Written Activity + Assignment scores/HPS ({{ weights.quiz_pct | int }}%)\n• Performance Tasks (PT): pooled Recitation (plus Project/Assessment) scores/HPS ({{ weights.activity_pct | int }}%)\n• Summative Tests &amp; Term Exam: ST1 30% + ST2 30% + Term Exam 40%, then weighted at {{ weights.exam_pct | int }}%\n\nThe Initial Grade is converted using the approved transmutation table. An Initial Grade from 0.00 to 4.67 is equivalent to 60.')" class="deped-help-btn" title="View Computation Info">?</button>
+        </div>{% endif %}
+        {% if weights.configured or weights.suggested_available %}<button type="button" onclick="alert('Grade computation formula:\n\n• Written Works (WW): pooled Quiz + Written Activity + Assignment scores/HPS ({{ weights.quiz_pct | int }}%)\n• Performance Tasks (PT): pooled Recitation (plus Project/Assessment) scores/HPS ({{ weights.activity_pct | int }}%)\n• Summative Tests &amp; Term Exam: ST1 30% + ST2 30% + Term Exam 40%, then weighted at {{ weights.exam_pct | int }}%\n\nThe Initial Grade is converted using the approved transmutation table. An Initial Grade from 0.00 to 4.67 is equivalent to 60.')" class="deped-help-btn" title="View Computation Info">?</button>{% endif %}
     </div>
     {% endif %}
 
@@ -1887,17 +1887,19 @@
 {% set ww_total_weight = weights.quiz_pct|float %}
 {% set pt_total_weight = weights.activity_pct|float %}
 {% set qa_total_weight = weights.exam_pct|float %}
-{% set component_locked = submission_req.status in ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted'] %}
+{% set show_weight_values = weights.configured or weights.suggested_available %}
+{% set component_locked = submission_req.status in ['pending_registrar', 'pending_academic_coordinator', 'pending_admin', 'approved_for_posting', 'posted'] %}
 <div id="componentModal" class="component-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="componentModalTitle" onclick="componentModalBackdrop(event)">
   <div class="component-modal-card"><div class="component-modal-head"><div><h3 id="componentModalTitle">{{ PERIOD_LABELS.get(period, period ~ ' Term') }} Grading Weights</h3><p>{{ context.subject_name }} &middot; {{ context.section_name }}</p></div><button type="button" class="component-modal-close" onclick="closeComponentModal()" aria-label="Close">&times;</button></div>
     <form method="post" action="{{ url_for('teacher.grading_component_distribution', section_id=section_id, subject_id=subject_id, period=period) }}" id="componentForm" class="component-modal-body" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="return_to" value="class_record">
-      <div class="component-policy">{{ 'Saved teacher configuration' if weights.configured else 'Initial default — save to configure this term' }}. Scores and HPS inside each component are pooled automatically.</div>{% if component_locked %}<div class="component-lock">This class record is locked. Close this window and use Cancel Submission or Reopen for Editing first.</div>{% endif %}
-      <fieldset {% if component_locked %}disabled{% endif %} style="border:0;padding:0;margin:0;"><section class="component-group"><div class="component-group-title"><span>Major Components</span><span class="component-total" id="overallWeightTotal">100.00%</span></div><div class="component-rows">
-        <label class="component-row"><span class="component-name">Written Works (WW)</span><span class="component-value"><input class="component-input component-weight" type="number" name="ww_pct" min="0" max="100" step=".01" value="{{ ww_total_weight|round(2) }}" required><span class="component-percent">%</span></span></label>
-        <label class="component-row"><span class="component-name">Performance Tasks (PT)</span><span class="component-value"><input class="component-input component-weight" type="number" name="pt_pct" min="0" max="100" step=".01" value="{{ pt_total_weight|round(2) }}" required><span class="component-percent">%</span></span></label>
-        <label class="component-row"><span class="component-name">Summative Tests &amp; Term Exam</span><span class="component-value"><input class="component-input component-weight" type="number" name="qa_pct" min="0" max="100" step=".01" value="{{ qa_total_weight|round(2) }}" required><span class="component-percent">%</span></span></label>
+      <div class="component-policy">{% if weights.configured %}<strong>Saved for This Term.</strong>{% elif weights.suggested_available %}<strong>Suggested Defaults — Not Yet Saved.</strong> Review and confirm these percentages before submission.{% else %}<strong>No recognized suggested distribution is available.</strong> Enter and confirm the percentages for this term.{% endif %} Scores and HPS inside each component are pooled automatically.</div>{% if component_locked %}<div class="component-lock">This class record is locked. Close this window and use Cancel Submission or Reopen for Editing first.</div>{% endif %}
+      <fieldset {% if component_locked %}disabled{% endif %} style="border:0;padding:0;margin:0;"><section class="component-group"><div class="component-group-title"><span>Major Components</span><span class="component-total" id="overallWeightTotal">{% if show_weight_values %}100.00%{% else %}0.00%{% endif %}</span></div><div class="component-rows">
+        <label class="component-row"><span class="component-name">Written Works (WW)</span><span class="component-value"><input class="component-input component-weight" type="number" name="ww_pct" min="0" max="100" step=".01" value="{{ ww_total_weight|round(2) if show_weight_values else '' }}" aria-describedby="componentValidationMessage" required><span class="component-percent">%</span></span></label>
+        <label class="component-row"><span class="component-name">Performance Tasks (PT)</span><span class="component-value"><input class="component-input component-weight" type="number" name="pt_pct" min="0" max="100" step=".01" value="{{ pt_total_weight|round(2) if show_weight_values else '' }}" aria-describedby="componentValidationMessage" required><span class="component-percent">%</span></span></label>
+        <label class="component-row"><span class="component-name">Summative Tests &amp; Term Exam</span><span class="component-value"><input class="component-input component-weight" type="number" name="qa_pct" min="0" max="100" step=".01" value="{{ qa_total_weight|round(2) if show_weight_values else '' }}" aria-describedby="componentValidationMessage" required><span class="component-percent">%</span></span></label>
       </div></section>
-      <div class="component-modal-actions"><button type="button" class="cr-btn" onclick="closeComponentModal()" style="background:#eef2f7;color:#475569;">Cancel</button><button type="submit" class="cr-btn cr-btn-solid" id="componentSaveButton" style="background:#2563eb;color:#fff;">Save Changes</button></div></fieldset>
+      <div id="componentValidationMessage" aria-live="polite" style="min-height:18px;margin-top:9px;font-size:.76rem;font-weight:700;color:#be123c;"></div>
+      <div class="component-modal-actions"><button type="button" class="cr-btn" onclick="closeComponentModal()" style="background:#eef2f7;color:#475569;">Cancel</button><button type="submit" class="cr-btn cr-btn-solid" id="componentSaveButton" style="background:#2563eb;color:#fff;">{{ 'Save Changes' if weights.configured else 'Save and Confirm Weights' }}</button></div></fieldset>
     </form></div>
 </div>
 {% endif %}
@@ -1946,8 +1948,8 @@
 
 <script>
 {% if period != 'final' %}
-const componentModal=document.getElementById('componentModal'),componentForm=document.getElementById('componentForm'),componentInputs=[...componentForm.querySelectorAll('.component-input')],componentOriginal=componentInputs.map(input=>input.value),componentSaveButton=document.getElementById('componentSaveButton');
-function updateComponentSave(){const values=componentInputs.map(input=>Number(input.value)),numbersValid=values.every(value=>Number.isFinite(value)&&value>=0&&value<=100),total=numbersValid?values.reduce((sum,value)=>sum+value,0):0,totalValid=numbersValid&&Math.abs(total-100)<=.001,totalEl=document.getElementById('overallWeightTotal'),changed=componentInputs.some((input,index)=>Number(input.value)!==Number(componentOriginal[index]));totalEl.textContent=total.toFixed(2)+'%';totalEl.classList.toggle('valid',totalValid);componentSaveButton.disabled=!(totalValid&&changed)}
+const componentModal=document.getElementById('componentModal'),componentForm=document.getElementById('componentForm'),componentInputs=[...componentForm.querySelectorAll('.component-input')],componentOriginal=componentInputs.map(input=>input.value),componentSaveButton=document.getElementById('componentSaveButton'),componentConfigured={{ weights.configured|tojson }};
+function updateComponentSave(){const populated=componentInputs.every(input=>input.value.trim()!==''),values=componentInputs.map(input=>Number(input.value)),numbersValid=populated&&values.every(value=>Number.isFinite(value)&&value>=0&&value<=100),total=numbersValid?values.reduce((sum,value)=>sum+value,0):0,totalValid=numbersValid&&Math.abs(total-100)<=.001,totalEl=document.getElementById('overallWeightTotal'),messageEl=document.getElementById('componentValidationMessage'),changed=componentInputs.some((input,index)=>input.value!==componentOriginal[index]);totalEl.textContent=total.toFixed(2)+'%';totalEl.classList.toggle('valid',totalValid);messageEl.style.color=totalValid?'#15803d':'#be123c';messageEl.textContent=totalValid?'Total is exactly 100%.':(!populated?'Enter a percentage for every component.':'WW, PT, and Summative Tests & Term Exam must total exactly 100%.');componentSaveButton.disabled=!(totalValid&&(!componentConfigured||changed))}
 function openComponentModal(){componentModal.classList.add('show');document.body.style.overflow='hidden';updateComponentSave();setTimeout(()=>componentInputs[0].focus(),0)}
 function closeComponentModal(){componentModal.classList.remove('show');document.body.style.overflow=''}
 function componentModalBackdrop(event){if(event.target===componentModal)closeComponentModal()}

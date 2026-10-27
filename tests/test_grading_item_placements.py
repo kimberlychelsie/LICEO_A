@@ -1,4 +1,5 @@
 import unittest
+import ast
 from pathlib import Path
 
 
@@ -53,7 +54,11 @@ class GradingItemPlacementTests(unittest.TestCase):
     def test_portal_items_require_explicit_placement(self):
         self.assertIn('name="grading_component"', CREATE_ACTIVITY)
         self.assertIn('value="ww"', CREATE_ACTIVITY)
-        self.assertNotIn('<option value="pt"', CREATE_ACTIVITY)
+        self.assertIn('<option value="pt"', CREATE_ACTIVITY)
+        self.assertIn('value="excluded"', CREATE_ACTIVITY)
+        self.assertIn('name="category"', CREATE_ACTIVITY)
+        self.assertIn('value="Presentation"', CREATE_ACTIVITY)
+        self.assertIn('value="Practical Activity"', CREATE_ACTIVITY)
         self.assertIn('name="grading_slot"', CREATE_EXAM)
         self.assertIn('value="ste_st1"', CREATE_EXAM)
         self.assertIn('value="ste_st2"', CREATE_EXAM)
@@ -89,6 +94,54 @@ class GradingItemPlacementTests(unittest.TestCase):
         self.assertIn("Cannot create an exam because", TEACHER)
         self.assertIn("Cannot create a quiz because", TEACHER)
         self.assertIn("Cannot add an activity because", TEACHER)
+
+    def test_activity_placement_validation_and_new_pt_normalization(self):
+        module = ast.parse(TEACHER)
+        helper = next(
+            node for node in module.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "_validated_activity_placement"
+        )
+        namespace = {
+            "ACTIVITY_GRADING_COMPONENTS": {"ww", "pt", "excluded"},
+            "ACTIVITY_GRADING_SUBTYPES": {
+                "activity", "assignment", "participation", "recitation",
+                "project", "assessment", "other",
+            },
+        }
+        exec(compile(ast.Module(body=[helper], type_ignores=[]), "teacher.py", "exec"), namespace)
+        validate = namespace["_validated_activity_placement"]
+
+        self.assertEqual(validate("ww", "Activity"), ("ww", "activity"))
+        self.assertEqual(
+            validate("pt", "Activity", normalize_new_pt=True),
+            ("pt", "assessment"),
+        )
+        self.assertEqual(
+            validate("pt", "Presentation", normalize_new_pt=True),
+            ("pt", "assessment"),
+        )
+        self.assertEqual(validate("excluded", "Activity"), ("excluded", "activity"))
+        self.assertEqual(validate("ww", "Project"), ("pt", "project"))
+        # Historical PT/activity rows remain unchanged unless a teacher
+        # explicitly changes their placement or item type.
+        self.assertEqual(validate("pt", "Activity"), ("pt", "activity"))
+        with self.assertRaises(ValueError):
+            validate("made-up", "Activity", normalize_new_pt=True)
+
+    def test_new_pt_items_use_existing_pipeline_and_practice_is_excluded(self):
+        self.assertIn("normalize_new_pt=True", TEACHER)
+        self.assertIn("subtype = \"assessment\"", TEACHER)
+        compute = TEACHER[TEACHER.index("def _compute_period_grades"):TEACHER.index("def class_record")]
+        self.assertIn("IN ('recitation', 'assessment')", compute)
+        self.assertNotIn("grading_component = 'excluded'", compute)
+
+    def test_individual_activity_score_updates_honor_scope_and_lock(self):
+        grading = TEACHER[TEACHER.index("def grade_submission"):TEACHER.index("def allow_resubmission")]
+        self.assertIn("a.branch_id, a.section_id, a.subject_id, a.grading_period, a.year_id", grading)
+        self.assertIn("sub['branch_id'] != session.get(\"branch_id\")", grading)
+        self.assertIn("_is_class_record_locked(", grading)
+        self.assertIn("class record is locked or posted", grading)
 
 
 if __name__ == "__main__":

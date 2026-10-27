@@ -2014,6 +2014,7 @@ def create_activity():
             grading_component, grading_subtype = _validated_activity_placement(
                 request.form.get("grading_component"),
                 request.form.get("grading_subtype") or category,
+                normalize_new_pt=True,
             )
             instructions = request.form.get("instructions", "").strip()
             max_score = int(request.form.get("max_score", 100))
@@ -2185,9 +2186,20 @@ def edit_activity(activity_id):
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             category = request.form.get("category", "")
+            requested_component = (
+                request.form.get("grading_component")
+                or activity.get("grading_component")
+                or "pt"
+            )
+            placement_changed = (
+                requested_component.strip().lower()
+                != (activity.get("grading_component") or "pt").strip().lower()
+                or category != (activity.get("category") or "")
+            )
             grading_component, grading_subtype = _validated_activity_placement(
-                request.form.get("grading_component") or activity.get("grading_component") or "pt",
+                requested_component,
                 request.form.get("grading_subtype") or category or activity.get("grading_subtype"),
+                normalize_new_pt=placement_changed,
             )
             instructions = request.form.get("instructions", "").strip()
             max_score = int(request.form.get("max_score", 100))
@@ -2489,6 +2501,7 @@ def grade_submission(submission_id):
         # Check permissions and get context
         cur.execute('''
             SELECT sub.activity_id, sub.enrollment_id, sub.student_id, a.max_score, a.teacher_id,
+                   a.branch_id, a.section_id, a.subject_id, a.grading_period, a.year_id,
                    COALESCE(u_direct.user_id, u_account.user_id, sub.student_id) AS notification_student_id
             FROM activity_submissions sub
             JOIN activities a ON sub.activity_id = a.activity_id
@@ -2500,8 +2513,23 @@ def grade_submission(submission_id):
         ''', (submission_id,))
         sub = cur.fetchone()
         
-        if not sub or sub['teacher_id'] != user_id:
+        if (
+            not sub
+            or sub['teacher_id'] != user_id
+            or sub['branch_id'] != session.get("branch_id")
+        ):
             flash("Unauthorized or submission not found.", "error")
+            return redirect(request.referrer)
+
+        active_year_id = _get_active_school_year(cur, sub['branch_id'])
+        if sub['year_id'] != active_year_id:
+            flash("This activity does not belong to the active school year.", "error")
+            return redirect(request.referrer)
+        if _is_class_record_locked(
+            cur, sub['section_id'], sub['subject_id'],
+            sub['grading_period'], sub['year_id']
+        ):
+            flash("Cannot update this score because the class record is locked or posted.", "error")
             return redirect(request.referrer)
             
         if raw_score > sub['max_score']:
@@ -4484,12 +4512,14 @@ def _validated_exam_grading_slot(value, *, default="excluded"):
     return slot
 
 
-def _validated_activity_placement(component, subtype):
+def _validated_activity_placement(component, subtype, *, normalize_new_pt=False):
     component = (component or "pt").strip().lower()
     subtype = (subtype or "activity").strip().lower()
     subtype = {
         "performance task": "activity",
         "written activity": "activity",
+        "presentation": "assessment",
+        "practical activity": "assessment",
     }.get(subtype, subtype)
     if component not in ACTIVITY_GRADING_COMPONENTS:
         raise ValueError("Invalid activity grading component selected.")
@@ -4498,6 +4528,14 @@ def _validated_activity_placement(component, subtype):
     # Projects are always Performance Tasks (unless explicitly excluded).
     if subtype == "project" and component != "excluded":
         component = "pt"
+    # Newly created or explicitly reclassified PT portal items use the existing
+    # PT assessment pipeline.  Do not globally include legacy pt/activity rows:
+    # some of those rows predate explicit placement and are intentionally kept
+    # out of calculations for historical compatibility.
+    if normalize_new_pt and component == "pt" and subtype not in {
+        "project", "recitation", "assessment"
+    }:
+        subtype = "assessment"
     return component, subtype
 
 TRANSMUTATION_RANGES = [
@@ -4633,6 +4671,7 @@ def grading_weights():
                 'pt_pct':  int(round(w['pt'] * 100)),
                 'qa_pct':  int(round(w['qa'] * 100)),
                 'grading_category_name': w['name'],
+                'configured': w['configured'],
             })
 
     finally:
@@ -4711,17 +4750,28 @@ def grading_component_distribution(section_id, subject_id, period):
                 flash("This class record is locked; its grading weights cannot be changed.", "error")
                 return redirect(record_url if return_to_record else request.url)
             fields = ("ww_pct", "pt_pct", "qa_pct")
+            raw_values = {field: request.form.get(field) for field in fields}
             try:
-                values = {field: float(request.form.get(field) or 0) for field in fields}
-            except ValueError:
+                values = {
+                    field: float(raw_values[field].strip())
+                    for field in fields
+                    if raw_values[field] is not None and raw_values[field].strip()
+                }
+            except (TypeError, ValueError):
                 values = {}
-            if not values or any(
+            if len(values) != len(fields) or any(
                 not math.isfinite(value) or value < 0 or value > 100
                 for value in values.values()
             ):
-                flash("Every percentage must be between 0 and 100.", "error")
+                flash("Enter a valid percentage from 0 to 100 for every component.", "error")
             elif abs(sum(values.values()) - 100) > 0.001:
                 flash("WW, PT, and QA must total exactly 100%.", "error")
+            elif weights.get("configured") and all(
+                abs(values[field] - float(weights[key]) * 100) <= 0.001
+                for field, key in (("ww_pct", "ww"), ("pt_pct", "pt"), ("qa_pct", "qa"))
+            ):
+                flash(f"{period} Term grading weights are already saved with these values.", "info")
+                return redirect(record_url if return_to_record else request.url)
             else:
                 cur.execute("""
                     INSERT INTO teacher_grading_weights (
@@ -8786,45 +8836,76 @@ def academic_coordinator_grade_review():
         except GradingPolicyError as exc:
             flash(f"Grading policy configuration error: {exc}", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
+        # Filters describe the active branch/year, even when there are no
+        # submissions currently waiting at the coordinator step.
         cur.execute("""
             SELECT MIN(g.id) AS id, MIN(g.name) AS name
-            FROM grade_submission_requests r
-            JOIN sections s ON s.section_id = r.section_id
+            FROM sections s
             JOIN grade_levels g ON g.id = s.grade_level_id
-            WHERE r.branch_id = %s AND r.year_id = %s
-              AND r.status = 'pending_academic_coordinator'
+            WHERE s.branch_id = %s AND s.year_id = %s
             GROUP BY LOWER(TRIM(g.name))
-            ORDER BY MIN(g.display_order), MIN(g.name)
+            ORDER BY MIN(CASE LOWER(TRIM(g.name))
+                WHEN 'nursery' THEN 0
+                WHEN 'kinder' THEN 1
+                WHEN 'grade 1' THEN 2
+                WHEN 'grade 2' THEN 3
+                WHEN 'grade 3' THEN 4
+                WHEN 'grade 4' THEN 5
+                WHEN 'grade 5' THEN 6
+                WHEN 'grade 6' THEN 7
+                WHEN 'grade 7' THEN 8
+                WHEN 'grade 8' THEN 9
+                WHEN 'grade 9' THEN 10
+                WHEN 'grade 10' THEN 11
+                WHEN 'grade 11' THEN 12
+                WHEN 'grade 12' THEN 13
+                ELSE 99
+            END), MIN(g.name), MIN(g.id)
         """, (branch_id, year_id))
         grade_levels = cur.fetchall() or []
         selected_grade_id = request.args.get("grade_level_id", type=int)
         selected_section_id = request.args.get("section_id", type=int)
         requested_period = request.args.get("period")
+        invalid_period = False
         selected_period = None
         if requested_period:
             try:
                 selected_period = validate_required_period(requested_period, grading_periods)
             except GradingPolicyError:
+                invalid_period = True
                 flash("The selected grading period is not part of the active policy.", "error")
-        else:
+
+        if not invalid_period and (not selected_grade_id or not selected_period):
             cur.execute("""
-                SELECT grading_period
-                FROM grade_submission_requests
-                WHERE branch_id=%s AND year_id=%s
-                  AND status='pending_academic_coordinator'
-                ORDER BY registrar_approved_at DESC NULLS LAST, id DESC
+                SELECT LOWER(TRIM(g.name)) AS grade_key, r.grading_period
+                FROM grade_submission_requests r
+                JOIN sections s ON s.section_id = r.section_id
+                JOIN grade_levels g ON g.id = s.grade_level_id
+                WHERE r.branch_id=%s AND r.year_id=%s
+                  AND r.status='pending_academic_coordinator'
+                ORDER BY r.registrar_approved_at DESC NULLS LAST, r.id DESC
                 LIMIT 1
             """, (branch_id, year_id))
-            pending_period = cur.fetchone()
-            if pending_period:
+            pending_request = cur.fetchone()
+            if pending_request:
+                if not selected_grade_id:
+                    matching_grade = next(
+                        (
+                            grade for grade in grade_levels
+                            if (grade["name"] or "").strip().lower()
+                            == pending_request["grade_key"]
+                        ),
+                        None,
+                    )
+                    selected_grade_id = matching_grade["id"] if matching_grade else None
                 try:
-                    selected_period = validate_required_period(
-                        pending_period["grading_period"], grading_periods
+                    selected_period = selected_period or validate_required_period(
+                        pending_request["grading_period"], grading_periods
                     )
                 except GradingPolicyError:
                     selected_period = None
-            if not selected_period and grading_periods:
-                selected_period = grading_periods[0]
+        if not selected_period and not invalid_period and grading_periods:
+            selected_period = grading_periods[0]
         selected_teacher_id = request.args.get("teacher_id", type=int)
         if selected_grade_id not in {grade["id"] for grade in grade_levels}:
             selected_grade_id = grade_levels[0]["id"] if grade_levels else None

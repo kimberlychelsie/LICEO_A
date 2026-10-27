@@ -38,23 +38,30 @@ def get_assignment_grading_weights(
             return {
                 "weight_id": row["weight_id"],
                 "code": "teacher_configured",
-                "name": "Teacher configured",
+                "name": "Saved weights",
                 "ww": float(row["ww_pct"]) / 100,
                 "pt": float(row["pt_pct"]) / 100,
                 "qa": float(row["qa_pct"]) / 100,
                 "configured": True,
                 "dynamic": True,
+                "suggested_available": False,
             }
 
     cursor.execute("SELECT deped_category FROM subjects WHERE subject_id=%s", (subject_id,))
     row = cursor.fetchone()
-    code = (row.get("deped_category") if row else None) or "language"
+    source_code = row.get("deped_category") if row else None
+    suggested_available = source_code in LEGACY_WEIGHTS
+    code = source_code or "language"
     legacy = LEGACY_WEIGHTS.get(code, LEGACY_WEIGHTS["language"])
     return {
+        **legacy,
         "weight_id": None,
         "code": code,
-        "name": f"Default - {legacy['name']}",
+        "name": (
+            f"Suggested - {legacy['name']}"
+            if suggested_available else "No recognized suggested distribution"
+        ),
         "configured": False,
         "dynamic": False,
-        **legacy,
+        "suggested_available": suggested_available,
     }

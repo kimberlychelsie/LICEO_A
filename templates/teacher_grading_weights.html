@@ -96,6 +96,50 @@
         box-shadow: 0 6px 20px rgba(26, 58, 143, 0.1);
     }
 
+    .gw-toolbar {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) auto;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .gw-filter-control {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 10px;
+        background: #fff;
+        color: #0f172a;
+        font-size: .84rem;
+        font-weight: 650;
+        outline: none;
+    }
+
+    .gw-filter-control:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+    }
+
+    .gw-result-count {
+        color: #64748b;
+        font-size: .8rem;
+        font-weight: 750;
+        white-space: nowrap;
+    }
+
+    .gw-filter-empty {
+        display: none;
+        text-align: center;
+        padding: 30px 16px;
+        margin-bottom: 18px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 14px;
+        color: #64748b;
+        background: #f8fafc;
+    }
+
     .gw-card-header {
         display: flex;
         align-items: center;
@@ -437,6 +481,10 @@
             padding: 14px 16px;
             border-radius: 14px;
         }
+
+        .gw-toolbar {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
@@ -463,7 +511,7 @@
             </div>
             <p class="gw-hero-sub"
                 style="margin: 0; font-size: 0.85rem; font-weight: 600; color: rgba(255, 255, 255, 0.9); line-height: 1.5;">
-                Configure WW, PT, and QA independently for each class-record term.
+                Set WW, PT, and QA independently for each class-record term.
             </p>
         </div>
     </div>
@@ -481,7 +529,7 @@
         </div>
         <div class="gw-info-text">
             <strong>How grade computation works:</strong><br>
-            Configure WW/PT/QA separately inside each term's class record.
+            Set WW/PT/QA separately inside each term's class record.
             Scores from <strong>Quiz + Monthly Exam</strong> go to Written Works (WW),
             <strong>Recitation (plus Project/Assessment)</strong> go to Performance Tasks (PT),
             and <strong>Periodical Exam</strong> scores go to Quarterly Assessment (QA).
@@ -490,8 +538,20 @@
 
     <!-- ── Subject Assignments ── -->
     {% if assignments %}
+    <div class="gw-toolbar" aria-label="Filter grading-weight assignments">
+        <input type="search" id="gwSearch" class="gw-filter-control"
+            placeholder="Search subject, grade level, or section…" aria-label="Search assignments">
+        <select id="gwStatusFilter" class="gw-filter-control" aria-label="Filter saved weights">
+            <option value="all">All Subjects</option>
+            <option value="saved">Saved Weights</option>
+            <option value="unsaved">Not Yet Saved</option>
+        </select>
+        <span class="gw-result-count" id="gwResultCount">{{ assignments|length }} assignment{{ '' if assignments|length == 1 else 's' }}</span>
+    </div>
     {% for a in assignments %}
-    <div class="gw-card">
+    <div class="gw-card gw-assignment-card"
+        data-search="{{ (a.subject_name ~ ' ' ~ a.grade_level_name ~ ' ' ~ a.section_name)|lower|e }}"
+        data-status="{{ 'saved' if a.configured else 'unsaved' }}">
         <div class="gw-card-header">
             <div class="gw-subject-info">
                 <span class="gw-subject-name" style="display: flex; align-items: center; gap: 8px;">
@@ -579,6 +639,7 @@
         </div>
     </div>
     {% endfor %}
+    <div class="gw-filter-empty" id="gwFilterEmpty">No assignments match the selected filters.</div>
     {% else %}
     <div class="gw-empty">
         <div class="big-icon">
@@ -593,7 +654,7 @@
     </div>
     {% endif %}
 
-    <!-- ── DepEd Category Legend ── -->
+    <!-- ── Compact guide; assignment details are intentionally not duplicated. ── -->
     <div class="gw-legend">
         <div class="gw-legend-title" style="display: flex; align-items: center; gap: 8px;">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -604,17 +665,50 @@
             {{ preview_period }} Term Weight Preview
         </div>
         <div class="gw-legend-grid">
-            {% for a in assignments %}
             <div class="gw-legend-item">
                 <div class="gw-legend-dot dot-lang"></div>
                 <div class="gw-legend-item-text">
-                    <strong>{{ a.grading_category_name }} — WW {{ a.ww_pct }}% · PT {{ a.pt_pct }}% · QA {{ a.qa_pct }}%</strong>
-                    <span>{{ a.subject_name }} — {{ a.grade_level_name }} / {{ a.section_name }}</span>
+                    <strong>Why only one term is previewed</strong>
+                    <span>This overview shows {{ preview_period }} Term. Open a term button on the subject card to view or confirm that term's own weights.</span>
                 </div>
             </div>
-            {% endfor %}
+            <div class="gw-legend-item">
+                <div class="gw-legend-dot dot-sci"></div>
+                <div class="gw-legend-item-text">
+                    <strong>Saved vs. suggested</strong>
+                    <span>Saved Weights are ready to use. Suggested percentages must still be confirmed inside the applicable class record.</span>
+                </div>
+            </div>
         </div>
     </div>
 
 </div>
+
+{% if assignments %}
+<script>
+(() => {
+    const search = document.getElementById('gwSearch');
+    const status = document.getElementById('gwStatusFilter');
+    const cards = [...document.querySelectorAll('.gw-assignment-card')];
+    const count = document.getElementById('gwResultCount');
+    const empty = document.getElementById('gwFilterEmpty');
+    const applyFilters = () => {
+        const query = search.value.trim().toLowerCase();
+        const wantedStatus = status.value;
+        let visible = 0;
+        cards.forEach(card => {
+            const matchesSearch = !query || card.dataset.search.includes(query);
+            const matchesStatus = wantedStatus === 'all' || card.dataset.status === wantedStatus;
+            const show = matchesSearch && matchesStatus;
+            card.hidden = !show;
+            if (show) visible += 1;
+        });
+        count.textContent = `${visible} assignment${visible === 1 ? '' : 's'}`;
+        empty.style.display = visible ? 'none' : 'block';
+    };
+    search.addEventListener('input', applyFilters);
+    status.addEventListener('change', applyFilters);
+})();
+</script>
+{% endif %}
 {% endblock %}
