@@ -837,7 +837,7 @@
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <input type="text" id="newSearch" placeholder="Search name or ID..." value="{{ q_new }}"
+                    <input type="text" id="newSearch" placeholder="Search name, ID, or LRN..." value="{{ q_new }}"
                         onkeydown="if(event.key==='Enter') doSearch('new')"
                         style="padding: 6px 14px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 0.85rem; width: 200px; color: #1e293b;">
                     <button type="button" onclick="doSearch('new')" class="btn-registrar"
@@ -861,10 +861,10 @@
                     {% set display_id = branch_code ~ '_' ~ ("%04d"|format(enrollment.display_no|default(0)|int) if
                     enrollment.display_no|int else enrollment.enrollment_id) %}
                     <tr class="new-enroll-row" data-grade="{{ enrollment.grade_level | lower }}"
-                        data-name="{{ enrollment.student_name | lower }}" data-id="{{ display_id | lower }}">
+                        data-name="{{ enrollment.student_name | lower }}" data-id="{{ display_id | lower }} {{ enrollment.lrn | default('', true) | lower }}">
                         <td>
                             <span style="font-weight:800;">{{ display_id }}</span>
-                            <div class="muted-note">ID: {{ display_id }}</div>
+                            <div class="muted-note">LRN: {{ enrollment.lrn or 'Not provided' }}</div>
                         </td>
                         <td>
                             <strong>{{ enrollment.student_name }}</strong>

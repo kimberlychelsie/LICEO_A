@@ -901,9 +901,10 @@ def registrar_enrollments():
                     e.student_last_name
                 ) ILIKE %s
                 OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s
+                OR COALESCE(e.lrn, '') ILIKE %s
             )
             """
-            new_params.extend([f"%{q_new}%", f"%{q_new}%"])
+            new_params.extend([f"%{q_new}%", f"%{q_new}%", f"%{q_new}%"])
 
         if g_new:
             new_where += " AND LOWER(e.grade_level) = LOWER(%s)"
