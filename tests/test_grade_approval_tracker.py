@@ -72,6 +72,13 @@ class GradeApprovalHistoryTests(unittest.TestCase):
         ):
             self.assertIn(status, source)
 
+    def test_progress_segments_reach_each_workflow_node(self):
+        css = Path("static/css/grade_approval_tracker.css").read_text(encoding="utf-8")
+        self.assertIn("status-pending_registrar:before{background:linear-gradient(to right,#2563eb 0 33.33%", css)
+        self.assertIn("#16a34a 0 33.33%,#2563eb 33.33% 66.67%", css)
+        self.assertIn("#16a34a 0 66.67%,#2563eb 66.67% 100%", css)
+        self.assertNotIn("#2563eb 0 16.67%", css)
+
 
 if __name__ == "__main__":
     unittest.main()

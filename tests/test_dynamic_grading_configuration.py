@@ -106,6 +106,8 @@ class DynamicGradingConfigurationTests(unittest.TestCase):
         self.assertIn("s.branch_id=%s", submission)
 
     def test_class_record_modal_edits_only_major_weights(self):
+        self.assertIn("url_for('teacher.grading_weights')", CLASS_RECORD)
+        self.assertIn("Back to Teacher Grading Weights", CLASS_RECORD)
         self.assertIn('name="ww_pct"', CLASS_RECORD)
         self.assertIn('name="pt_pct"', CLASS_RECORD)
         self.assertIn('name="qa_pct"', CLASS_RECORD)
