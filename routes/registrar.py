@@ -10,6 +10,12 @@ import json
 from utils.send_email import send_email
 from utils.parent_sync import sync_user_parent_links, sync_all_users_for_enrollment_guardian_email
 from utils.grade_approval_history import record_grade_history
+from services.final_grades import (
+    GradingPolicyError,
+    required_grading_periods,
+    validate_academic_term_name,
+    validate_required_period,
+)
 from flask import abort
 import re
 from datetime import datetime
@@ -2160,9 +2166,14 @@ def registrar_student_transfers():
             ORDER BY g.display_order, s.section_name
         """, (branch_id, active_year["year_id"]))
         sections = cursor.fetchall() or []
+        transfer_terms = list(required_grading_periods(
+            cursor, branch_id=branch_id, year_id=active_year["year_id"],
+            legacy_periods=("1st", "2nd", "3rd"),
+        ))
         return render_template("registrar_student_transfers.html", active_year=active_year,
             eligible_students=eligible_students, destinations=destinations,
-            incoming=incoming, outgoing=outgoing, sections=sections)
+            incoming=incoming, outgoing=outgoing, sections=sections,
+            transfer_terms=transfer_terms)
     except Exception as exc:
         db.rollback()
         if _student_transfers_table_missing(exc):
@@ -2186,7 +2197,7 @@ def registrar_request_student_transfer():
     effective_term = (request.form.get("effective_term") or "").strip()
     reason = (request.form.get("reason") or "").strip()
     back = url_for("registrar.registrar_student_transfers")
-    if not enrollment_id or not destination_branch_id or not grade_level or effective_term not in ("1st", "2nd", "3rd") or not reason:
+    if not enrollment_id or not destination_branch_id or not grade_level or not effective_term or not reason:
         flash("Complete all required transfer details.", "error")
         return redirect(back)
     db = get_db_connection()
@@ -2202,7 +2213,13 @@ def registrar_request_student_transfer():
         student = cursor.fetchone()
         if not student:
             raise ValueError("Student is not eligible for transfer from this branch.")
-        required_terms = {"1st": (), "2nd": ("1st",), "3rd": ("1st", "2nd")}[effective_term]
+        configured_terms = list(required_grading_periods(
+            cursor, branch_id=branch_id, year_id=student["source_year_id"],
+            legacy_periods=("1st", "2nd", "3rd"),
+        ))
+        if effective_term not in configured_terms:
+            raise ValueError("The effective term is not part of the active grading policy.")
+        required_terms = configured_terms[:configured_terms.index(effective_term)]
         for required_term in required_terms:
             cursor.execute("""
                 SELECT COUNT(DISTINCT st.subject_id) AS assigned_subjects,
@@ -3931,7 +3948,8 @@ def list_and_add_schedules():
     # Only show combos for SECTIONS in ACTIVE years for THIS branch:
     cursor.execute("""
         SELECT st.section_id, sec.section_name, st.subject_id, subj.name AS subject_name,
-               st.teacher_id, u.full_name AS teacher_name, sec.year_id, g.name AS grade_name
+               st.teacher_id, u.full_name AS teacher_name, sec.year_id, g.name AS grade_name,
+               st.term_name
         FROM section_teachers st
         JOIN sections sec ON st.section_id = sec.section_id
         JOIN grade_levels g ON sec.grade_level_id = g.id
@@ -3952,6 +3970,15 @@ def list_and_add_schedules():
     """, (branch_id,))
     school_years = cursor.fetchall()
     active_year = school_years[0] if school_years else None
+    try:
+        grading_periods = list(required_grading_periods(
+            cursor, branch_id=branch_id, year_id=active_year["year_id"],
+            legacy_periods=("1st", "2nd", "3rd"),
+        )) if active_year else []
+    except GradingPolicyError as exc:
+        flash(f"Grading policy configuration error: {exc}", "error")
+        cursor.close(); db.close()
+        return redirect(url_for("registrar.registrar_dashboard"))
 
     # Fetch unique Grades and Sections for filtering
     cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
@@ -3984,6 +4011,12 @@ def list_and_add_schedules():
             st_row = cursor.fetchone()
             if st_row and st_row["term_name"]:
                 term_name = st_row["term_name"]
+        try:
+            term_name = validate_academic_term_name(term_name, grading_periods)
+        except GradingPolicyError:
+            flash("The selected schedule term is not part of the active policy.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
         day_of_week = request.form["day_of_week"]
         start_time = request.form["start_time"]
         end_time = request.form["end_time"]
@@ -4135,7 +4168,8 @@ def list_and_add_schedules():
         active_year=active_year,
         show_archived=show_archived,
         all_grades=all_grades_list,
-        all_sections=all_sections_list
+        all_sections=all_sections_list,
+        grading_periods=grading_periods,
     )
 
 
@@ -4169,7 +4203,7 @@ def edit_schedule(schedule_id):
     # Repopulate combinations as in add view
     cursor.execute("""
         SELECT st.section_id, sec.section_name, st.subject_id, subj.name AS subject_name,
-               st.teacher_id, u.full_name AS teacher_name, sec.year_id
+               st.teacher_id, u.full_name AS teacher_name, sec.year_id, st.term_name
         FROM section_teachers st
         JOIN sections sec ON st.section_id = sec.section_id
         JOIN school_years y ON sec.year_id = y.year_id
@@ -4189,15 +4223,39 @@ def edit_schedule(schedule_id):
     """, (branch_id,))
     school_years = cursor.fetchall()
     active_year = school_years[0] if school_years else None
+    try:
+        grading_periods = list(required_grading_periods(
+            cursor, branch_id=branch_id, year_id=active_year["year_id"],
+            legacy_periods=("1st", "2nd", "3rd"),
+        )) if active_year else []
+    except GradingPolicyError as exc:
+        flash(f"Grading policy configuration error: {exc}", "error")
+        cursor.close(); db.close()
+        return redirect(url_for("registrar.registrar_dashboard"))
 
     if request.method == "POST":
         combo = request.form["combo"]
-        section_id, subject_id, teacher_id = combo.split('|')
+        combo_parts = combo.split('|')
+        if len(combo_parts) < 3:
+            flash("Invalid class details selected.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+        section_id, subject_id, teacher_id = combo_parts[:3]
+        raw_t = combo_parts[3] if len(combo_parts) > 3 else None
+        term_name = request.form.get("term_name") or (
+            raw_t if raw_t and raw_t != 'None' else schedule.get("term_name")
+        )
+        try:
+            term_name = validate_academic_term_name(term_name, grading_periods)
+        except GradingPolicyError:
+            flash("The selected schedule term is not part of the active policy.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
         day_of_week = request.form["day_of_week"]
         start_time = request.form["start_time"]
         end_time = request.form["end_time"]
         room = request.form["room"]
-        year_id = request.form["year_id"]
+        year_id = active_year["year_id"] if active_year else None
 
         # --- TIME VALIDATION: must be within 07:00 and 17:00, and start < end ---
         start_t = datetime.strptime(start_time, "%H:%M").time()
@@ -4268,9 +4326,11 @@ def edit_schedule(schedule_id):
         cursor.execute("""
             UPDATE schedules
             SET subject_id=%s, section_id=%s, teacher_id=%s, day_of_week=%s,
-                start_time=%s, end_time=%s, room=%s, year_id=%s
+                start_time=%s, end_time=%s, room=%s, year_id=%s, term_name=%s
             WHERE schedule_id=%s AND branch_id=%s
-        """, (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, active_year["year_id"] if active_year else year_id, schedule_id, branch_id))
+        """, (subject_id, section_id, teacher_id, day_of_week, start_time, end_time,
+              room, active_year["year_id"] if active_year else year_id, term_name,
+              schedule_id, branch_id))
         db.commit()
         cursor.close(); db.close()
         flash("Schedule updated!", "success")
@@ -4750,6 +4810,21 @@ def registrar_subjects():
         ORDER BY g.display_order, s.section_name
     """, (branch_id,))
     section_options = cursor.fetchall() or []
+    cursor.execute(
+        "SELECT year_id FROM school_years WHERE branch_id=%s AND is_active=TRUE LIMIT 1",
+        (branch_id,),
+    )
+    active_year_row = cursor.fetchone()
+    active_year_id = active_year_row["year_id"] if active_year_row else None
+    try:
+        configured_periods = list(required_grading_periods(
+            cursor, branch_id=branch_id, year_id=active_year_id,
+            legacy_periods=("1st", "2nd", "3rd"),
+        )) if active_year_id else []
+    except GradingPolicyError as exc:
+        flash(f"Grading policy configuration error: {exc}", "error")
+        cursor.close(); db.close()
+        return redirect(url_for("registrar.registrar_dashboard"))
 
     if request.method == "POST":
         names = request.form.getlist("names")
@@ -4770,6 +4845,7 @@ def registrar_subjects():
                 subject_type = subject_types[i].upper() if i < len(subject_types) else "CORE"
                 track = tracks[i].strip() if i < len(tracks) and subject_type == "ELECTIVE" else None
                 term_name = terms[i].strip() if i < len(terms) and terms[i].strip() else None
+                term_name = validate_academic_term_name(term_name, configured_periods)
 
                 cursor.execute("""
                     INSERT INTO subjects (name, deped_category, subject_type, track)
@@ -4830,14 +4906,17 @@ def registrar_subjects():
     today = datetime.now().date()
     cursor.execute("""
         SELECT period_name FROM grading_period_ranges
-        WHERE branch_id = %s AND year_id = (SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1)
-          AND period_name IN ('1st', '2nd', '3rd')
+        WHERE branch_id = %s AND year_id = %s
+          AND period_name = ANY(%s)
           AND start_date <= %s AND end_date >= %s
         ORDER BY start_date LIMIT 1
-    """, (branch_id, branch_id, today, today))
+    """, (branch_id, active_year_id, configured_periods, today, today))
     active_period_row = cursor.fetchone()
-    active_period_name = active_period_row["period_name"] if active_period_row else "1st"
-    active_term_label = f"{active_period_name} Term" if active_period_name in ["1st", "2nd", "3rd"] else "1st Term"
+    active_period_name = (
+        active_period_row["period_name"] if active_period_row
+        else (configured_periods[0] if configured_periods else None)
+    )
+    active_term_label = f"{active_period_name} Term" if active_period_name else ""
 
     cursor.close(); db.close()
 
@@ -4846,7 +4925,8 @@ def registrar_subjects():
         assignments=assignments,
         section_options=section_options,
         selected_section_id=section_id_filter,
-        active_term_label=active_term_label
+        active_term_label=active_term_label,
+        grading_periods=configured_periods,
     )
 
 @registrar_bp.route("/registrar/subjects/<int:subject_id>/<int:section_id>/toggle-archive", methods=["POST"])
@@ -4968,10 +5048,16 @@ def registrar_subject_edit(subject_id):
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (target_section_id, branch_id))
-        if not cursor.fetchone():
+        cursor.execute("SELECT year_id FROM sections WHERE section_id=%s AND branch_id=%s", (target_section_id, branch_id))
+        target_section = cursor.fetchone()
+        if not target_section:
             flash("Invalid section.", "error")
             return redirect(url_for("registrar.registrar_subjects"))
+        configured_periods = required_grading_periods(
+            cursor, branch_id=branch_id, year_id=target_section["year_id"],
+            legacy_periods=("1st", "2nd", "3rd"),
+        )
+        term_name = validate_academic_term_name(term_name, configured_periods)
 
         cursor.execute("SELECT subject_id FROM subjects WHERE LOWER(name) = LOWER(%s) LIMIT 1", (new_name,))
         existing = cursor.fetchone()
@@ -6355,6 +6441,14 @@ def registrar_grade_review():
         cur.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
         year_row = cur.fetchone()
         year_id = year_row["year_id"] if year_row else 0
+        try:
+            grading_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=("1st", "2nd", "3rd"),
+            ))
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
+            return redirect(url_for("registrar.registrar_dashboard"))
 
         # Restrict choices to this branch/year and collapse legacy duplicate names.
         cur.execute("""
@@ -6385,10 +6479,18 @@ def registrar_grade_review():
 
         selected_grade_id = request.args.get("grade_level_id", type=int)
         selected_section_id = request.args.get("section_id", type=int)
-        selected_period = request.args.get("period")
+        requested_period = request.args.get("period")
+        invalid_period = False
+        selected_period = None
+        if requested_period:
+            try:
+                selected_period = validate_required_period(requested_period, grading_periods)
+            except GradingPolicyError:
+                invalid_period = True
+                flash("The selected grading period is not part of the active policy.", "error")
         selected_teacher_id = request.args.get("teacher_id", type=int)
 
-        if not selected_grade_id or not selected_period:
+        if not invalid_period and (not selected_grade_id or not selected_period):
             cur.execute("""
                 SELECT s.grade_level_id, r.grading_period
                 FROM grade_submission_requests r
@@ -6424,8 +6526,8 @@ def registrar_grade_review():
             canonical_grade = next((g for g in grade_levels if g["name"].strip().lower() == selected_grade_name.strip().lower()), None)
             if canonical_grade:
                 selected_grade_id = canonical_grade["id"]
-        if not selected_period:
-            selected_period = "1st"
+        if not selected_period and not invalid_period and grading_periods:
+            selected_period = grading_periods[0]
 
         cur.execute("""
             SELECT s.section_id, s.section_name
@@ -6484,6 +6586,7 @@ def registrar_grade_review():
             submissions=submissions, selected_grade_id=selected_grade_id,
             selected_section_id=selected_section_id, selected_period=selected_period,
             selected_teacher_id=selected_teacher_id,
+            grading_periods=grading_periods,
         )
     finally:
         cur.close()
@@ -6687,7 +6790,7 @@ def shs_selection_period():
                 FROM grading_period_ranges r
                 LEFT JOIN shs_selection_periods sp
                     ON r.period_name = sp.term_name AND sp.branch_id = %s AND sp.year_id = %s
-                WHERE r.branch_id = %s AND r.year_id = %s
+                WHERE r.branch_id = %s AND r.year_id = %s AND r.is_active = TRUE
                 ORDER BY r.period_name
             """, (branch_id, year_id, branch_id, year_id))
             

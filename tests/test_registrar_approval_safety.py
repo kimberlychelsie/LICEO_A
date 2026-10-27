@@ -3,11 +3,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REGISTRAR = (ROOT / "routes" / "registrar.py").read_text()
-STUDENT = (ROOT / "routes" / "student.py").read_text()
-DASHBOARD = (ROOT / "templates" / "registrar_dashboard.html").read_text()
-EDIT_TEMPLATE = (ROOT / "templates" / "student_enroll_edit.html").read_text()
-TRACK_TEMPLATE = (ROOT / "templates" / "track_enrollment.html").read_text()
+REGISTRAR = (ROOT / "routes" / "registrar.py").read_text(encoding="utf-8")
+STUDENT = (ROOT / "routes" / "student.py").read_text(encoding="utf-8")
+DASHBOARD = (ROOT / "templates" / "registrar_dashboard.html").read_text(encoding="utf-8")
+EDIT_TEMPLATE = (ROOT / "templates" / "student_enroll_edit.html").read_text(encoding="utf-8")
+TRACK_TEMPLATE = (ROOT / "templates" / "track_enrollment.html").read_text(encoding="utf-8")
 
 
 class RegistrarApprovalSafetyTest(unittest.TestCase):

@@ -337,6 +337,7 @@
         border-radius: 10px; padding: 8px 12px; font-weight: 700; cursor: pointer;
     }
     .delete-term-btn:hover { background: #fee2e2; }
+
 </style>
 
 <div class="ma-container">
@@ -344,8 +345,7 @@
     <div class="hero-banner">
         <div class="hero-content">
             <h1>Academic <span>Calendar & Terms</span></h1>
-            <p>Configure and manage official academic term schedules for S.Y. {{ session.get('active_sy_label',
-                '2026-2027') }}.</p>
+            <p>Configure and manage official academic term schedules for S.Y. {{ school_year_label }}.</p>
         </div>
     </div>
 
@@ -374,9 +374,8 @@
                     </span>
                     {% endif %}
                     {% if term.id %}
-                    <button type="submit" class="delete-term-btn" name="delete_term_id" value="{{ term.id }}"
-                        data-saved-term="true" formnovalidate
-                        onclick="return confirm('WARNING: Delete {{ term.period_name }} Term? This cannot be undone. Deletion will be blocked if the term is referenced by grades, submissions, schedules, or other academic records.');"
+                    <button type="button" class="delete-term-btn" data-delete-saved="true"
+                        data-term-id="{{ term.id }}"
                         aria-label="Delete {{ term.period_name }} Term">
                         <i class="fas fa-trash-alt"></i> Delete
                     </button>
@@ -428,11 +427,12 @@
                     onclick="return confirm('Are you sure you want to reset all date inputs?')">
                     <i class="fas fa-undo"></i> Reset Date Term
                 </button>
-                <button type="submit" id="save-terms-btn" name="action" value="save_ranges" class="btn-prem btn-primary-action" disabled>
+                <button type="submit" id="save-terms-btn" name="action" value="save_ranges" class="btn-prem btn-primary-action" {% if not calendar_requires_sync %}disabled{% endif %}>
                     <i class="fas fa-save"></i> Save Academic Terms
                 </button>
             </div>
         </form>
+
     </div>
 </div>
 
@@ -494,36 +494,6 @@
         });
 
         // ── Validate hidden inputs before grading form submit ───────────────────
-        document.getElementById('grading-form').addEventListener('submit', function (e) {
-            const PERIOD_LABELS = {
-                '1st': '1st Term',
-                '2nd': '2nd Term',
-                '3rd': '3rd Term'
-            };
-            const periods = ['1st', '2nd', '3rd'];
-            for (const p of periods) {
-                const start = document.getElementById(p + '_start_val').value;
-                const end = document.getElementById(p + '_end_val').value;
-                if (!start || !end) {
-                    e.preventDefault();
-                    alert('Please select both Start Date and End Date for all terms.');
-                    return;
-                }
-                const dStart = new Date(start);
-                const dEnd = new Date(end);
-
-                // Calculate minimum end date (1 month + 15 days)
-                let minEnd = new Date(dStart);
-                minEnd.setMonth(minEnd.getMonth() + 1);
-                minEnd.setDate(minEnd.getDate() + 15);
-
-                if (dEnd < minEnd) {
-                    e.preventDefault();
-                    alert('For ' + (PERIOD_LABELS ? PERIOD_LABELS[p] : p) + ': The period must be at least 1.5 months long.');
-                    return;
-                }
-            }
-        });
     });
 </script>
 <script>
@@ -557,6 +527,21 @@ document.addEventListener('DOMContentLoaded', function () {
         markChanged();
     });
     container.addEventListener('click', function (event) {
+        const savedButton = event.target.closest('[data-delete-saved]');
+        if (savedButton) {
+            const card = savedButton.closest('[data-term-card]');
+            const label = card.dataset.termName + ' Term';
+            const warning = `WARNING: Delete ${label}? This cannot be undone. Deletion will be blocked if the term is referenced by grades, submissions, schedules, or other academic records.`;
+            if (confirm(warning)) {
+                const deleteInput = document.createElement('input');
+                deleteInput.type = 'hidden';
+                deleteInput.name = 'delete_term_id';
+                deleteInput.value = savedButton.dataset.termId;
+                form.appendChild(deleteInput);
+                HTMLFormElement.prototype.submit.call(form);
+            }
+            return;
+        }
         const button = event.target.closest('[data-remove-unsaved]');
         if (!button) return;
         const card = button.closest('[data-term-card]');
@@ -568,7 +553,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     form.addEventListener('submit', function (event) {
-        if (event.submitter && event.submitter.dataset.savedTerm) return;
         const ranges = Array.from(container.querySelectorAll('[data-term-card]')).map((card) => ({
             card, label: card.dataset.termName + ' Term',
             start: card.querySelector('[name="start_date[]"]').value,

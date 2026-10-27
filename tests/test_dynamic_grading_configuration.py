@@ -17,7 +17,7 @@ class DynamicGradingConfigurationTests(unittest.TestCase):
     def test_migration_is_teacher_owned_scoped_and_validated(self):
         self.assertIn("CREATE TABLE IF NOT EXISTS public.teacher_grading_weights", MIGRATION)
         self.assertIn("ww_pct + pt_pct + qa_pct = 100", MIGRATION)
-        self.assertIn("grading_period IN ('1st', '2nd', '3rd')", MIGRATION)
+        self.assertIn("grading_period ~ '^[1-9][0-9]*(st|nd|rd|th)$'", MIGRATION)
         self.assertIn(
             "teacher_id, section_id, subject_id, grading_period, year_id",
             MIGRATION,
@@ -65,8 +65,9 @@ class DynamicGradingConfigurationTests(unittest.TestCase):
 
     def test_internal_scores_are_pooled_not_distributed(self):
         compute = TEACHER[TEACHER.index("def _compute_period_grades"):]
-        self.assertIn("pt_earned = activity_earned", compute)
-        self.assertIn("pt_score = _cap_0_100(pt_earned / pt_possible * 100", compute)
+        self.assertIn("activity_earned, activity_possible = activity_scores.get", compute)
+        self.assertIn("pt_score = act_score if has_activity else 0.0", compute)
+        self.assertIn("No Participation/Attendance", compute)
         self.assertNotIn("get_teacher_component_distribution", TEACHER)
         self.assertNotIn("teacher_component_distributions", CONFIG)
 

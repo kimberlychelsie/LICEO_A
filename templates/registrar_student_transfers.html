@@ -17,7 +17,7 @@
         <label class="tr-field">Student<select class="tr-input" name="enrollment_id" id="transferStudent" required><option value="">Select student</option>{% for s in eligible_students %}<option value="{{ s.enrollment_id }}" data-grade="{{ s.grade_level|e }}" data-name="{{ s.student_name|e }}" data-sf10="{{ 1 if s.has_sf10 else 0 }}" data-sf9="{{ 1 if s.has_sf9 else 0 }}">{{ s.student_name }} — {{ s.grade_level }}</option>{% endfor %}</select><span id="transferDocs" class="doc-state"></span></label>
         <label class="tr-field">Destination branch<select class="tr-input" name="destination_branch_id" required><option value="">Select open branch</option>{% for b in destinations %}<option value="{{ b.branch_id }}">{{ b.branch_name }} — {{ b.school_year }}</option>{% endfor %}</select></label>
         <label class="tr-field">Destination grade level<input class="tr-input" name="grade_level" id="transferGrade" maxlength="100" required></label>
-        <label class="tr-field">Effective term<select class="tr-input" name="effective_term" required><option value="1st">1st Term</option><option value="2nd">2nd Term</option><option value="3rd">3rd Term</option></select></label>
+        <label class="tr-field">Effective term<select class="tr-input" name="effective_term" required>{% for term in transfer_terms %}<option value="{{ term }}">{{ term }} Term</option>{% endfor %}</select></label>
         <label class="tr-field">Reason<textarea class="tr-input" name="reason" rows="3" maxlength="1000" required></textarea></label>
         <button class="tr-btn primary" type="submit" {% if not destinations or not eligible_students %}disabled{% endif %}>Send Transfer Request</button>
       </form>

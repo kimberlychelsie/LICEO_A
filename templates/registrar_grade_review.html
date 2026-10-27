@@ -271,9 +271,10 @@
         <div class="filter-group">
             <label class="filter-label">Grading Period</label>
             <select name="period" class="filter-select" onchange="this.form.submit()">
-                <option value="1st" {% if selected_period == '1st' %}selected{% endif %}>1st Term</option>
-                <option value="2nd" {% if selected_period == '2nd' %}selected{% endif %}>2nd Term</option>
-                <option value="3rd" {% if selected_period == '3rd' %}selected{% endif %}>3rd Term</option>
+                {% if selected_period is none %}<option value="" selected>Invalid period</option>{% endif %}
+                {% for period in grading_periods %}
+                <option value="{{ period }}" {% if selected_period == period %}selected{% endif %}>{{ period }} Term</option>
+                {% endfor %}
             </select>
         </div>
 

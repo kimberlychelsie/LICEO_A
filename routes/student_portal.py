@@ -15,6 +15,12 @@ import re
 from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, size_price_map, price_for_size
 from utils.parent_sync import sync_all_users_for_enrollment_guardian_email
 from utils.assessment_resume import find_resumable_assessment_exam_id
+from services.final_grades import (
+    GradingPolicyError,
+    PeriodGrade,
+    calculate_final_grade,
+    load_effective_grading_policy,
+)
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
@@ -3124,23 +3130,16 @@ def student_grades():
             # 2. Match by student_name
             cur.execute("""
                 SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
-                       e.year_id,
+                       e.branch_id, e.year_id,
                        s.section_name, COALESCE(sy.label, s.school_year) AS school_year, gl.name as grade_level_name
                 FROM enrollments e
                 LEFT JOIN sections s ON e.section_id = s.section_id
                 LEFT JOIN grade_levels gl ON s.grade_level_id = gl.id
-                LEFT JOIN school_years sy ON e.year_id = sy.year_id
+                LEFT JOIN school_years sy ON e.year_id = sy.year_id AND e.branch_id = sy.branch_id
                 WHERE (e.enrollment_id = %s)
                    OR (e.user_id IS NOT NULL AND e.user_id = %s)
-                   OR (
-    e.student_first_name = %s
-    AND COALESCE(e.student_middle_name,'') = COALESCE(%s,'')
-    AND e.student_last_name = %s
-)
                 ORDER BY e.created_at DESC
-            """, (curr_enr_id, anchor_enr['user_id'], anchor_enr["student_first_name"],
-    anchor_enr["student_middle_name"],
-    anchor_enr["student_last_name"],))
+            """, (curr_enr_id, anchor_enr['user_id']))
             all_enrollments = cur.fetchall() or []
             for e in all_enrollments:
                 e["student_name"] = " ".join(filter(None, [
@@ -3154,12 +3153,12 @@ def student_grades():
                 SELECT e.enrollment_id, e.student_first_name,
 e.student_middle_name,
 e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
-                       e.year_id,
+                       e.branch_id, e.year_id,
                        s.section_name, COALESCE(sy.label, s.school_year) AS school_year, gl.name as grade_level_name
                 FROM enrollments e
                 LEFT JOIN sections s ON e.section_id = s.section_id
                 LEFT JOIN grade_levels gl ON s.grade_level_id = gl.id
-                LEFT JOIN school_years sy ON e.year_id = sy.year_id
+                LEFT JOIN school_years sy ON e.year_id = sy.year_id AND e.branch_id = sy.branch_id
                 WHERE e.user_id = %s
                 ORDER BY e.created_at DESC
             """, (user_id,))
@@ -3178,7 +3177,8 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                                    all_enrollments=[],
                                    selected_enrollment_id=None,
                                    grade_data=[],
-                                   grading_periods=GRADING_PERIODS)
+                                   grading_periods=GRADING_PERIODS,
+                                   future_terms=[])
 
         authorized_enrollment_ids = [e["enrollment_id"] for e in all_enrollments]
         consolidated_options = []
@@ -3186,6 +3186,7 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
             cur.execute("""
                 SELECT tr.transfer_id, tr.source_enrollment_id, tr.destination_enrollment_id,
                        tr.effective_term, sy.label AS school_year,
+                       tr.destination_branch_id, tr.destination_year_id,
                        sb.branch_name AS source_branch_name, db.branch_name AS destination_branch_name
                 FROM student_transfer_requests tr
                 JOIN school_years sy ON sy.year_id=tr.destination_year_id
@@ -3205,22 +3206,35 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
         if selected_transfer:
             source_id = selected_transfer["source_enrollment_id"]
             destination_id = selected_transfer["destination_enrollment_id"]
-            effective_index = GRADING_PERIODS.index(selected_transfer["effective_term"])
+            try:
+                policy = load_effective_grading_policy(
+                    cur,
+                    branch_id=selected_transfer["destination_branch_id"],
+                    year_id=selected_transfer["destination_year_id"],
+                )
+            except GradingPolicyError as exc:
+                flash(f"Grading policy configuration error: {exc}", "error")
+                return redirect(url_for("student_portal.student_grades"))
+            grading_periods = list(policy.required_periods if policy else GRADING_PERIODS)
+            if selected_transfer["effective_term"] not in grading_periods:
+                flash("Transfer term is not part of the applicable grading policy.", "error")
+                return redirect(url_for("student_portal.student_grades"))
+            effective_index = grading_periods.index(selected_transfer["effective_term"])
             cur.execute("""
-                SELECT pg.enrollment_id, pg.grading_period, pg.grade,
+                SELECT pg.id, pg.enrollment_id, pg.grading_period, pg.grade,
                        sub.name AS subject_name, b.branch_name
                 FROM posted_grades pg
                 JOIN subjects sub ON sub.subject_id=pg.subject_id
                 JOIN enrollments e ON e.enrollment_id=pg.enrollment_id
                 JOIN branches b ON b.branch_id=e.branch_id
                 WHERE pg.enrollment_id IN (%s,%s)
-                  AND pg.grading_period IN ('1st','2nd','3rd')
+                  AND pg.grading_period = ANY(%s)
                 ORDER BY sub.name, pg.grading_period, pg.posted_at DESC
-            """, (source_id, destination_id))
+            """, (source_id, destination_id, grading_periods))
             consolidated = {}
             for row in cur.fetchall() or []:
                 period = row["grading_period"]
-                period_index = GRADING_PERIODS.index(period)
+                period_index = grading_periods.index(period)
                 owns_term = (
                     (row["enrollment_id"] == source_id and period_index < effective_index)
                     or (row["enrollment_id"] == destination_id and period_index >= effective_index)
@@ -3228,26 +3242,37 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                 key = " ".join((row["subject_name"] or "").lower().split())
                 subject = consolidated.setdefault(key, {
                     "subject_name": row["subject_name"], "grades": {}, "grade_sources": {},
-                    "conflicts": set(), "final_grade": None
+                    "conflicts": set(), "final_grade": None, "_period_rows": []
                 })
-                if owns_term and period not in subject["grades"]:
-                    subject["grades"][period] = int(round(float(row["grade"])))
-                    subject["grade_sources"][period] = row["branch_name"]
+                if owns_term:
+                    subject["_period_rows"].append(row)
+                    if period not in subject["grades"]:
+                        subject["grades"][period] = int(round(float(row["grade"])))
+                        subject["grade_sources"][period] = row["branch_name"]
                 elif not owns_term:
                     subject["conflicts"].add(period)
             grade_data = sorted(consolidated.values(), key=lambda item: item["subject_name"].lower())
             for subject in grade_data:
-                values = [subject["grades"].get(period) for period in GRADING_PERIODS]
-                if all(value is not None for value in values):
-                    subject["final_grade"] = int(round(sum(values) / len(values)))
-                subject["conflicts"] = sorted(subject["conflicts"], key=GRADING_PERIODS.index)
+                if policy:
+                    result = calculate_final_grade(policy, [
+                        PeriodGrade(row["grading_period"], row["grade"], True, row["id"])
+                        for row in subject.pop("_period_rows")
+                    ])
+                    subject["final_grade"] = result.final_grade if result.complete else None
+                else:
+                    subject.pop("_period_rows")
+                    values = [subject["grades"].get(period) for period in grading_periods]
+                    if all(value is not None for value in values):
+                        subject["final_grade"] = int(round(sum(values) / len(values)))
+                subject["conflicts"] = sorted(subject["conflicts"], key=grading_periods.index)
             return render_template(
                 "student_grades.html", student=all_enrollments[0],
                 all_enrollments=all_enrollments, selected_enrollment_id=None,
-                grade_data=grade_data, grading_periods=GRADING_PERIODS,
-                school_year_label=selected_transfer["school_year"], available_terms=GRADING_PERIODS,
+                grade_data=grade_data, grading_periods=grading_periods,
+                school_year_label=selected_transfer["school_year"], available_terms=grading_periods,
                 selected_term="all", consolidated_options=consolidated_options,
-                selected_consolidated_transfer_id=selected_transfer["transfer_id"], is_consolidated=True
+                selected_consolidated_transfer_id=selected_transfer["transfer_id"], is_consolidated=True,
+                future_terms=[]
             )
 
         # 2. Determine which enrollment to show
@@ -3277,10 +3302,27 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
             enr.get("student_last_name"),
         ]))
 
+        policy_error = None
+        try:
+            policy = load_effective_grading_policy(
+                cur, branch_id=enr["branch_id"], year_id=enr["year_id"]
+            )
+        except GradingPolicyError as exc:
+            policy = None
+            policy_error = str(exc)
+            logger.warning(
+                "Student grades unavailable: grading policy error for branch=%s year=%s: %s",
+                enr["branch_id"], enr["year_id"], exc,
+            )
+        grading_periods = list(policy.required_periods if policy else GRADING_PERIODS)
+        if policy_error:
+            grading_periods = []
+
         available_terms = []
+        future_terms = []
         selected_term = None
 
-        if not section_id:
+        if policy_error or not section_id:
             # flash(f"No section assigned for {enr.get('school_year', 'this term')}.", "warning")
             subjects = []
             posted_map = {}
@@ -3294,29 +3336,32 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                 SELECT DISTINCT period_name, start_date
                 FROM grading_period_ranges
                 WHERE branch_id = %s AND year_id = %s
-                  AND period_name IN ('1st', '2nd', '3rd')
+                  AND period_name = ANY(%s)
                   AND start_date <= %s
                 ORDER BY start_date
-            """, (branch_id_for_query, enr["year_id"], today))
-            available_terms = [r["period_name"] for r in cur.fetchall()]
-            if not available_terms:
-                available_terms = ["1st"]
+            """, (branch_id_for_query, enr["year_id"], grading_periods, today))
+            opened_terms = [r["period_name"] for r in cur.fetchall()]
+            available_terms = list(grading_periods)
+            future_terms = [period for period in grading_periods if period not in opened_terms]
 
             # Determine active term (based on today's date)
             cur.execute("""
                 SELECT period_name FROM grading_period_ranges
                 WHERE branch_id = %s AND year_id = %s
-                  AND period_name IN ('1st', '2nd', '3rd')
+                  AND period_name = ANY(%s)
                   AND start_date <= %s AND end_date >= %s
                 ORDER BY start_date LIMIT 1
-            """, (branch_id_for_query, enr["year_id"], today, today))
+            """, (branch_id_for_query, enr["year_id"], grading_periods, today, today))
             active_term_row = cur.fetchone()
             auto_active_term = active_term_row['period_name'] if active_term_row else None
 
             # User can manually select a term via query param, default to active/latest term
             selected_term = request.args.get("term_filter")
             if selected_term is None:
-                selected_term = auto_active_term or (available_terms[-1] if available_terms else None)
+                selected_term = auto_active_term or (opened_terms[-1] if opened_terms else None)
+            elif selected_term != "all" and selected_term not in grading_periods:
+                flash("The selected grading period is not part of this school year's policy.", "error")
+                selected_term = auto_active_term or (opened_terms[-1] if opened_terms else None)
 
             active_term = selected_term
             term_pattern = f"%{active_term}%" if active_term and active_term != 'all' else None
@@ -3371,16 +3416,18 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
 
             # 4. Get posted grades
             cur.execute("""
-                SELECT subject_id, grading_period, grade
+                SELECT id, subject_id, grading_period, grade
                 FROM posted_grades
                 WHERE enrollment_id = %s
             """, (enrollment_id,))
             posted = cur.fetchall() or []
 
             posted_map = {}
+            posted_by_subject = {}
             for p in posted:
                 sid = p["subject_id"]
                 if sid not in posted_map: posted_map[sid] = {}
+                posted_by_subject.setdefault(sid, []).append(p)
                 # Round to nearest integer for student view
                 posted_map[sid][p["grading_period"]] = int(round(float(p["grade"])))
 
@@ -3389,9 +3436,17 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
         for s in subjects:
             sid = s["subject_id"]
             grades = posted_map.get(sid, {})
-            period_vals = [float(v) for v in grades.values()]
-            # Finals shows only if ALL 3 terms are posted (rounded to whole number)
-            final_avg = int(round(sum(period_vals) / 3)) if len(period_vals) == 3 else None
+            if policy:
+                result = calculate_final_grade(policy, [
+                    PeriodGrade(row["grading_period"], row["grade"], True, row["id"])
+                    for row in posted_by_subject.get(sid, [])
+                ])
+                final_avg = result.final_grade if result.complete else None
+            else:
+                values = [grades.get(name) for name in grading_periods]
+                final_avg = int(round(sum(values) / len(values))) if all(
+                    value is not None for value in values
+                ) else None
             elective_term = elective_term_map.get(sid)
 
             grade_data.append({
@@ -3402,6 +3457,26 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                 "elective_term": elective_term,
                 "term_name":    s.get("term_name")
             })
+
+        # Build the all-terms presentation from the applicable policy instead of
+        # treating every subject outside 1st/2nd/3rd as a full-year subject.
+        grade_term_groups = [
+            {"label": f"{period} Term", "period": period, "subjects": []}
+            for period in grading_periods
+        ]
+        full_year_group = {"label": "Full Year", "period": None, "subjects": []}
+        group_by_period = {group["period"].lower(): group for group in grade_term_groups}
+        for subject in grade_data:
+            raw_term = subject.get("elective_term") or subject.get("term_name")
+            normalized_term = str(raw_term or "").strip().lower()
+            if normalized_term.endswith(" term"):
+                normalized_term = normalized_term[:-5].strip()
+            group = group_by_period.get(normalized_term)
+            if group is None:
+                full_year_group["subjects"].append(subject)
+            else:
+                group["subjects"].append(subject)
+        grade_term_groups.append(full_year_group)
 
         # 5. Get the School Year Label for the SELECTED enrollment
         cur.execute("""
@@ -3415,13 +3490,16 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                                all_enrollments=all_enrollments,
                                selected_enrollment_id=enrollment_id,
                                grade_data=grade_data,
-                               grading_periods=GRADING_PERIODS,
+                               grading_periods=grading_periods,
                                school_year_label=school_year_label,
                                available_terms=available_terms,
                                selected_term=selected_term,
+                               future_terms=future_terms,
                                consolidated_options=consolidated_options,
                                selected_consolidated_transfer_id=None,
-                               is_consolidated=False)
+                               is_consolidated=False,
+                               grading_policy_error=policy_error,
+                               grade_term_groups=grade_term_groups)
     finally:
         cur.close()
         db.close()
@@ -3482,13 +3560,23 @@ def student_my_schedule():
         if is_active_enrollment and section_id:
             from datetime import date
             today = date.today()
+            try:
+                schedule_policy = load_effective_grading_policy(
+                    cur, branch_id=effective_branch_id, year_id=active_year_id
+                )
+            except GradingPolicyError as exc:
+                flash(f"Grading policy configuration error: {exc}", "error")
+                return redirect(url_for("student_portal.student_dashboard"))
+            schedule_periods = list(
+                schedule_policy.required_periods if schedule_policy else GRADING_PERIODS
+            )
             cur.execute("""
                 SELECT period_name FROM grading_period_ranges
                 WHERE branch_id = %s AND year_id = %s
-                  AND period_name IN ('1st', '2nd', '3rd')
+                  AND period_name = ANY(%s)
                   AND start_date <= %s AND end_date >= %s
                 ORDER BY start_date LIMIT 1
-            """, (effective_branch_id, active_year_id, today, today))
+            """, (effective_branch_id, active_year_id, schedule_periods, today, today))
             active_term_row = cur.fetchone()
             active_term = active_term_row['period_name'] if active_term_row else None
             term_pattern = f"%{active_term}%" if active_term else None

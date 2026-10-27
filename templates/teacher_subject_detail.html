@@ -633,9 +633,9 @@
         </div>
 
         <div class="filter-tabs">
-            <div class="filter-tab filter-tab-act active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '1st', this)">1st Term</div>
-            <div class="filter-tab filter-tab-act {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '2nd', this)">2nd Term</div>
-            <div class="filter-tab filter-tab-act {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '3rd', this)">3rd Term</div>
+            {% for period in grading_periods %}
+            <div class="filter-tab filter-tab-act {% if loop.first %}active{% endif %} {% if period not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '{{ period }}', this)">{{ period }} Term{% if period not in unlocked_periods %} (Future){% endif %}</div>
+            {% endfor %}
         </div>
 
 
@@ -759,9 +759,9 @@
         </div>
 
         <div class="filter-tabs">
-            <div class="filter-tab filter-tab-quiz active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '1st', this)">1st Term</div>
-            <div class="filter-tab filter-tab-quiz {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '2nd', this)">2nd Term</div>
-            <div class="filter-tab filter-tab-quiz {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '3rd', this)">3rd Term</div>
+            {% for period in grading_periods %}
+            <div class="filter-tab filter-tab-quiz {% if loop.first %}active{% endif %} {% if period not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '{{ period }}', this)">{{ period }} Term{% if period not in unlocked_periods %} (Future){% endif %}</div>
+            {% endfor %}
         </div>
 
         <div class="table-card">
@@ -886,9 +886,9 @@
         </div>
 
         <div class="filter-tabs">
-            <div class="filter-tab filter-tab-exam active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '1st', this)">1st Term</div>
-            <div class="filter-tab filter-tab-exam {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '2nd', this)">2nd Term</div>
-            <div class="filter-tab filter-tab-exam {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '3rd', this)">3rd Term</div>
+            {% for period in grading_periods %}
+            <div class="filter-tab filter-tab-exam {% if loop.first %}active{% endif %} {% if period not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '{{ period }}', this)">{{ period }} Term{% if period not in unlocked_periods %} (Future){% endif %}</div>
+            {% endfor %}
         </div>
 
         <div class="table-card">
@@ -1069,7 +1069,7 @@
                 {% endif %}
             </div>
             <div class="modal-footer" style="padding:20px; background:#f8fafc; border-top:1px solid #e2e8f0;">
-                <a href="{{ url_for('teacher.class_record', subject_id=subject_id, section_id=section_id, period='1st') }}" 
+                <a href="{{ url_for('teacher.class_record', subject_id=subject_id, section_id=section_id, period=(unlocked_periods[-1] if unlocked_periods else (grading_periods[0] if grading_periods else ''))) }}"
                    class="btn-manage-cl" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; text-decoration:none; background:#fff; border:2px solid #e2e8f0; color:#1e3a8a; padding:14px; border-radius:12px; font-weight:800; font-size:0.95rem; transition:all 0.2s;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                     Manage Class Record / Grades
@@ -1091,7 +1091,11 @@
 
 <script>
     const unlockedPeriods = {{ unlocked_periods|tojson }};
-    function changeSection(secId) { window.location.href = "?section=" + secId; }
+    function changeSection(secId) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('section', secId);
+        window.location.href = url.pathname + url.search;
+    }
 
     function openClasslist() {
         document.getElementById('classlistModal').style.display = 'flex';
@@ -1122,6 +1126,11 @@
         const allTabs = el.parentElement.querySelectorAll('.filter-tab');
         allTabs.forEach(t => { t.classList.remove('active'); });
         el.classList.add('active');
+
+        const stateUrl = new URL(window.location.href);
+        stateUrl.searchParams.set('period', period);
+        stateUrl.searchParams.set('tab', ({act: 'activities', quiz: 'quizzes', exam: 'exams'})[type]);
+        window.history.replaceState({}, '', stateUrl);
 
         // Update create button URL to default to this period
         const createBtn = document.getElementById('btn-create-' + type);

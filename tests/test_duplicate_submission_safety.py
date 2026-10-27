@@ -3,8 +3,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-STUDENT = (ROOT / "routes" / "student.py").read_text()
-ENROLL_TEMPLATE = (ROOT / "templates" / "student_enroll.html").read_text()
+STUDENT = (ROOT / "routes" / "student.py").read_text(encoding="utf-8")
+ENROLL_TEMPLATE = (ROOT / "templates" / "student_enroll.html").read_text(encoding="utf-8")
 
 
 class DuplicateSubmissionSafetyTest(unittest.TestCase):

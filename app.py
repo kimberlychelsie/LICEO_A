@@ -19,6 +19,7 @@ from utils.auth_sessions import (
     enforce_active_auth_session,
     revoke_current_auth_session,
 )
+from services.final_grades import required_grading_periods
 from routes.teacher import _get_active_school_year
 from flask import send_from_directory, make_response # Liceo LMS Flask Application Entry Point (Preserve Grade Level filter on student update)
 import psycopg2.extras
@@ -540,13 +541,17 @@ def inject_student_subjects():
                     # Determine the current active term based on today's date
                     from datetime import date
                     today = date.today()
+                    configured_periods = list(required_grading_periods(
+                        cursor, branch_id=enr['branch_id'], year_id=active_year_id,
+                        legacy_periods=('1st', '2nd', '3rd'),
+                    ))
                     cursor.execute("""
                         SELECT period_name FROM grading_period_ranges
                         WHERE branch_id = %s AND year_id = %s
-                          AND period_name IN ('1st', '2nd', '3rd')
+                          AND period_name = ANY(%s)
                           AND start_date <= %s AND end_date >= %s
                         ORDER BY start_date LIMIT 1
-                    """, (enr['branch_id'], active_year_id, today, today))
+                    """, (enr['branch_id'], active_year_id, configured_periods, today, today))
                     active_term_row = cursor.fetchone()
                     active_term = active_term_row['period_name'] if active_term_row else None
 
@@ -864,17 +869,27 @@ def inject_active_term_label():
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
             today = date.today()
+            cursor.execute(
+                "SELECT year_id FROM school_years WHERE branch_id=%s AND is_active=TRUE LIMIT 1",
+                (branch_id,),
+            )
+            active_year = cursor.fetchone()
+            active_year_id = active_year['year_id'] if active_year else None
+            configured_periods = list(required_grading_periods(
+                cursor, branch_id=branch_id, year_id=active_year_id,
+                legacy_periods=('1st', '2nd', '3rd'),
+            )) if active_year_id else ['1st', '2nd', '3rd']
             cursor.execute("""
                 SELECT period_name FROM grading_period_ranges
                 WHERE branch_id = %s
-                  AND year_id = (SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1)
-                  AND period_name IN ('1st', '2nd', '3rd')
+                  AND year_id = %s
+                  AND period_name = ANY(%s)
                   AND start_date <= %s AND end_date >= %s
                 ORDER BY start_date LIMIT 1
-            """, (branch_id, branch_id, today, today))
+            """, (branch_id, active_year_id, configured_periods, today, today))
             row = cursor.fetchone()
             period_name = row['period_name'] if row else None
-            if period_name in ('1st', '2nd', '3rd'):
+            if period_name in configured_periods:
                 label = f"{period_name} Term"
             else:
                 label = None

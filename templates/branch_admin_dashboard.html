@@ -473,18 +473,15 @@
                     Academic Calendar
                 </div>
                 <div class="term-list">
-                    {% for p, label in [('1st', '1st Term'), ('2nd', '2nd Term'), ('3rd', '3rd Term')] %}
+                    {% for term in metrics.terms %}
                     <div class="term-item">
-                        <div class="term-dot"></div> {{ label }}
+                        <div class="term-dot"></div> {{ term.period_name }} Term
                         <div class="term-sub">
-                            {% if metrics.terms and metrics.terms[p] %}
-                            {{ metrics.terms[p].start_date.strftime('%b %d') }} - {{
-                            metrics.terms[p].end_date.strftime('%b %d') }}
-                            {% else %}
-                            Date is not set yet
-                            {% endif %}
+                            {{ term.start_date.strftime('%b %d') }} - {{ term.end_date.strftime('%b %d') }}
                         </div>
                     </div>
+                    {% else %}
+                    <div class="term-item">No academic terms configured.</div>
                     {% endfor %}
                 </div>
             </div>

@@ -6,6 +6,12 @@ import time
 import psycopg2.extras
 from utils.payment_first_reservations import payment_first_schema_ready
 from utils.auth_sessions import issue_auth_session
+from services.final_grades import (
+    GradingPolicyError,
+    PeriodGrade,
+    calculate_final_grade,
+    load_effective_grading_policy,
+)
 
 from decimal import Decimal
 from datetime import datetime
@@ -344,7 +350,7 @@ def child_detail(enrollment_id):
             JOIN enrollments e ON ps.student_id = e.enrollment_id
             JOIN branches br ON e.branch_id = br.branch_id
             LEFT JOIN sections sec ON e.section_id = sec.section_id
-            LEFT JOIN school_years sy ON e.year_id = sy.year_id
+            LEFT JOIN school_years sy ON e.year_id = sy.year_id AND e.branch_id = sy.branch_id
             LEFT JOIN users u ON ps.parent_id = u.user_id
             WHERE ps.parent_id=%s AND ps.student_id=%s
         """, (session.get("user_id"), enrollment_id))
@@ -353,6 +359,25 @@ def child_detail(enrollment_id):
         if not child:
             flash("Child not found or access denied", "error")
             return redirect(url_for("parent.dashboard"))
+
+        grading_policy_error = None
+        try:
+            final_grade_policy = load_effective_grading_policy(
+                cursor, branch_id=child["branch_id"], year_id=child["year_id"]
+            )
+        except GradingPolicyError as exc:
+            final_grade_policy = None
+            grading_policy_error = str(exc)
+            logger.warning(
+                "Parent grades unavailable: grading policy error for branch=%s year=%s: %s",
+                child["branch_id"], child["year_id"], exc,
+            )
+        grading_periods = list(
+            final_grade_policy.required_periods
+            if final_grade_policy else ('1st', '2nd', '3rd')
+        )
+        if grading_policy_error:
+            grading_periods = []
 
         # Resolve student profile image
         student_profile_img = (
@@ -583,23 +608,36 @@ def child_detail(enrollment_id):
 
             # Get posted grades
             cursor.execute("""
-                SELECT subject_id, grading_period, grade
+                SELECT id, subject_id, grading_period, grade
                 FROM posted_grades
                 WHERE enrollment_id = %s
             """, (enrollment_id,))
             posted = cursor.fetchall() or []
 
             posted_map = {}
+            posted_by_subject = {}
             for p in posted:
                 sid = p["subject_id"]
                 if sid not in posted_map: posted_map[sid] = {}
+                posted_by_subject.setdefault(sid, []).append(p)
                 posted_map[sid][p["grading_period"]] = int(round(float(p["grade"])))
 
             for s in subjects:
                 sid = s["subject_id"]
                 grades = posted_map.get(sid, {})
-                period_vals = [float(v) for v in grades.values()]
-                final_avg = int(round(sum(period_vals) / 4)) if len(period_vals) == 4 else None
+                if grading_policy_error:
+                    final_avg = None
+                elif final_grade_policy:
+                    result = calculate_final_grade(final_grade_policy, [
+                        PeriodGrade(row["grading_period"], row["grade"], True, row["id"])
+                        for row in posted_by_subject.get(sid, [])
+                    ])
+                    final_avg = result.final_grade if result.complete else None
+                else:
+                    values = [grades.get(name) for name in grading_periods]
+                    final_avg = int(round(sum(values) / len(values))) if all(
+                        value is not None for value in values
+                    ) else None
 
                 grade_data.append({
                     "subject_name": s["subject_name"],
@@ -762,7 +800,8 @@ def child_detail(enrollment_id):
             schedules=schedules,
             attendance_summary=attendance_summary,
             recent_absences=recent_absences,
-            grading_periods=['1st', '2nd', '3rd', '4th'],
+            grading_periods=grading_periods,
+            grading_policy_error=grading_policy_error,
             academic_status=academic_status,
             status_color=status_color
         )

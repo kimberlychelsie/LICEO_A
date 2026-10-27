@@ -38,7 +38,9 @@ CREATE TABLE IF NOT EXISTS public.student_transfer_requests (
     processed_at TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_transfer_different_branches CHECK (source_branch_id <> destination_branch_id),
-    CONSTRAINT chk_transfer_term CHECK (effective_term IN ('1st', '2nd', '3rd')),
+    CONSTRAINT chk_transfer_term CHECK (
+        effective_term ~ '^[1-9][0-9]*(st|nd|rd|th)$'
+    ),
     CONSTRAINT chk_transfer_status CHECK (
         status IN ('pending_destination', 'approved', 'rejected', 'cancelled')
     )

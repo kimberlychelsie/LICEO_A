@@ -249,6 +249,15 @@
     </div>
 
     <!-- ── Activity List ── -->
+    <div class="filter-tabs">
+        <div class="filter-tab {% if selected_period == 'all' %}active{% endif %}" onclick="filterActivities('all', this)">All Terms</div>
+        {% for period in grading_periods %}
+        <div class="filter-tab {% if selected_period == period %}active{% endif %}" onclick="filterActivities('{{ period }}', this)">
+            {{ period }} Term{% if period not in unlocked_periods %} (Future){% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
     {% if activities %}
     <div id="activitiesList">
         {% for act in activities %}
@@ -339,6 +348,9 @@
 function filterActivities(period, el) {
     document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
     if (el) el.classList.add('active');
+    const url = new URL(window.location.href);
+    url.searchParams.set('period', period);
+    window.history.replaceState({}, '', url);
 
     const cards = document.querySelectorAll('.act-card');
     let visibleCount = 0;
@@ -369,7 +381,7 @@ function filterActivities(period, el) {
 
 document.addEventListener("DOMContentLoaded", function() {
     const activeTab = document.querySelector('.filter-tab.active');
-    if (activeTab) filterActivities('1st', activeTab);
+    if (activeTab) filterActivities({{ (selected_period or 'all')|tojson }}, activeTab);
 });
 
 async function toggleActivityStatus(activityId, btn) {

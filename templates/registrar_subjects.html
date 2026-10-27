@@ -490,9 +490,7 @@
                                 <select name="terms" class="form-control"
                                     style="font-size: 0.75rem; padding: 12px 8px;">
                                     <option value="Full Year" selected>Full Year</option>
-                                    <option value="1st Term">1st Term</option>
-                                    <option value="2nd Term">2nd Term</option>
-                                    <option value="3rd Term">3rd Term</option>
+                                    {% for period in grading_periods %}<option value="{{ period }} Term">{{ period }} Term</option>{% endfor %}
                                 </select>
                                 <button type="button" class="btn-tiny"
                                     style="background: transparent; border: none; color: #ef4444;"
@@ -788,9 +786,7 @@
                 <label>Term (SHS)</label>
                 <select name="term_name" id="edit_term_name" class="form-control">
                     <option value="">— No specific term —</option>
-                    <option value="1st Term">1st Term</option>
-                    <option value="2nd Term">2nd Term</option>
-                    <option value="3rd Term">3rd Term</option>
+                    {% for period in grading_periods %}<option value="{{ period }} Term">{{ period }} Term</option>{% endfor %}
                     <option value="Full Year">Full Year</option>
                 </select>
             </div>
@@ -976,6 +972,9 @@
     });
 
     // Bulk Subject Builder Logic
+    const configuredPeriodOptions = {{ grading_periods|tojson }}
+        .map(period => `<option value="${period} Term">${period} Term</option>`).join('');
+
     function addRow() {
         const container = document.getElementById('subjectEntries');
         const newRow = document.createElement('div');
@@ -996,9 +995,7 @@
             </select>
             <select name="terms" class="form-control" style="font-size: 0.75rem; padding: 12px 8px;">
                 <option value="Full Year" selected>Full Year</option>
-                <option value="1st Term">1st Term</option>
-                <option value="2nd Term">2nd Term</option>
-                <option value="3rd Term">3rd Term</option>
+                ${configuredPeriodOptions}
             </select>
             <button type="button" class="btn-tiny" style="background: transparent; border: none; color: #ef4444;" onclick="removeRow(this)">
                 <i class="fas fa-times-circle" style="font-size: 1.2rem;"></i>
@@ -1018,7 +1015,7 @@
     }
 
     function autoDetectTermForSections() {
-        const activeTermLabel = "{{ active_term_label or '1st Term' }}";
+        const activeTermLabel = {{ (active_term_label or '')|tojson }};
         const sectionCheckboxes = document.querySelectorAll('input[name="section_ids"]:checked');
         let isSHS = false;
         sectionCheckboxes.forEach(cb => {

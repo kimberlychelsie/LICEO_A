@@ -237,9 +237,9 @@
         
         <div style="display: flex; align-items: center; gap: 8px;">
             <select class="term-select-dropdown" onchange="window.location.href='?term=' + encodeURIComponent(this.value);" style="padding: 8px 16px 8px 14px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; color: #1e3a8a; background: #f8fafc; border: 1.5px solid #cbd5e1; outline: none; cursor: pointer; transition: all 0.2s ease;">
-                <option value="1st Term" {% if selected_term|lower in ['1st', '1st term'] %}selected{% endif %}>1st Term Schedule</option>
-                <option value="2nd Term" {% if selected_term|lower in ['2nd', '2nd term'] %}selected{% endif %}>2nd Term Schedule</option>
-                <option value="3rd Term" {% if selected_term|lower in ['3rd', '3rd term'] %}selected{% endif %}>3rd Term Schedule</option>
+                {% for period in grading_periods %}
+                <option value="{{ period }}" {% if selected_term == period %}selected{% endif %}>{{ period }} Term Schedule</option>
+                {% endfor %}
                 <option value="all" {% if selected_term|lower == 'all' %}selected{% endif %}>All Terms (Full Year View)</option>
             </select>
         </div>

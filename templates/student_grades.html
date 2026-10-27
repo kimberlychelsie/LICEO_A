@@ -302,7 +302,7 @@
                 <option value="{{ e.enrollment_id }}|{{ t }}" {% if e.enrollment_id==selected_enrollment_id and
                     selected_term==t %}selected{% endif %}>
                     {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}{% if
-                    e.section_name %} • {{ e.section_name }}{% endif %} ({{ t }} Term)
+                    e.section_name %} • {{ e.section_name }}{% endif %} ({{ t }} Term{% if t in (future_terms or []) %} — Future{% endif %})
                 </option>
                 {% endfor %}
                 {% else %}
@@ -335,7 +335,16 @@
         }
     </script>
 
-    {% if grade_data %}
+    {% if grading_policy_error %}
+    <div class="grades-card" role="alert" style="padding: 28px; text-align: center;">
+        <h3 style="font-weight: 900; color: var(--sd-primary); margin-bottom: 10px;">
+            Grades Temporarily Unavailable
+        </h3>
+        <p style="color: var(--sd-muted); margin: 0;">
+            This school year's grading periods have not been configured. Please contact the school administrator.
+        </p>
+    </div>
+    {% elif grade_data %}
     {% if is_consolidated %}
     <div class="grades-card">
         <div class="table-responsive"><table class="grade-table"><thead><tr><th class="col-subject">Subjects</th>{% for period in grading_periods %}<th>{{ period }} Term</th>{% endfor %}<th>Final Grade</th></tr></thead><tbody>
@@ -394,28 +403,10 @@
     </div>
     {% else %}
     <!-- ALL TERMS OVERVIEW VIEW (Separate Card per Term) -->
-    {% set ns_terms = namespace(t1=[], t2=[], t3=[], fy=[]) %}
-    {% for subj in grade_data %}
-    {% set t_name = subj.elective_term ~ ' Term' if subj.elective_term else (subj.term_name or 'Full Year') %}
-    {% if '1st' in t_name %}
-    {% set _ = ns_terms.t1.append(subj) %}
-    {% elif '2nd' in t_name %}
-    {% set _ = ns_terms.t2.append(subj) %}
-    {% elif '3rd' in t_name %}
-    {% set _ = ns_terms.t3.append(subj) %}
-    {% else %}
-    {% set _ = ns_terms.fy.append(subj) %}
-    {% endif %}
-    {% endfor %}
-
-    {% set term_blocks = [
-    ('1st Term', ns_terms.t1, '1st'),
-    ('2nd Term', ns_terms.t2, '2nd'),
-    ('3rd Term', ns_terms.t3, '3rd'),
-    ('Full Year', ns_terms.fy, 'all')
-    ] %}
-
-    {% for label, subjs, p_code in term_blocks %}
+    {% for group in grade_term_groups or [] %}
+    {% set label = group.label %}
+    {% set subjs = group.subjects %}
+    {% set p_code = group.period %}
     {% if subjs %}
     <div class="grades-card" style="margin-bottom: 28px;">
         <div
@@ -439,8 +430,7 @@
                 </thead>
                 <tbody>
                     {% for subj in subjs %}
-                    {% set posted_val = subj.grades.get(p_code) or subj.final_grade or subj.grades.get('1st') or
-                    subj.grades.get('2nd') or subj.grades.get('3rd') %}
+                    {% set posted_val = subj.grades.get(p_code) if p_code else subj.final_grade %}
                     <tr>
                         <td>
                             <span class="subject-name">{{ subj.subject_name }}</span>

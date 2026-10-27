@@ -29,6 +29,14 @@ from werkzeug.utils import secure_filename
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from utils.grade_approval_history import fetch_grade_history, record_grade_history
+from services.final_grades import (
+    GradingPolicyError,
+    PeriodGrade,
+    calculate_final_grade,
+    load_effective_grading_policy,
+    required_grading_periods,
+    validate_required_period,
+)
 
 try:
     import pytesseract
@@ -119,14 +127,18 @@ def _normalize_grade(grade_str):
 
 def _get_grading_period_by_date(cur, branch_id, year_id, date_obj):
     """Auto-detect grading period based on academic calendar dates."""
+    configured_periods = required_grading_periods(
+        cur, branch_id=branch_id, year_id=year_id,
+        legacy_periods=GRADING_PERIODS,
+    )
     cur.execute("""
         SELECT period_name 
         FROM grading_period_ranges 
         WHERE branch_id = %s AND year_id = %s 
-          AND period_name IN ('1st', '2nd', '3rd')
+          AND period_name = ANY(%s)
           AND %s BETWEEN start_date AND end_date
         LIMIT 1
-    """, (branch_id, year_id, date_obj))
+    """, (branch_id, year_id, list(configured_periods), date_obj))
     row = cur.fetchone()
     return row["period_name"] if row else None
 
@@ -134,6 +146,13 @@ def _normalize_period_name(value):
     if not value:
         return ""
     return str(value).replace("Grading", "").strip()
+
+
+def _is_required_grading_period(cur, branch_id, year_id, period):
+    return period in required_grading_periods(
+        cur, branch_id=branch_id, year_id=year_id,
+        legacy_periods=GRADING_PERIODS,
+    )
 
 def _get_unlocked_grading_periods(cur, branch_id, year_id, as_of_date=None):
     """
@@ -144,6 +163,11 @@ def _get_unlocked_grading_periods(cur, branch_id, year_id, as_of_date=None):
         ph_tz = pytz.timezone("Asia/Manila")
         as_of_date = datetime.now(ph_tz).date()
 
+    configured_periods = list(required_grading_periods(
+        cur, branch_id=branch_id, year_id=year_id,
+        legacy_periods=GRADING_PERIODS,
+    ))
+
     cur.execute("""
         SELECT period_name, start_date
         FROM grading_period_ranges
@@ -151,17 +175,17 @@ def _get_unlocked_grading_periods(cur, branch_id, year_id, as_of_date=None):
     """, (branch_id, year_id))
     rows = cur.fetchall() or []
     if not rows:
-        return GRADING_PERIODS[:]
+        return configured_periods
 
     start_map = {}
     for r in rows:
         pname = _normalize_period_name(r.get("period_name"))
-        if pname in GRADING_PERIODS:
+        if pname in configured_periods:
             sdate = r.get("start_date")
             if pname not in start_map or (sdate and sdate < start_map[pname]):
                 start_map[pname] = sdate
 
-    return [p for p in GRADING_PERIODS if p in start_map and start_map[p] and start_map[p] <= as_of_date]
+    return [p for p in configured_periods if p in start_map and start_map[p] and start_map[p] <= as_of_date]
 
 def _is_holiday_or_weekend(cur, branch_id, year_id, date_obj):
     """Check if a date is a weekend or a holiday (global or local)."""
@@ -692,12 +716,20 @@ def teacher_dashboard():
         # ── Sections + subjects assigned to this teacher (for this branch) ──
         ph_tz = pytz.timezone("Asia/Manila")
         today = datetime.now(ph_tz).date()
+        try:
+            configured_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=GRADING_PERIODS,
+            )) if year_id else []
+        except GradingPolicyError as exc:
+            configured_periods = []
+            flash(f"Grading policy configuration error: {exc}", "error")
         cur.execute("""
             SELECT period_name FROM grading_period_ranges
             WHERE branch_id = %s AND year_id = %s AND %s BETWEEN start_date AND end_date
-              AND period_name IN ('1st', '2nd', '3rd')
+              AND period_name = ANY(%s)
             ORDER BY start_date LIMIT 1
-        """, (branch_id, year_id, today))
+        """, (branch_id, year_id, today, configured_periods))
         active_term_row = cur.fetchone()
         active_term = active_term_row["period_name"] if active_term_row else None
 
@@ -1912,6 +1944,23 @@ def activities():
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
+        try:
+            grading_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=GRADING_PERIODS,
+            ))
+            unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
+            grading_periods, unlocked_periods = [], []
+        requested_period = request.args.get("period")
+        selected_period = "all"
+        if requested_period and requested_period.lower() != "all":
+            try:
+                selected_period = validate_required_period(requested_period, grading_periods)
+            except GradingPolicyError:
+                selected_period = None
+                flash("The selected grading period is not part of the active policy.", "error")
         cur.execute('''
             SELECT a.*, 
                 s.section_name, 
@@ -1935,7 +1984,11 @@ def activities():
         cur.close()
         db.close()
         
-    return render_template("teacher_activities.html", activities=activities, stats=stats)
+    return render_template(
+        "teacher_activities.html", activities=activities, stats=stats,
+        grading_periods=grading_periods, unlocked_periods=unlocked_periods,
+        selected_period=selected_period,
+    )
 
 
 @teacher_bp.route("/teacher/activities/create", methods=["GET", "POST"])
@@ -1953,7 +2006,6 @@ def create_activity():
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
-        
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             subject_id = request.form.get("subject_id")
@@ -1979,12 +2031,9 @@ def create_activity():
             if not grading_period:
                 flash("The selected Due Date does not fall within any configured Grading Period. Please check the Academic Calendar or contact your admin.", "error")
                 return redirect(url_for("teacher.create_activity", subject_id=subject_id))
-            if grading_period not in GRADING_PERIODS:
-                flash("Invalid grading period selected.", "error")
-                return redirect(url_for("teacher.create_activity", subject_id=subject_id))
             unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
             if grading_period not in unlocked_periods:
-                flash(f"{PERIOD_LABELS.get(grading_period, grading_period)} is not open yet based on the Academic Calendar.", "error")
+                flash(f"{_period_label(grading_period)} is not open yet based on the Academic Calendar.", "error")
                 return redirect(url_for("teacher.create_activity", subject_id=subject_id, period=grading_period))
             
             if not subject_id or not section_ids:
@@ -2076,7 +2125,15 @@ def create_activity():
     ORDER BY g.display_order, s.section_name, sub.name
 ''', (user_id, branch_id, year_id))
         teacher_assignments = cur.fetchall()
-        unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
+        try:
+            grading_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=GRADING_PERIODS,
+            ))
+            unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
+            grading_periods, unlocked_periods = [], []
         
     finally:
         cur.close()
@@ -2148,12 +2205,9 @@ def edit_activity(activity_id):
             if not grading_period:
                 flash("The updated Due Date does not fall within any configured Grading Period. Please check the date.", "error")
                 return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
-            if grading_period not in GRADING_PERIODS:
-                flash("Invalid grading period selected.", "error")
-                return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
             unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
             if grading_period not in unlocked_periods:
-                flash(f"{PERIOD_LABELS.get(grading_period, grading_period)} is not open yet based on the Academic Calendar.", "error")
+                flash(f"{_period_label(grading_period)} is not open yet based on the Academic Calendar.", "error")
                 return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
             if _is_class_record_locked(
                 cur, activity['section_id'], activity['subject_id'],
@@ -2689,6 +2743,26 @@ def teacher_exams():
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
+        try:
+            grading_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=GRADING_PERIODS,
+            ))
+            unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
+            grading_periods, unlocked_periods = [], []
+        requested_period = request.args.get("period")
+        selected_period = None
+        if requested_period:
+            try:
+                selected_period = validate_required_period(requested_period, grading_periods)
+            except GradingPolicyError:
+                flash("The selected grading period is not part of the active policy.", "error")
+        if selected_period is None and not requested_period and grading_periods:
+            selected_period = _get_grading_period_by_date(
+                cur, branch_id, year_id, datetime.now().date()
+            ) or grading_periods[0]
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
@@ -2706,7 +2780,10 @@ def teacher_exams():
             ORDER BY e.created_at DESC
         """, (user_id, branch_id, year_id))
         exams = cur.fetchall() or []
-        return render_template("teacher_exams.html", exams=exams)
+        return render_template(
+            "teacher_exams.html", exams=exams, grading_periods=grading_periods,
+            selected_period=selected_period, unlocked_periods=unlocked_periods,
+        )
     finally:
         cur.close()
         db.close()
@@ -2761,12 +2838,9 @@ def teacher_exam_create():
         if not grading_period:
             flash("Could not determine the Grading Period. Please set a valid Scheduled Start date or ensure you are in a specific grading period view.", "error")
             return redirect(url_for("teacher.teacher_exam_create", subject_id=subject_id))
-        if grading_period not in GRADING_PERIODS:
-            flash("Invalid grading period selected.", "error")
-            return redirect(url_for("teacher.teacher_exam_create", subject_id=subject_id))
         unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
         if grading_period not in unlocked_periods:
-            flash(f"{PERIOD_LABELS.get(grading_period, grading_period)} is not open yet based on the Academic Calendar.", "error")
+            flash(f"{_period_label(grading_period)} is not open yet based on the Academic Calendar.", "error")
             return redirect(url_for("teacher.teacher_exam_create", subject_id=subject_id, period=grading_period))
 
         if not title or not subject_id or not section_ids:
@@ -3391,6 +3465,26 @@ def teacher_quizzes():
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
+        try:
+            grading_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=GRADING_PERIODS,
+            ))
+            unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
+            grading_periods, unlocked_periods = [], []
+        requested_period = request.args.get("period")
+        selected_period = None
+        if requested_period:
+            try:
+                selected_period = validate_required_period(requested_period, grading_periods)
+            except GradingPolicyError:
+                flash("The selected grading period is not part of the active policy.", "error")
+        if selected_period is None and not requested_period and grading_periods:
+            selected_period = _get_grading_period_by_date(
+                cur, branch_id, year_id, datetime.now().date()
+            ) or grading_periods[0]
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
@@ -3408,7 +3502,10 @@ def teacher_quizzes():
             ORDER BY e.created_at DESC
         """, (user_id, branch_id, year_id))
         quizzes = cur.fetchall() or []
-        return render_template("teacher_quizzes.html", quizzes=quizzes)
+        return render_template(
+            "teacher_quizzes.html", quizzes=quizzes, grading_periods=grading_periods,
+            selected_period=selected_period, unlocked_periods=unlocked_periods,
+        )
     finally:
         cur.close()
         db.close()
@@ -3458,12 +3555,9 @@ def teacher_quiz_create():
             if not grading_period:
                 flash("Could not determine the Grading Period. Please set a valid Scheduled Start date or ensure you are in a specific grading period view.", "error")
                 return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id))
-            if grading_period not in GRADING_PERIODS:
-                flash("Invalid grading period selected.", "error")
-                return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id))
             unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
             if grading_period not in unlocked_periods:
-                flash(f"{PERIOD_LABELS.get(grading_period, grading_period)} is not open yet based on the Academic Calendar.", "error")
+                flash(f"{_period_label(grading_period)} is not open yet based on the Academic Calendar.", "error")
                 return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id, period=grading_period))
 
             if not title or not subject_id or not section_ids:
@@ -4340,8 +4434,13 @@ PERIOD_LABELS = {
     "1st": "1st Term",
     "2nd": "2nd Term",
     "3rd": "3rd Term",
+    "4th": "4th Term",
     "final": "Final Grade"
 }
+
+
+def _period_label(period):
+    return PERIOD_LABELS.get(period, f"{period} Term")
 
 STE_SLOT_WEIGHTS = {
     "ste_st1": 0.30,
@@ -4509,14 +4608,24 @@ def grading_weights():
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
+        try:
+            grading_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=GRADING_PERIODS,
+            ))
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+        preview_period = grading_periods[0]
+
         assignments = _get_teacher_assignments(cur, user_id, branch_id, year_id)
 
-        # Show the 1st Term configuration as a compact overview. Each term is
+        # Show the first required term as a compact overview. Each term is
         # configured independently from its class record.
         assignments_with_weights = []
         for a in assignments:
             w = get_assignment_grading_weights(
-                cur, user_id, branch_id, year_id, a["section_id"], a["subject_id"], "1st"
+                cur, user_id, branch_id, year_id, a["section_id"], a["subject_id"], preview_period
             )
             assignments_with_weights.append({
                 **dict(a),
@@ -4532,7 +4641,8 @@ def grading_weights():
 
     return render_template("teacher_grading_weights.html",
                            assignments=assignments_with_weights,
-                           grading_periods=GRADING_PERIODS)
+                           grading_periods=grading_periods,
+                           preview_period=preview_period)
 
 
 
@@ -4552,9 +4662,6 @@ def grading_weights_set():
 def grading_component_distribution(section_id, subject_id, period):
     if not _require_teacher():
         return redirect("/")
-    if period not in GRADING_PERIODS:
-        flash("Invalid grading period.", "error")
-        return redirect(url_for("teacher.grading_weights"))
     teacher_id = session.get("user_id")
     branch_id = session.get("branch_id")
     db = get_db_connection()
@@ -4563,6 +4670,9 @@ def grading_component_distribution(section_id, subject_id, period):
         year_id = _get_active_school_year(cur, branch_id)
         if not year_id or not dynamic_grading_schema_available(cur):
             flash("Dynamic grading configuration is not available yet.", "error")
+            return redirect(url_for("teacher.grading_weights"))
+        if not _is_required_grading_period(cur, branch_id, year_id, period):
+            flash("Invalid grading period for the active policy.", "error")
             return redirect(url_for("teacher.grading_weights"))
         cur.execute("""
             SELECT sub.name AS subject_name, sec.section_name
@@ -4641,21 +4751,22 @@ def grading_component_distribution(section_id, subject_id, period):
 
 def _assert_student_gradeable_for_period(cur, enrollment_id, section_id, period):
     """Reject destination-branch grading before an approved transfer's effective term."""
-    period_order = {"1st": 1, "2nd": 2, "3rd": 3}
-    if period not in period_order:
+    period_match = re.fullmatch(r"(\d+)(?:st|nd|rd|th)", period or "", re.IGNORECASE)
+    if not period_match:
         raise ValueError("Invalid grading period.")
+    period_number = int(period_match.group(1))
     cur.execute("""
         SELECT e.enrollment_id,
                NOT EXISTS (
                    SELECT 1 FROM student_transfer_requests tr
                    WHERE tr.destination_enrollment_id=e.enrollment_id
                      AND tr.status='approved'
-                     AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > %s
+                     AND NULLIF(regexp_replace(tr.effective_term, '[^0-9]', '', 'g'), '')::integer > %s
                ) AS may_grade
         FROM enrollments e
         WHERE e.enrollment_id=%s AND e.section_id=%s
           AND e.status IN ('approved','enrolled','open_for_enrollment','completed')
-    """, (period_order[period], enrollment_id, section_id))
+    """, (period_number, enrollment_id, section_id))
     row = cur.fetchone()
     if not row or not row["may_grade"]:
         raise ValueError("This transferred student belongs to the source branch for this term. Destination teachers cannot edit these historical grades.")
@@ -4702,8 +4813,8 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
                   AND NOT EXISTS (
                     SELECT 1 FROM student_transfer_requests tr
                     WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved'
-                      AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
-                          > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
+                      AND NULLIF(regexp_replace(tr.effective_term, '[^0-9]', '', 'g'), '')::integer
+                          > NULLIF(regexp_replace(%s, '[^0-9]', '', 'g'), '')::integer
                   )
                   AND m.offering_id = %s AND m.status = 'ACTIVE'
             ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
@@ -4721,8 +4832,8 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
                   AND NOT EXISTS (
                     SELECT 1 FROM student_transfer_requests tr
                     WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved'
-                      AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
-                          > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
+                      AND NULLIF(regexp_replace(tr.effective_term, '[^0-9]', '', 'g'), '')::integer
+                          > NULLIF(regexp_replace(%s, '[^0-9]', '', 'g'), '')::integer
                   )
             ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
         """, (section_id, branch_id, year_id, period))
@@ -4969,10 +5080,7 @@ def class_record(section_id, subject_id):
 
     user_id   = session.get("user_id")
     branch_id = session.get("branch_id")
-    period    = request.args.get("period", "1st")
-    valid_periods = ["1st", "2nd", "3rd", "final"]
-    if period not in valid_periods:
-        period = "1st"
+    period = request.args.get("period", "1st")
 
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -4981,6 +5089,19 @@ def class_record(section_id, subject_id):
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
+
+        try:
+            final_grade_policy = load_effective_grading_policy(
+                cur, branch_id=branch_id, year_id=year_id
+            )
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+        grading_periods = list(
+            final_grade_policy.required_periods if final_grade_policy else GRADING_PERIODS
+        )
+        if period not in grading_periods + ["final"]:
+            period = grading_periods[0]
 
         # Owner check for teachers:
         cur.execute("""
@@ -5018,38 +5139,47 @@ def class_record(section_id, subject_id):
         exam_count = 0
 
         if period == 'final':
-            _, _, records_1st = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '1st', year_id)
-            _, _, records_2nd = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '2nd', year_id)
-            _, _, records_3rd = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '3rd', year_id)
-
-            map_1st = {r['enrollment_id']: r for r in (records_1st or [])}
-            map_2nd = {r['enrollment_id']: r for r in (records_2nd or [])}
-            map_3rd = {r['enrollment_id']: r for r in (records_3rd or [])}
-
-            all_students = records_1st or records_2nd or records_3rd or []
+            period_records = {}
+            all_students = []
+            for required_period in grading_periods:
+                _, _, computed = _compute_period_grades(
+                    cur, user_id, branch_id, section_id, subject_id,
+                    required_period, year_id
+                )
+                period_records[required_period] = {
+                    row['enrollment_id']: row for row in (computed or [])
+                }
+                if not all_students and computed:
+                    all_students = computed
 
             records = []
             for s in all_students:
                 eid = s['enrollment_id']
-                r1 = map_1st.get(eid, {})
-                r2 = map_2nd.get(eid, {})
-                r3 = map_3rd.get(eid, {})
-
-                g1 = r1.get('transmuted_grade')
-                g2 = r2.get('transmuted_grade')
-                g3 = r3.get('transmuted_grade')
-
-                is_complete = (g1 is not None and g2 is not None and g3 is not None)
-                avail = [g for g in [g1, g2, g3] if g is not None]
-                final_avg = round(sum(avail) / 3, 2) if is_complete else None
+                grades = {
+                    required_period: period_records[required_period]
+                        .get(eid, {}).get('transmuted_grade')
+                    for required_period in grading_periods
+                }
+                if final_grade_policy:
+                    final_result = calculate_final_grade(
+                        final_grade_policy,
+                        [PeriodGrade(name, grades[name], grades[name] is not None)
+                         for name in grading_periods],
+                    )
+                    final_avg = final_result.final_grade
+                    is_complete = final_result.complete
+                else:
+                    is_complete = all(value is not None for value in grades.values())
+                    final_avg = (
+                        round(sum(grades.values()) / len(grading_periods), 2)
+                        if is_complete else None
+                    )
 
                 records.append({
                     'enrollment_id': eid,
                     'student_name': s['student_name'],
                     'student_number': s.get('student_number', ''),
-                    'grade_1st': g1,
-                    'grade_2nd': g2,
-                    'grade_3rd': g3,
+                    'period_grades': grades,
                     'final_grade': final_avg,
                     'is_complete': is_complete
                 })
@@ -5227,7 +5357,7 @@ def class_record(section_id, subject_id):
             approval_history_enabled=approval_history_enabled if period != 'final' else False,
             approval_history_is_legacy=approval_history_is_legacy if period != 'final' else False,
             transmutation_ranges=TRANSMUTATION_RANGES,
-            grading_periods=['1st', '2nd', '3rd', 'final'])
+            grading_periods=grading_periods + ['final'])
     finally:
         cur.close()
         db.close()
@@ -5240,9 +5370,6 @@ def class_record_export(section_id, subject_id):
     user_id = session.get("user_id")
     branch_id = session.get("branch_id")
     period = request.args.get("period", "1st")
-    valid_periods = ["1st", "2nd", "3rd", "final"]
-    if period not in valid_periods:
-        period = "1st"
 
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -5251,6 +5378,19 @@ def class_record_export(section_id, subject_id):
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
+
+        try:
+            final_grade_policy = load_effective_grading_policy(
+                cur, branch_id=branch_id, year_id=year_id
+            )
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+        grading_periods = list(
+            final_grade_policy.required_periods if final_grade_policy else GRADING_PERIODS
+        )
+        if period not in grading_periods + ["final"]:
+            period = grading_periods[0]
 
         cur.execute("""
             SELECT 1 FROM section_teachers st
@@ -5274,51 +5414,63 @@ def class_record_export(section_id, subject_id):
             return redirect(url_for("teacher.teacher_dashboard"))
 
         if period == 'final':
-            _, _, records_1st = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '1st', year_id)
-            _, _, records_2nd = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '2nd', year_id)
-            _, _, records_3rd = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '3rd', year_id)
-
-            map_1st = {r['enrollment_id']: r for r in (records_1st or [])}
-            map_2nd = {r['enrollment_id']: r for r in (records_2nd or [])}
-            map_3rd = {r['enrollment_id']: r for r in (records_3rd or [])}
-
-            all_students = records_1st or records_2nd or records_3rd or []
+            period_records = {}
+            all_students = []
+            for required_period in grading_periods:
+                _, _, computed = _compute_period_grades(
+                    cur, user_id, branch_id, section_id, subject_id,
+                    required_period, year_id
+                )
+                period_records[required_period] = {
+                    row['enrollment_id']: row for row in (computed or [])
+                }
+                if not all_students and computed:
+                    all_students = computed
 
             summary_rows = []
             detail_rows = []
             for idx, s in enumerate(all_students, start=1):
                 eid = s['enrollment_id']
                 student_id_str = s.get("student_number") or f"LDMAJ_{int(eid):04d}"
-                g1 = map_1st.get(eid, {}).get('transmuted_grade')
-                g2 = map_2nd.get(eid, {}).get('transmuted_grade')
-                g3 = map_3rd.get(eid, {}).get('transmuted_grade')
-
-                avail = [g for g in [g1, g2, g3] if g is not None]
-                final_avg = round(sum(avail) / len(avail), 2) if avail else None
+                grades = {
+                    required_period: period_records[required_period]
+                        .get(eid, {}).get('transmuted_grade')
+                    for required_period in grading_periods
+                }
+                if final_grade_policy:
+                    result = calculate_final_grade(
+                        final_grade_policy,
+                        [PeriodGrade(name, grades[name], grades[name] is not None)
+                         for name in grading_periods],
+                    )
+                    final_avg = result.final_grade if result.complete else None
+                    complete = result.complete
+                else:
+                    complete = all(value is not None for value in grades.values())
+                    final_avg = round(sum(grades.values()) / len(grades), 2) if complete else None
                 remarks = "PASS" if (final_avg or 0) >= 75 else "FAIL"
 
-                summary_rows.append({
+                summary = {
                     "No": idx,
                     "Student ID": student_id_str,
                     "Student Name": s.get("student_name"),
-                    "1st Term Grade": g1,
-                    "2nd Term Grade": g2,
-                    "3rd Term Grade": g3,
-                    "Final Grade": final_avg,
-                    "Remarks": remarks,
-                })
-                detail_rows.append({
+                }
+                summary.update({f"{name} Term Grade": grades[name] for name in grading_periods})
+                summary.update({"Final Grade": final_avg, "Remarks": remarks if complete else "IN PROGRESS"})
+                summary_rows.append(summary)
+                detail = {
                     "No": idx,
                     "Student ID": student_id_str,
                     "Student Name": s.get("student_name"),
-                    "1st Term Grade": g1,
-                    "2nd Term Grade": g2,
-                    "3rd Term Grade": g3,
+                }
+                detail.update({f"{name} Term Grade": grades[name] for name in grading_periods})
+                detail.update({
                     "Final Grade": final_avg,
-                    "Status": "Completed" if len(avail) == 3 else "In Progress",
+                    "Status": "Completed" if complete else "In Progress",
                     "Subject": context.get("subject_name"),
                     "Section": f"{context.get('grade_level_name')} - {context.get('section_name')}",
                 })
+                detail_rows.append(detail)
 
         else:
             _, weights, records = _compute_period_grades(
@@ -5356,7 +5508,7 @@ def class_record_export(section_id, subject_id):
                     "ST&E Weight %": weights.get("exam_pct"),
                     "Subject": context.get("subject_name"),
                     "Section": f"{context.get('grade_level_name')} - {context.get('section_name')}",
-                    "Period": PERIOD_LABELS.get(period, period),
+                    "Period": _period_label(period),
                 })
 
         filename_base = f"class_record_{context.get('subject_name','subject')}_{context.get('section_name','section')}_{period}grading".replace(" ", "_")
@@ -5506,15 +5658,14 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
     user_id   = session.get('user_id')
     branch_id = session.get('branch_id')
     period    = request.args.get('period', '1st')
-    if period not in GRADING_PERIODS:
-        return jsonify({'success': False, 'error': 'Invalid period'}), 400
-
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         year_id = _get_active_school_year(cur, branch_id)
         if not year_id:
             return jsonify({'success': False, 'error': 'No active school year'}), 400
+        if not _is_required_grading_period(cur, branch_id, year_id, period):
+            return jsonify({'success': False, 'error': 'Invalid period'}), 400
 
         # Verify teacher owns this assignment
         cur.execute("""
@@ -6381,7 +6532,7 @@ def teacher_delete_class_record_item(section_id, subject_id, period, item_type, 
     """Delete an unused class-record item without removing grade history."""
     if not _require_teacher():
         return redirect("/")
-    if period not in GRADING_PERIODS or item_type not in ("activity", "assessment"):
+    if item_type not in ("activity", "assessment"):
         abort(404)
     user_id, branch_id = session.get("user_id"), session.get("branch_id")
     requested_tab = request.form.get("active_tab")
@@ -6393,6 +6544,8 @@ def teacher_delete_class_record_item(section_id, subject_id, period, item_type, 
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         year_id = _get_active_school_year(cur, branch_id)
+        if not year_id or not _is_required_grading_period(cur, branch_id, year_id, period):
+            abort(404)
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
@@ -6471,18 +6624,15 @@ def mark_missing_score_zero(section_id, subject_id):
     item_type = data.get("item_type")
     item_id = data.get("item_id")
 
-    if period not in GRADING_PERIODS:
-        return jsonify({
-            "success": False,
-            "error": "Invalid grading period"
-        }), 400
-
     db = get_db_connection()
     cur = db.cursor(
         cursor_factory=psycopg2.extras.RealDictCursor
     )
 
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id or not _is_required_grading_period(cur, branch_id, year_id, period):
+            return jsonify({"success": False, "error": "Invalid grading period"}), 400
         year_id = _get_active_school_year(
             cur,
             branch_id
@@ -6830,12 +6980,14 @@ def teacher_submit_grades(section_id, subject_id, period):
     if not _require_teacher(): return redirect("/")
     user_id   = session.get("user_id")
     branch_id = session.get("branch_id")
-    if period not in GRADING_PERIODS: return redirect(url_for("teacher.teacher_dashboard"))
 
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         year_id = _get_active_school_year(cur, branch_id)
+        if not year_id or not _is_required_grading_period(cur, branch_id, year_id, period):
+            flash("Invalid grading period for the active policy.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
@@ -6851,24 +7003,25 @@ def teacher_submit_grades(section_id, subject_id, period):
             flash("Unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
-        # Sequential Term Check: Ensure preceding terms are posted before submitting subsequent terms
-        if period == '2nd':
+        # Sequential term check: the immediately preceding policy term must be posted.
+        configured_periods = list(required_grading_periods(
+            cur, branch_id=branch_id, year_id=year_id,
+            legacy_periods=GRADING_PERIODS,
+        ))
+        period_index = configured_periods.index(period)
+        if period_index > 0:
+            previous_period = configured_periods[period_index - 1]
             cur.execute("""
                 SELECT status FROM grade_submission_requests
-                WHERE section_id=%s AND subject_id=%s AND grading_period='1st' AND year_id=%s
-            """, (section_id, subject_id, year_id))
+                WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+            """, (section_id, subject_id, previous_period, year_id))
             prev_req = cur.fetchone()
             if not prev_req or prev_req['status'] != 'posted':
-                flash("Cannot submit 2nd Term grades: 1st Term grades must be reviewed, approved, and posted first.", "error")
-                return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
-        elif period == '3rd':
-            cur.execute("""
-                SELECT status FROM grade_submission_requests
-                WHERE section_id=%s AND subject_id=%s AND grading_period='2nd' AND year_id=%s
-            """, (section_id, subject_id, year_id))
-            prev_req = cur.fetchone()
-            if not prev_req or prev_req['status'] != 'posted':
-                flash("Cannot submit 3rd Term grades: 2nd Term grades must be reviewed, approved, and posted first.", "error")
+                flash(
+                    f"Cannot submit {_period_label(period)} grades: "
+                    f"{_period_label(previous_period)} grades must be reviewed, approved, and posted first.",
+                    "error",
+                )
                 return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
         # Require only components that contribute to this category's grade.
@@ -7042,12 +7195,14 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
     if not _require_teacher(): return redirect("/")
     user_id   = session.get("user_id")
     branch_id = session.get("branch_id")
-    if period not in GRADING_PERIODS: return redirect(url_for("teacher.teacher_dashboard"))
 
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         year_id = _get_active_school_year(cur, branch_id)
+        if not year_id or not _is_required_grading_period(cur, branch_id, year_id, period):
+            flash("Invalid grading period for the active policy.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
@@ -7078,11 +7233,11 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
             flash("This class record is already editable.", "info")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
-        later_periods = {
-            '1st': ['2nd', '3rd'],
-            '2nd': ['3rd'],
-            '3rd': [],
-        }[period]
+        configured_periods = list(required_grading_periods(
+            cur, branch_id=branch_id, year_id=year_id,
+            legacy_periods=GRADING_PERIODS,
+        ))
+        later_periods = configured_periods[configured_periods.index(period) + 1:]
         if later_periods:
             cur.execute("""
                 SELECT grading_period, status
@@ -7090,10 +7245,10 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
                 WHERE section_id=%s AND subject_id=%s AND year_id=%s
                   AND grading_period=ANY(%s)
                   AND status IN ('pending_registrar','pending_academic_coordinator','pending_admin','approved_for_posting','posted')
-                ORDER BY CASE grading_period WHEN '3rd' THEN 1 WHEN '2nd' THEN 2 ELSE 3 END
+                ORDER BY array_position(%s::text[], grading_period::text) DESC
                 LIMIT 1
                 FOR UPDATE
-            """, (section_id, subject_id, year_id, later_periods))
+            """, (section_id, subject_id, year_id, later_periods, later_periods))
             later_request = cur.fetchone()
             if later_request:
                 flash(
@@ -7152,12 +7307,14 @@ def teacher_post_grades(section_id, subject_id, period):
     if not _require_teacher(): return redirect("/")
     user_id   = session.get("user_id")
     branch_id = session.get("branch_id")
-    if period not in GRADING_PERIODS: return redirect(url_for("teacher.teacher_dashboard"))
 
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         year_id = _get_active_school_year(cur, branch_id)
+        if not year_id or not _is_required_grading_period(cur, branch_id, year_id, period):
+            flash("Invalid grading period for the active policy.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
@@ -7232,10 +7389,6 @@ def participation_input(section_id, subject_id, period):
     user_id = session.get("user_id")
     branch_id = session.get("branch_id")
 
-    if period not in GRADING_PERIODS:
-        flash("Invalid grading period.", "error")
-        return redirect(url_for("teacher.grading_weights"))
-
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
@@ -7245,6 +7398,9 @@ def participation_input(section_id, subject_id, period):
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
+        if not _is_required_grading_period(cur, branch_id, year_id, period):
+            flash("Invalid grading period for the active policy.", "error")
+            return redirect(url_for("teacher.grading_weights"))
 
         # Verify teacher owns this class
         cur.execute("""
@@ -7329,8 +7485,8 @@ def participation_input(section_id, subject_id, period):
                       AND NOT EXISTS (
                         SELECT 1 FROM student_transfer_requests tr
                         WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved'
-                          AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
-                              > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END
+                          AND NULLIF(regexp_replace(tr.effective_term, '[^0-9]', '', 'g'), '')::integer
+                              > NULLIF(regexp_replace(%s, '[^0-9]', '', 'g'), '')::integer
                       )
 
                     ON CONFLICT (
@@ -7532,7 +7688,7 @@ def participation_input(section_id, subject_id, period):
                   AND e.branch_id = %s
                   AND s.year_id = %s
                   AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-                  AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END)
+                  AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND NULLIF(regexp_replace(tr.effective_term, '[^0-9]', '', 'g'), '')::integer > NULLIF(regexp_replace(%s, '[^0-9]', '', 'g'), '')::integer)
                   AND m.offering_id = %s AND m.status = 'ACTIVE'
                 ORDER BY
                     e.student_last_name,
@@ -7554,7 +7710,7 @@ def participation_input(section_id, subject_id, period):
                   AND e.branch_id = %s
                   AND s.year_id = %s
                   AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-                  AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END)
+                  AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND NULLIF(regexp_replace(tr.effective_term, '[^0-9]', '', 'g'), '')::integer > NULLIF(regexp_replace(%s, '[^0-9]', '', 'g'), '')::integer)
                 ORDER BY
                     e.student_last_name,
                     e.student_first_name,
@@ -7601,10 +7757,6 @@ def attendance_input(section_id, subject_id, period):
     user_id   = session.get("user_id")
     branch_id = session.get("branch_id")
 
-    if period not in GRADING_PERIODS:
-        flash("Invalid grading period.", "error")
-        return redirect(url_for("teacher.grading_weights"))
-
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
@@ -7612,6 +7764,9 @@ def attendance_input(section_id, subject_id, period):
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
+        if not _is_required_grading_period(cur, branch_id, year_id, period):
+            flash("Invalid grading period for the active policy.", "error")
+            return redirect(url_for("teacher.grading_weights"))
 
         cur.execute("""
             SELECT 1
@@ -7644,7 +7799,7 @@ def attendance_input(section_id, subject_id, period):
                     SELECT %s, e.enrollment_id, %s, %s, %s, %s, NOW()
                     FROM enrollments e
                     WHERE e.section_id = %s
-                      AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END)
+                      AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND NULLIF(regexp_replace(tr.effective_term, '[^0-9]', '', 'g'), '')::integer > NULLIF(regexp_replace(%s, '[^0-9]', '', 'g'), '')::integer)
                     ON CONFLICT (enrollment_id, subject_id, grading_period)
                     DO UPDATE SET total_days = EXCLUDED.total_days, updated_at = NOW()
                 """, (user_id, section_id, subject_id, period, total_days, section_id, period))
@@ -7725,7 +7880,7 @@ def attendance_input(section_id, subject_id, period):
                 LEFT JOIN attendance_scores att ON att.enrollment_id = e.enrollment_id AND att.subject_id = %s AND att.grading_period = %s
                 JOIN shs_student_elective_memberships m ON e.enrollment_id = m.enrollment_id
                 WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-                AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END)
+                AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND NULLIF(regexp_replace(tr.effective_term, '[^0-9]', '', 'g'), '')::integer > NULLIF(regexp_replace(%s, '[^0-9]', '', 'g'), '')::integer)
                 AND m.offering_id = %s AND m.status = 'ACTIVE'
                 ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
             """, (subject_id, period, section_id, branch_id, year_id, period, offering_id))
@@ -7740,7 +7895,7 @@ def attendance_input(section_id, subject_id, period):
                     ON att.enrollment_id = e.enrollment_id
                    AND att.subject_id = %s AND att.grading_period = %s
                 WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-                  AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND CASE tr.effective_term WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END > CASE %s WHEN '1st' THEN 1 WHEN '2nd' THEN 2 WHEN '3rd' THEN 3 END)
+                  AND NOT EXISTS (SELECT 1 FROM student_transfer_requests tr WHERE tr.destination_enrollment_id=e.enrollment_id AND tr.status='approved' AND NULLIF(regexp_replace(tr.effective_term, '[^0-9]', '', 'g'), '')::integer > NULLIF(regexp_replace(%s, '[^0-9]', '', 'g'), '')::integer)
                 ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
             """, (subject_id, period, section_id, branch_id, year_id, period))
         students = cur.fetchall() or []
@@ -8345,7 +8500,15 @@ def teacher_class_view(subject_id):
                 s.get("student_middle_name"),
                 s.get("student_last_name")
             ]))
-        unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
+        try:
+            grading_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=GRADING_PERIODS,
+            ))
+            unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
+            grading_periods, unlocked_periods = [], []
 
     finally:
         cur.close()
@@ -8369,7 +8532,8 @@ def teacher_class_view(subject_id):
         subject_id=subject_id,
         enrolled_students=enrolled_students,
         now=now_naive,
-        unlocked_periods=unlocked_periods
+        unlocked_periods=unlocked_periods,
+        grading_periods=grading_periods,
     )
 
 @teacher_bp.route("/api/teacher/add-student", methods=["POST"])
@@ -8500,14 +8664,22 @@ def teacher_schedules():
     from datetime import date
     today = date.today()
     active_term = None
+    schedule_periods = []
     if active_years:
+        try:
+            schedule_periods = list(required_grading_periods(
+                cursor, branch_id=branch_id, year_id=active_years[0],
+                legacy_periods=GRADING_PERIODS,
+            ))
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
         cursor.execute("""
             SELECT period_name FROM grading_period_ranges
             WHERE branch_id = %s AND year_id = ANY(%s)
-              AND period_name IN ('1st', '2nd', '3rd')
+              AND period_name = ANY(%s)
               AND start_date <= %s AND end_date >= %s
             ORDER BY start_date LIMIT 1
-        """, (branch_id, active_years, today, today))
+        """, (branch_id, active_years, schedule_periods, today, today))
         row_term = cursor.fetchone()
         if row_term:
             active_term = row_term["period_name"]
@@ -8518,6 +8690,15 @@ def teacher_schedules():
         selected_term = active_term if active_term else "all"
     else:
         selected_term = raw_term.strip()
+        if selected_term.lower() != "all":
+            try:
+                selected_term = validate_required_period(
+                    re.sub(r"\s+term$", "", selected_term, flags=re.IGNORECASE),
+                    schedule_periods,
+                )
+            except GradingPolicyError:
+                flash("The selected schedule term is not part of the active policy.", "error")
+                selected_term = None
 
     schedules = []
     if active_years:
@@ -8567,7 +8748,8 @@ def teacher_schedules():
         active_year_label=active_year_label,
         break_times_config=break_config,
         selected_term=selected_term,
-        active_term=active_term
+        active_term=active_term,
+        grading_periods=schedule_periods,
     )
 
 # =======================
@@ -8596,6 +8778,14 @@ def academic_coordinator_grade_review():
         )
         year_row = cur.fetchone()
         year_id = year_row["year_id"] if year_row else 0
+        try:
+            grading_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=GRADING_PERIODS,
+            ))
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         cur.execute("""
             SELECT MIN(g.id) AS id, MIN(g.name) AS name
             FROM grade_submission_requests r
@@ -8609,7 +8799,32 @@ def academic_coordinator_grade_review():
         grade_levels = cur.fetchall() or []
         selected_grade_id = request.args.get("grade_level_id", type=int)
         selected_section_id = request.args.get("section_id", type=int)
-        selected_period = request.args.get("period") or "1st"
+        requested_period = request.args.get("period")
+        selected_period = None
+        if requested_period:
+            try:
+                selected_period = validate_required_period(requested_period, grading_periods)
+            except GradingPolicyError:
+                flash("The selected grading period is not part of the active policy.", "error")
+        else:
+            cur.execute("""
+                SELECT grading_period
+                FROM grade_submission_requests
+                WHERE branch_id=%s AND year_id=%s
+                  AND status='pending_academic_coordinator'
+                ORDER BY registrar_approved_at DESC NULLS LAST, id DESC
+                LIMIT 1
+            """, (branch_id, year_id))
+            pending_period = cur.fetchone()
+            if pending_period:
+                try:
+                    selected_period = validate_required_period(
+                        pending_period["grading_period"], grading_periods
+                    )
+                except GradingPolicyError:
+                    selected_period = None
+            if not selected_period and grading_periods:
+                selected_period = grading_periods[0]
         selected_teacher_id = request.args.get("teacher_id", type=int)
         if selected_grade_id not in {grade["id"] for grade in grade_levels}:
             selected_grade_id = grade_levels[0]["id"] if grade_levels else None
@@ -8673,6 +8888,7 @@ def academic_coordinator_grade_review():
             review_description="Review Registrar-verified class records before forwarding them to the Branch Admin/Principal.",
             review_list_endpoint="teacher.academic_coordinator_grade_review",
             review_detail_endpoint="teacher.academic_coordinator_view_class_record",
+            grading_periods=grading_periods,
         )
     finally:
         cur.close()

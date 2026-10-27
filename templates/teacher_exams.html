@@ -190,9 +190,9 @@
         }
     </style>
     <div class="filter-tabs">
-        <div class="filter-tab active" onclick="filterExams('1st', this)">1st Term</div>
-        <div class="filter-tab" onclick="filterExams('2nd', this)">2nd Term</div>
-        <div class="filter-tab" onclick="filterExams('3rd', this)">3rd Term</div>
+        {% for period in grading_periods %}
+        <div class="filter-tab {% if selected_period == period %}active{% endif %}" onclick="filterExams('{{ period }}', this)">{{ period }} Term{% if period not in unlocked_periods %} (Future){% endif %}</div>
+        {% endfor %}
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -335,6 +335,9 @@
     function filterExams(period, el) {
         document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
         if (el) el.classList.add('active');
+        const url = new URL(window.location.href);
+        url.searchParams.set('period', period);
+        window.history.replaceState({}, '', url);
 
         const rows = document.querySelectorAll('.exam-row');
         rows.forEach(row => {
@@ -349,7 +352,7 @@
     document.addEventListener("DOMContentLoaded", function () {
         const activeTab = document.querySelector('.filter-tab.active');
         if (activeTab) {
-            filterExams('1st', activeTab);
+            filterExams({{ (selected_period or '')|tojson }}, activeTab);
         }
     });
 </script>

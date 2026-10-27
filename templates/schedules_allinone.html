@@ -885,9 +885,7 @@
                     </select>
                     <select id="termFilter" class="premium-input" style="padding: 7px 14px; font-size: 0.84rem; width: auto; min-width: 130px; height: 38px;" onchange="filterTable(); renderMatrixView();">
                         <option value="">-- All Terms --</option>
-                        <option value="1st Term">1st Term</option>
-                        <option value="2nd Term">2nd Term</option>
-                        <option value="3rd Term">3rd Term</option>
+                        {% for period in grading_periods %}<option value="{{ period }} Term">{{ period }} Term</option>{% endfor %}
                     </select>
                 </div>
             </div>
@@ -2037,13 +2035,14 @@
                 termGroups[tName].push(c);
             });
 
-            const preferredOrder = ['1st Term', '2nd Term', '3rd Term', 'Full Year / General Subjects'];
             const sortedTerms = Object.keys(termGroups).sort((a, b) => {
-                const idxA = preferredOrder.indexOf(a);
-                const idxB = preferredOrder.indexOf(b);
-                const posA = idxA !== -1 ? idxA : 99;
-                const posB = idxB !== -1 ? idxB : 99;
-                if (posA !== posB) return posA - posB;
+                if (a === 'Full Year / General Subjects') return 1;
+                if (b === 'Full Year / General Subjects') return -1;
+                const numberA = parseInt(a, 10);
+                const numberB = parseInt(b, 10);
+                if (!Number.isNaN(numberA) && !Number.isNaN(numberB) && numberA !== numberB) {
+                    return numberA - numberB;
+                }
                 return a.localeCompare(b);
             });
 

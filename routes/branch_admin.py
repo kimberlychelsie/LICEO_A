@@ -16,6 +16,13 @@ from cloudinary_helper import upload_announcement_photo
 from utils.send_email import send_email
 from utils.parent_sync import sync_user_parent_links
 from utils.grade_approval_history import record_grade_history
+from services.final_grades import (
+    GradingPolicyError,
+    grading_policy_final_grades_enabled,
+    required_grading_periods,
+    validate_academic_term_name,
+    validate_required_period,
+)
 
 branch_admin_bp = Blueprint("branch_admin", __name__)
 
@@ -286,16 +293,19 @@ def dashboard():
             cursor.execute("""
                 SELECT period_name, start_date, end_date
                 FROM grading_period_ranges
-                WHERE branch_id = %s AND year_id = %s
+                WHERE branch_id = %s AND year_id = %s AND is_active = TRUE
             """, (b_id, year_id))
             ranges_raw = cursor.fetchall() or []
-            metrics['terms'] = {r['period_name']: r for r in ranges_raw}
+            metrics['terms'] = sorted(
+                ranges_raw,
+                key=lambda row: (_term_number(row['period_name']) or 999999, row['start_date']),
+            )
         else:
             metrics['total_enrolled'] = 0
             metrics['pending_reservations'] = 0
             metrics['grade_stats'] = []
             metrics['status_stats'] = []
-            metrics['terms'] = {}
+            metrics['terms'] = []
 
         # Teachers and Staff are not year-bound right now unless requested
         cursor.execute("SELECT COUNT(*) FROM users WHERE (role='teacher' OR user_roles ILIKE '%%teacher%%') AND COALESCE(status, 'active')='active' AND branch_id=%s", (b_id,))
@@ -1741,6 +1751,327 @@ def _validate_academic_terms(terms):
                 errors.setdefault(right_index, f"Dates overlap with {left_label}.")
     return errors
 
+
+def _grading_policy_schema_ready(cur):
+    cur.execute("""
+        SELECT to_regclass('public.grading_policies') IS NOT NULL AS has_policies,
+               to_regclass('public.grading_policy_periods') IS NOT NULL AS has_periods,
+               EXISTS (
+                   SELECT 1 FROM information_schema.columns
+                   WHERE table_schema = 'public'
+                     AND table_name = 'grading_period_ranges'
+                     AND column_name = 'is_active'
+               ) AS has_calendar_archiving,
+               (
+                   to_regclass('public.teacher_grading_weights') IS NOT NULL
+                   AND EXISTS (
+                       SELECT 1 FROM pg_constraint c
+                       WHERE c.conrelid = to_regclass('public.teacher_grading_weights')
+                         AND c.conname = 'teacher_grading_weights_period_check'
+                         AND pg_get_constraintdef(c.oid) LIKE '%%[1-9][0-9]*%%'
+                   )
+               ) AS has_dynamic_weight_terms,
+               (
+                   to_regclass('public.student_transfer_requests') IS NOT NULL
+                   AND EXISTS (
+                       SELECT 1 FROM pg_constraint c
+                       WHERE c.conrelid = to_regclass('public.student_transfer_requests')
+                         AND c.conname = 'chk_transfer_term'
+                         AND pg_get_constraintdef(c.oid) LIKE '%%[1-9][0-9]*%%'
+                   )
+               ) AS has_dynamic_transfer_terms
+    """)
+    row = cur.fetchone() or {}
+    return bool(
+        row.get("has_policies") and row.get("has_periods")
+        and row.get("has_calendar_archiving")
+        and row.get("has_dynamic_weight_terms")
+        and row.get("has_dynamic_transfer_terms")
+    )
+
+
+def _ordered_calendar_terms(cur, branch_id, year_id):
+    cur.execute("""
+        SELECT id, period_name, start_date, end_date
+        FROM grading_period_ranges
+        WHERE branch_id = %s AND year_id = %s AND is_active = TRUE
+    """, (branch_id, year_id))
+    rows = cur.fetchall() or []
+    return sorted(rows, key=lambda row: (
+        row["start_date"], _term_number(row["period_name"]) or 999999, row["id"]
+    ))
+
+
+def _replace_policy_periods(cur, policy_id, branch_id, year_id, calendar_terms):
+    cur.execute("DELETE FROM grading_policy_periods WHERE policy_id = %s", (policy_id,))
+    for sequence_no, term in enumerate(calendar_terms, 1):
+        cur.execute("""
+            INSERT INTO grading_policy_periods
+                (policy_id, branch_id, year_id, sequence_no, calendar_term_id)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (policy_id, branch_id, year_id, sequence_no, term["id"]))
+
+
+def _calendar_policy_is_synchronized(cur, branch_id, year_id):
+    calendar_ids = [row["id"] for row in _ordered_calendar_terms(cur, branch_id, year_id)]
+    if not calendar_ids:
+        return False
+    cur.execute("""
+        SELECT policy_id, rounding_mode, rounding_scale
+        FROM grading_policies
+        WHERE branch_id = %s AND year_id = %s AND status = 'active'
+        ORDER BY policy_id
+    """, (branch_id, year_id))
+    active_rows = cur.fetchall() or []
+    if len(active_rows) != 1:
+        return False
+    active = active_rows[0]
+    cur.execute("""
+        SELECT calendar_term_id FROM grading_policy_periods
+        WHERE policy_id = %s ORDER BY sequence_no
+    """, (active["policy_id"],))
+    active_ids = [row["calendar_term_id"] for row in (cur.fetchall() or [])]
+    return (
+        active_ids == calendar_ids
+        and active["rounding_mode"] == "excel_round"
+        and int(active["rounding_scale"]) == 0
+    )
+
+
+def _changed_periods_have_grade_references(cur, branch_id, year_id, period_names):
+    """Return whether added or removed period names have grade lifecycle data."""
+    if not period_names:
+        return False
+    cur.execute("""
+        SELECT EXISTS (
+            SELECT 1 FROM grade_submission_requests
+            WHERE branch_id = %s AND year_id = %s AND grading_period = ANY(%s)
+            UNION ALL
+            SELECT 1 FROM posted_grades pg
+            JOIN sections sec ON sec.section_id = pg.section_id
+            WHERE sec.branch_id = %s AND pg.year_id = %s
+              AND pg.grading_period = ANY(%s)
+            UNION ALL
+            SELECT 1 FROM finalized_grades fg
+            JOIN enrollments e ON e.enrollment_id = fg.enrollment_id
+            WHERE e.branch_id = %s AND fg.year_id = %s
+              AND fg.grading_period = ANY(%s)
+        ) AS has_changed_period_references
+    """, (
+        branch_id, year_id, list(period_names),
+        branch_id, year_id, list(period_names),
+        branch_id, year_id, list(period_names),
+    ))
+    return bool(cur.fetchone()["has_changed_period_references"])
+
+
+def _policy_has_completed_grade_set(cur, branch_id, year_id, period_names):
+    """Return whether any class or learner completed every old-policy period."""
+    required_count = len(period_names)
+    if not required_count:
+        return False
+    names = list(period_names)
+    cur.execute("""
+        SELECT EXISTS (
+            SELECT 1 FROM (
+                SELECT gsr.section_id, gsr.subject_id
+                FROM grade_submission_requests gsr
+                WHERE gsr.branch_id = %s AND gsr.year_id = %s
+                  AND gsr.grading_period = ANY(%s)
+                  AND gsr.status IN ('approved_for_posting', 'posted')
+                GROUP BY gsr.section_id, gsr.subject_id
+                HAVING COUNT(DISTINCT gsr.grading_period) = %s
+
+                UNION ALL
+
+                SELECT pg.enrollment_id, pg.subject_id
+                FROM posted_grades pg
+                JOIN sections sec ON sec.section_id = pg.section_id
+                WHERE sec.branch_id = %s AND pg.year_id = %s
+                  AND pg.grading_period = ANY(%s)
+                GROUP BY pg.enrollment_id, pg.subject_id
+                HAVING COUNT(DISTINCT pg.grading_period) = %s
+
+                UNION ALL
+
+                SELECT fg.enrollment_id, fg.subject_id
+                FROM finalized_grades fg
+                JOIN enrollments e ON e.enrollment_id = fg.enrollment_id
+                WHERE e.branch_id = %s AND fg.year_id = %s
+                  AND fg.grading_period = ANY(%s)
+                GROUP BY fg.enrollment_id, fg.subject_id
+                HAVING COUNT(DISTINCT fg.grading_period) = %s
+            ) completed_grade_sets
+        ) AS has_completed_grade_set
+    """, (
+        branch_id, year_id, names, required_count,
+        branch_id, year_id, names, required_count,
+        branch_id, year_id, names, required_count,
+    ))
+    return bool(cur.fetchone()["has_completed_grade_set"])
+
+
+def _synchronize_calendar_grading_policy(
+    cur, branch_id, year_id, actor_id, *, allow_legacy_three_term_backfill=False
+):
+    """Make saved calendar terms the active internal policy when it is safe.
+
+    Locked policies are never edited. A change creates a new version. Referenced
+    policies permit only a clean append before any old-policy final set exists;
+    destructive or historically ambiguous changes remain blocked.
+    """
+    calendar_terms = _ordered_calendar_terms(cur, branch_id, year_id)
+    if not calendar_terms:
+        raise ValueError("At least one saved academic term is required.")
+    calendar_ids = [row["id"] for row in calendar_terms]
+
+    cur.execute("""
+        SELECT policy_id, rounding_mode, rounding_scale FROM grading_policies
+        WHERE branch_id = %s AND year_id = %s AND status = 'active'
+        ORDER BY policy_id
+        FOR UPDATE
+    """, (branch_id, year_id))
+    active_rows = cur.fetchall() or []
+    if len(active_rows) > 1:
+        raise ValueError("Multiple active grading policies exist; manual database review is required.")
+    active = active_rows[0] if active_rows else None
+    safe_append = False
+    safe_tail_removal = False
+    if active:
+        cur.execute("""
+            SELECT gpp.calendar_term_id, gpr.period_name
+            FROM grading_policy_periods gpp
+            JOIN grading_period_ranges gpr ON gpr.id = gpp.calendar_term_id
+            WHERE gpp.policy_id = %s ORDER BY gpp.sequence_no
+        """, (active["policy_id"],))
+        active_periods = cur.fetchall() or []
+        active_ids = [row["calendar_term_id"] for row in active_periods]
+        if (active_ids == calendar_ids and active["rounding_mode"] == "excel_round"
+                and int(active["rounding_scale"]) == 0):
+            return active["policy_id"], "unchanged"
+
+        cur.execute(
+            "SELECT grading_policy_has_grade_references(%s) AS referenced",
+            (active["policy_id"],),
+        )
+        if cur.fetchone()["referenced"]:
+            safe_append = (
+                len(calendar_ids) > len(active_ids)
+                and calendar_ids[:len(active_ids)] == active_ids
+                and active["rounding_mode"] == "excel_round"
+                and int(active["rounding_scale"]) == 0
+            )
+            safe_tail_removal = (
+                len(calendar_ids) < len(active_ids)
+                and active_ids[:len(calendar_ids)] == calendar_ids
+                and active["rounding_mode"] == "excel_round"
+                and int(active["rounding_scale"]) == 0
+            )
+            if not (safe_append or safe_tail_removal):
+                raise ValueError(
+                    "Academic-term structure cannot be changed because grades for this school year "
+                    "are already submitted, approved, posted, or finalized. Existing grades were not changed."
+                )
+
+            active_names = [row["period_name"] for row in active_periods]
+            changed_names = (
+                [row["period_name"] for row in calendar_terms[len(active_ids):]]
+                if safe_append
+                else [row["period_name"] for row in active_periods[len(calendar_ids):]]
+            )
+            if _changed_periods_have_grade_references(
+                    cur, branch_id, year_id, changed_names):
+                raise ValueError(
+                    "The added or removed academic term already has grading records and requires historical "
+                    "policy verification. Existing grades were not changed."
+                )
+            if safe_append and _policy_has_completed_grade_set(
+                    cur, branch_id, year_id, active_names):
+                raise ValueError(
+                    "A final-grade set was already completed under the current required terms. "
+                    "Adding another required term now requires an audited historical-policy migration. "
+                    "Existing grades were not changed."
+                )
+
+    cur.execute("""
+        SELECT policy_id FROM grading_policies
+        WHERE branch_id = %s AND year_id = %s AND status = 'draft'
+        ORDER BY created_at DESC, policy_id DESC LIMIT 1 FOR UPDATE
+    """, (branch_id, year_id))
+    draft = cur.fetchone()
+    created = not bool(draft)
+    if draft:
+        policy_id = draft["policy_id"]
+        cur.execute("""
+            UPDATE grading_policies
+            SET rounding_mode = 'excel_round', rounding_scale = 0,
+                verification_notes = %s
+            WHERE policy_id = %s AND status = 'draft'
+        """, (
+            "Automatically synchronized from the Branch Admin Academic Calendar.",
+            policy_id,
+        ))
+    else:
+        policy_version = f"calendar-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
+        cur.execute("""
+            INSERT INTO grading_policies
+                (branch_id, year_id, policy_version, rounding_mode, rounding_scale,
+                 status, verification_notes, created_by)
+            VALUES (%s, %s, %s, 'excel_round', 0, 'draft', %s, %s)
+            RETURNING policy_id
+        """, (
+            branch_id, year_id, policy_version,
+            "Automatically synchronized from the Branch Admin Academic Calendar.",
+            actor_id,
+        ))
+        policy_id = cur.fetchone()["policy_id"]
+
+    _replace_policy_periods(cur, policy_id, branch_id, year_id, calendar_terms)
+    cur.execute("SELECT grading_policy_has_grade_references(%s) AS referenced", (policy_id,))
+    candidate_is_referenced = cur.fetchone()["referenced"]
+    if candidate_is_referenced:
+        period_names = tuple(row["period_name"].lower() for row in calendar_terms)
+        safe_legacy_backfill = (
+            allow_legacy_three_term_backfill
+            and active is None
+            and period_names == ("1st", "2nd", "3rd")
+        )
+        if safe_legacy_backfill:
+            cur.execute("""
+                SELECT EXISTS (
+                    SELECT 1 FROM finalized_grades fg
+                    JOIN enrollments e ON e.enrollment_id = fg.enrollment_id
+                    WHERE e.branch_id = %s AND fg.year_id = %s
+                ) AS has_finalized
+            """, (branch_id, year_id))
+            safe_legacy_backfill = not cur.fetchone()["has_finalized"]
+        if not (safe_legacy_backfill or safe_append or safe_tail_removal):
+            raise ValueError(
+                "Academic terms cannot be assigned automatically because existing submitted, approved, "
+                "posted, or finalized grades require historical policy verification. Existing grades were not changed."
+            )
+
+    cur.execute("""
+        UPDATE grading_policies SET status = 'pending_verification'
+        WHERE policy_id = %s AND status = 'draft'
+    """, (policy_id,))
+    cur.execute("""
+        UPDATE grading_policies
+        SET status = 'verified', verified_by = %s, verified_at = NOW()
+        WHERE policy_id = %s AND status = 'pending_verification'
+    """, (actor_id, policy_id))
+    if active:
+        cur.execute("""
+            UPDATE grading_policies SET status = 'retired', retired_at = NOW()
+            WHERE policy_id = %s AND status = 'active'
+        """, (active["policy_id"],))
+    cur.execute("""
+        UPDATE grading_policies
+        SET status = 'active', activated_by = %s, activated_at = NOW()
+        WHERE policy_id = %s AND status = 'verified'
+    """, (actor_id, policy_id))
+    return policy_id, "created" if created else "updated"
+
 # =======================
 # ACADEMIC CALENDAR (Branch Admin)
 # =======================
@@ -1761,6 +2092,7 @@ def branch_admin_academic_calendar():
 
         today = datetime.now().date()
         today_str = today.strftime('%Y-%m-%d')
+        policy_schema_ready = _grading_policy_schema_ready(cur)
 
         form_terms = None
         validation_errors = {}
@@ -1769,11 +2101,16 @@ def branch_admin_academic_calendar():
 
             if action == "delete_term":
                 try:
+                    if not policy_schema_ready:
+                        raise ValueError(
+                            "Academic terms cannot be changed until the grading-policy and dynamic-term migrations are installed."
+                        )
                     term_id = int(request.form.get("delete_term_id") or 0)
                     cur.execute("SELECT pg_advisory_xact_lock(%s, %s)", (int(branch_id), int(year_id)))
                     cur.execute("""
                         SELECT id, period_name FROM grading_period_ranges
                         WHERE id = %s AND branch_id = %s AND year_id = %s
+                          AND is_active = TRUE
                         FOR UPDATE
                     """, (term_id, branch_id, year_id))
                     term_row = cur.fetchone()
@@ -1789,11 +2126,21 @@ def branch_admin_academic_calendar():
                             UNION ALL SELECT 1 FROM grade_submission_requests WHERE branch_id = %s AND year_id = %s AND grading_period = %s
                             UNION ALL SELECT 1 FROM grading_weights gw JOIN sections gw_sec ON gw_sec.section_id = gw.section_id
                                 WHERE gw_sec.branch_id = %s AND gw_sec.year_id = %s AND gw.grading_period = %s
-                            UNION ALL SELECT 1 FROM attendance_scores WHERE year_id = %s AND grading_period = %s
-                            UNION ALL SELECT 1 FROM participation_scores WHERE year_id = %s AND grading_period = %s
-                            UNION ALL SELECT 1 FROM posted_grades WHERE year_id = %s AND grading_period = %s
-                            UNION ALL SELECT 1 FROM finalized_grades WHERE year_id = %s AND grading_period = %s
-                            UNION ALL SELECT 1 FROM grade_overrides WHERE year_id = %s AND grading_period = %s
+                            UNION ALL SELECT 1 FROM attendance_scores ats
+                                JOIN sections ats_sec ON ats_sec.section_id = ats.section_id
+                                WHERE ats_sec.branch_id = %s AND ats_sec.year_id = %s AND ats.grading_period = %s
+                            UNION ALL SELECT 1 FROM participation_scores ps
+                                JOIN sections ps_sec ON ps_sec.section_id = ps.section_id
+                                WHERE ps_sec.branch_id = %s AND ps_sec.year_id = %s AND ps.grading_period = %s
+                            UNION ALL SELECT 1 FROM posted_grades pg
+                                JOIN sections pg_sec ON pg_sec.section_id = pg.section_id
+                                WHERE pg_sec.branch_id = %s AND pg.year_id = %s AND pg.grading_period = %s
+                            UNION ALL SELECT 1 FROM finalized_grades fg
+                                JOIN enrollments fg_enr ON fg_enr.enrollment_id = fg.enrollment_id
+                                WHERE fg_enr.branch_id = %s AND fg.year_id = %s AND fg.grading_period = %s
+                            UNION ALL SELECT 1 FROM grade_overrides go
+                                JOIN sections go_sec ON go_sec.section_id = go.section_id
+                                WHERE go_sec.branch_id = %s AND go.year_id = %s AND go.grading_period = %s
                             UNION ALL SELECT 1 FROM schedules WHERE branch_id = %s AND year_id = %s AND term_name IN (%s, %s)
                             UNION ALL SELECT 1 FROM section_teachers st JOIN sections sec ON sec.section_id = st.section_id
                                 WHERE sec.branch_id = %s AND st.year_id = %s AND st.term_name IN (%s, %s)
@@ -1803,8 +2150,10 @@ def branch_admin_academic_calendar():
                     """, (
                         branch_id, year_id, period_name, branch_id, year_id, period_name,
                         branch_id, year_id, period_name, branch_id, year_id, period_name,
-                        year_id, period_name, year_id, period_name, year_id, period_name,
-                        year_id, period_name, year_id, period_name,
+                        branch_id, year_id, period_name, branch_id, year_id, period_name,
+                        branch_id, year_id, period_name,
+                        branch_id, year_id, period_name,
+                        branch_id, year_id, period_name,
                         branch_id, year_id, period_name, term_label,
                         branch_id, year_id, period_name, term_label,
                         branch_id, year_id, period_name, term_label,
@@ -1815,11 +2164,18 @@ def branch_admin_academic_calendar():
                         raise ValueError(f"{term_label} cannot be deleted because it is already referenced by academic or grading records.")
 
                     cur.execute("""
-                        DELETE FROM grading_period_ranges
+                        UPDATE grading_period_ranges SET is_active = FALSE
                         WHERE id = %s AND branch_id = %s AND year_id = %s
                     """, (term_id, branch_id, year_id))
+                    _synchronize_calendar_grading_policy(
+                        cur, branch_id, year_id, session.get("user_id"),
+                        allow_legacy_three_term_backfill=True,
+                    )
                     db.commit()
-                    flash(f"{term_label} was deleted.", "success")
+                    flash(
+                        f"{term_label} was deleted. Required grading periods were updated automatically.",
+                        "success",
+                    )
                     return redirect(url_for("branch_admin.branch_admin_academic_calendar"))
                 except Exception as e:
                     db.rollback()
@@ -1828,6 +2184,10 @@ def branch_admin_academic_calendar():
 
             if action == "save_ranges":
                 try:
+                    if not policy_schema_ready:
+                        raise ValueError(
+                            "Academic terms cannot be saved until the grading-policy and dynamic-term migrations are installed."
+                        )
                     ids = request.form.getlist("term_id[]")
                     names = request.form.getlist("period_name[]")
                     starts = request.form.getlist("start_date[]")
@@ -1844,7 +2204,8 @@ def branch_admin_academic_calendar():
                     cur.execute("SELECT pg_advisory_xact_lock(%s, %s)", (int(branch_id), int(year_id)))
                     cur.execute("""
                         SELECT id, period_name FROM grading_period_ranges
-                        WHERE branch_id = %s AND year_id = %s FOR UPDATE
+                        WHERE branch_id = %s AND year_id = %s AND is_active = TRUE
+                        FOR UPDATE
                     """, (branch_id, year_id))
                     existing = {str(row["id"]): row for row in (cur.fetchall() or [])}
                     submitted_ids = {term["id"] for term in form_terms if term["id"]}
@@ -1860,17 +2221,31 @@ def branch_admin_academic_calendar():
                         for term in form_terms:
                             if term["id"]:
                                 cur.execute("""
-                                    UPDATE grading_period_ranges SET start_date = %s, end_date = %s
+                                    UPDATE grading_period_ranges
+                                    SET start_date = %s, end_date = %s
                                     WHERE id = %s AND branch_id = %s AND year_id = %s
+                                      AND is_active = TRUE
                                 """, (term["start_date"], term["end_date"], int(term["id"]), branch_id, year_id))
                             else:
                                 cur.execute("""
                                     INSERT INTO grading_period_ranges
-                                        (branch_id, year_id, period_name, start_date, end_date)
-                                    VALUES (%s, %s, %s, %s, %s)
+                                        (branch_id, year_id, period_name, start_date, end_date, is_active)
+                                    VALUES (%s, %s, %s, %s, %s, TRUE)
+                                    ON CONFLICT (branch_id, year_id, period_name) DO UPDATE
+                                    SET start_date = EXCLUDED.start_date,
+                                        end_date = EXCLUDED.end_date,
+                                        is_active = TRUE
+                                    WHERE grading_period_ranges.is_active = FALSE
                                 """, (branch_id, year_id, term["period_name"], term["start_date"], term["end_date"]))
+                        _, policy_sync_result = _synchronize_calendar_grading_policy(
+                            cur, branch_id, year_id, session.get("user_id")
+                        )
                         db.commit()
-                        flash("Terms updated successfully.", "success")
+                        if policy_sync_result == "unchanged":
+                            message = "Academic terms saved. Required grading periods are already synchronized."
+                        else:
+                            message = "Academic terms saved and required grading periods updated automatically."
+                        flash(message, "success")
                         return redirect(url_for("branch_admin.branch_admin_academic_calendar"))
                 except Exception as e:
                     db.rollback()
@@ -1882,7 +2257,7 @@ def branch_admin_academic_calendar():
         cur.execute("""
             SELECT id, period_name, start_date, end_date
             FROM grading_period_ranges
-            WHERE branch_id = %s AND year_id = %s
+            WHERE branch_id = %s AND year_id = %s AND is_active = TRUE
         """, (branch_id, year_id))
         ranges_raw = cur.fetchall() or []
         ranges_raw.sort(key=lambda row: (row["start_date"], _term_number(row["period_name"]) or 999999, row["id"]))
@@ -1901,10 +2276,21 @@ def branch_admin_academic_calendar():
 
         used_numbers = [_term_number(term["period_name"]) for term in terms]
         next_term_name = _ordinal_term_name(max([number for number in used_numbers if number] or [0]) + 1)
-
+        calendar_requires_sync = bool(ranges_raw) and (
+            not policy_schema_ready
+            or not _calendar_policy_is_synchronized(cur, branch_id, year_id)
+        )
+        cur.execute("""
+            SELECT label FROM school_years
+            WHERE year_id = %s AND branch_id = %s
+        """, (year_id, branch_id))
+        year_row = cur.fetchone()
+        school_year_label = year_row["label"] if year_row else ""
         return render_template("branch_admin_academic_calendar.html",
                                terms=terms, validation_errors=validation_errors,
-                               next_term_name=next_term_name, today=today_str)
+                               next_term_name=next_term_name, today=today_str,
+                               calendar_requires_sync=calendar_requires_sync,
+                               school_year_label=school_year_label)
 
     finally:
         cur.close()
@@ -1957,6 +2343,15 @@ def list_and_add_schedules():
     """, (branch_id,))
     school_years = cursor.fetchall()
     active_year = school_years[0] if school_years else None
+    try:
+        grading_periods = list(required_grading_periods(
+            cursor, branch_id=branch_id, year_id=active_year["year_id"],
+            legacy_periods=("1st", "2nd", "3rd"),
+        )) if active_year else []
+    except GradingPolicyError as exc:
+        flash(f"Grading policy configuration error: {exc}", "error")
+        cursor.close(); db.close()
+        return redirect(url_for("branch_admin.branch_admin_dashboard"))
 
     # Fetch unique Grades and Sections for filtering
     cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
@@ -1994,6 +2389,12 @@ def list_and_add_schedules():
             st_row = cursor.fetchone()
             if st_row and st_row["term_name"]:
                 term_name = st_row["term_name"]
+        try:
+            term_name = validate_academic_term_name(term_name, grading_periods)
+        except GradingPolicyError:
+            flash("The selected schedule term is not part of the active policy.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("branch_admin.list_and_add_schedules"))
         
         days_input = request.form.getlist("days")
         if not days_input:
@@ -2207,7 +2608,8 @@ def list_and_add_schedules():
         show_archived=show_archived,
         all_grades=all_grades_list,
         all_sections=all_sections_list,
-        break_times_config=break_config
+        break_times_config=break_config,
+        grading_periods=grading_periods,
     )
 
 
@@ -2277,6 +2679,15 @@ def edit_schedule(schedule_id):
     """, (branch_id,))
     school_years = cursor.fetchall()
     active_year = school_years[0] if school_years else None
+    try:
+        grading_periods = list(required_grading_periods(
+            cursor, branch_id=branch_id, year_id=active_year["year_id"],
+            legacy_periods=("1st", "2nd", "3rd"),
+        )) if active_year else []
+    except GradingPolicyError as exc:
+        flash(f"Grading policy configuration error: {exc}", "error")
+        cursor.close(); db.close()
+        return redirect(url_for("branch_admin.branch_admin_dashboard"))
 
     if request.method == "POST":
         combo = request.form["combo"]
@@ -2290,11 +2701,17 @@ def edit_schedule(schedule_id):
         teacher_id = combo_parts[2]
         raw_t = combo_parts[3] if len(combo_parts) > 3 else None
         term_name = request.form.get("term_name") or (raw_t if raw_t and raw_t != 'None' else schedule.get("term_name"))
+        try:
+            term_name = validate_academic_term_name(term_name, grading_periods)
+        except GradingPolicyError:
+            flash("The selected schedule term is not part of the active policy.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("branch_admin.list_and_add_schedules"))
         day_of_week = request.form["day_of_week"]
         start_time = request.form["start_time"]
         end_time = request.form["end_time"]
         room = request.form["room"]
-        year_id = request.form["year_id"]
+        year_id = active_year["year_id"] if active_year else None
 
         # --- TIME VALIDATION: must be within 07:00 and 17:00, and start < end ---
         start_t = datetime.strptime(start_time, "%H:%M").time()
@@ -2810,6 +3227,21 @@ def branch_admin_subjects():
         ORDER BY g.display_order, s.section_name
     """, (branch_id,))
     section_options = cursor.fetchall() or []
+    cursor.execute(
+        "SELECT year_id FROM school_years WHERE branch_id=%s AND is_active=TRUE LIMIT 1",
+        (branch_id,),
+    )
+    active_year_row = cursor.fetchone()
+    active_year_id = active_year_row["year_id"] if active_year_row else None
+    try:
+        configured_periods = list(required_grading_periods(
+            cursor, branch_id=branch_id, year_id=active_year_id,
+            legacy_periods=("1st", "2nd", "3rd"),
+        )) if active_year_id else []
+    except GradingPolicyError as exc:
+        flash(f"Grading policy configuration error: {exc}", "error")
+        cursor.close(); db.close()
+        return redirect(url_for("branch_admin.branch_admin_dashboard"))
 
     if request.method == "POST":
         names = request.form.getlist("names")
@@ -2837,6 +3269,7 @@ def branch_admin_subjects():
                 prereq_id_raw = prerequisite_ids[i] if i < len(prerequisite_ids) else None
                 prereq_id = int(prereq_id_raw) if (prereq_id_raw and str(prereq_id_raw).isdigit()) else None
                 term_name = terms[i].strip() if i < len(terms) and terms[i].strip() else None
+                term_name = validate_academic_term_name(term_name, configured_periods)
 
                 if subject_type != "ELECTIVE":
                     track = None
@@ -2969,13 +3402,18 @@ def branch_admin_subjects():
     today = datetime.now().date()
     cursor.execute("""
         SELECT period_name FROM grading_period_ranges
-        WHERE branch_id = %s AND year_id = (SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1)
+        WHERE branch_id = %s AND year_id = %s
+          AND is_active = TRUE
+          AND period_name = ANY(%s)
           AND start_date <= %s AND end_date >= %s
         ORDER BY start_date LIMIT 1
-    """, (branch_id, branch_id, today, today))
+    """, (branch_id, active_year_id, configured_periods, today, today))
     active_period_row = cursor.fetchone()
-    active_period_name = active_period_row["period_name"] if active_period_row else "1st"
-    active_term_label = f"{active_period_name} Term" if active_period_name in ["1st", "2nd", "3rd"] else "1st Term"
+    active_period_name = (
+        active_period_row["period_name"] if active_period_row
+        else (configured_periods[0] if configured_periods else None)
+    )
+    active_term_label = f"{active_period_name} Term" if active_period_name else ""
 
     cursor.close(); db.close()
 
@@ -2987,6 +3425,7 @@ def branch_admin_subjects():
         pathways_by_track=pathways_by_track,
         all_branch_subjects=all_branch_subjects,
         active_term_label=active_term_label,
+        grading_periods=configured_periods,
     )
 
 @branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/<int:section_id>/toggle-archive", methods=["POST"])
@@ -3117,7 +3556,7 @@ def branch_admin_subject_edit(subject_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute("""
-            SELECT s.section_id, g.name AS grade_level_name
+            SELECT s.section_id, s.year_id, g.name AS grade_level_name
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
             WHERE s.section_id = %s AND s.branch_id = %s
@@ -3127,6 +3566,11 @@ def branch_admin_subject_edit(subject_id):
         if not section_row:
             flash("Invalid section.", "error")
             return redirect(url_for("branch_admin.branch_admin_subjects"))
+        configured_periods = required_grading_periods(
+            cursor, branch_id=branch_id, year_id=section_row["year_id"],
+            legacy_periods=("1st", "2nd", "3rd"),
+        )
+        term_name = validate_academic_term_name(term_name, configured_periods)
 
         grade_name = (section_row["grade_level_name"] or "").strip().lower()
 
@@ -4076,6 +4520,14 @@ def branch_admin_grade_approval():
         cur.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
         year_row = cur.fetchone()
         year_id = year_row["year_id"] if year_row else 0
+        try:
+            grading_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=("1st", "2nd", "3rd"),
+            ))
+        except GradingPolicyError as exc:
+            flash(f"Grading policy configuration error: {exc}", "error")
+            return redirect(url_for("branch_admin.branch_admin_dashboard"))
 
         cur.execute("""
             SELECT MIN(g.id) AS id, MIN(g.name) AS name
@@ -4105,10 +4557,18 @@ def branch_admin_grade_approval():
 
         selected_grade_id = request.args.get("grade_level_id", type=int)
         selected_section_id = request.args.get("section_id", type=int)
-        selected_period = request.args.get("period")
+        requested_period = request.args.get("period")
+        invalid_period = False
+        selected_period = None
+        if requested_period:
+            try:
+                selected_period = validate_required_period(requested_period, grading_periods)
+            except GradingPolicyError:
+                invalid_period = True
+                flash("The selected grading period is not part of the active policy.", "error")
         selected_teacher_id = request.args.get("teacher_id", type=int)
 
-        if not selected_grade_id or not selected_period:
+        if not invalid_period and (not selected_grade_id or not selected_period):
             cur.execute("""
                 SELECT s.grade_level_id, r.grading_period
                 FROM grade_submission_requests r
@@ -4144,8 +4604,8 @@ def branch_admin_grade_approval():
             canonical_grade = next((g for g in grade_levels if g["name"].strip().lower() == selected_grade_name.strip().lower()), None)
             if canonical_grade:
                 selected_grade_id = canonical_grade["id"]
-        if not selected_period:
-            selected_period = "1st"
+        if not selected_period and not invalid_period and grading_periods:
+            selected_period = grading_periods[0]
 
         cur.execute("""
             SELECT s.section_id, s.section_name
@@ -4205,6 +4665,7 @@ def branch_admin_grade_approval():
             submissions=submissions, selected_grade_id=selected_grade_id,
             selected_section_id=selected_section_id, selected_period=selected_period,
             selected_teacher_id=selected_teacher_id,
+            grading_periods=grading_periods,
         )
     finally:
         cur.close()
@@ -4463,15 +4924,20 @@ def shs_offerings():
 
             # Get terms from academic calendar (grading period ranges)
             cur.execute("""
-                SELECT DISTINCT period_name 
+                SELECT DISTINCT period_name
                 FROM grading_period_ranges
-                WHERE branch_id = %s AND year_id = %s
+                WHERE branch_id = %s AND year_id = %s AND is_active = TRUE
                 ORDER BY period_name
             """, (branch_id, year_id))
             raw_periods = cur.fetchall()
             terms = [p["period_name"] for p in raw_periods]
-            if not terms:
-                terms = ["1st", "2nd", "3rd"] # fallback
+            configured_terms = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=("1st", "2nd", "3rd"),
+            ))
+            terms = [term for term in configured_terms if term in terms]
+            if not terms and not grading_policy_final_grades_enabled():
+                terms = configured_terms
 
             if not filter_term and terms:
                 filter_term = terms[0]

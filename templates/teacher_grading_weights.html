@@ -345,6 +345,16 @@
         text-decoration: none;
         transition: all 0.15s ease-in-out;
         white-space: nowrap;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+    }
+
+    .gw-term-btn:hover {
+        background: #2563eb;
+        color: #ffffff;
+        border-color: #2563eb;
+        transform: translateY(-1px);
     }
 
     .gw-term-1st {
@@ -503,18 +513,12 @@
                 </span>
             </div>
             <div class="gw-term-group" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id, period='1st') }}"
-                    class="gw-term-btn gw-term-1st" title="View 1st Term Class Record">
-                    1st Term
+                {% for grading_period in grading_periods %}
+                <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id, period=grading_period) }}"
+                    class="gw-term-btn" title="View {{ grading_period }} Term Class Record">
+                    {{ grading_period }} Term
                 </a>
-                <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id, period='2nd') }}"
-                    class="gw-term-btn gw-term-2nd" title="View 2nd Term Class Record">
-                    2nd Term
-                </a>
-                <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id, period='3rd') }}"
-                    class="gw-term-btn gw-term-3rd" title="View 3rd Term Class Record">
-                    3rd Term
-                </a>
+                {% endfor %}
                 <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id, period='final') }}"
                     class="gw-term-btn gw-term-summary" title="View Final Grade Summary Sheet">
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
@@ -597,7 +601,7 @@
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
             </svg>
-            1st Term Weight Preview
+            {{ preview_period }} Term Weight Preview
         </div>
         <div class="gw-legend-grid">
             {% for a in assignments %}

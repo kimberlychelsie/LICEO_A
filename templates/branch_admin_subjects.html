@@ -611,9 +611,7 @@
                                     </select>
                                     <select name="terms" class="form-control" style="font-size: 0.72rem; padding: 10px 6px;">
                                         <option value="Full Year" selected>Full Year</option>
-                                        <option value="1st Term">1st Term</option>
-                                        <option value="2nd Term">2nd Term</option>
-                                        <option value="3rd Term">3rd Term</option>
+                                        {% for period in grading_periods %}<option value="{{ period }} Term">{{ period }} Term</option>{% endfor %}
                                     </select>
                                     <button type="button" class="btn-remove-row" onclick="removeRow(this)"
                                         title="Remove Subject"
@@ -931,9 +929,7 @@
                 <label>Term (SHS)</label>
                 <select name="term_name" id="edit_term_name" class="form-control">
                     <option value="">— No specific term —</option>
-                    <option value="1st Term">1st Term</option>
-                    <option value="2nd Term">2nd Term</option>
-                    <option value="3rd Term">3rd Term</option>
+                    {% for period in grading_periods %}<option value="{{ period }} Term">{{ period }} Term</option>{% endfor %}
                     <option value="Full Year">Full Year</option>
                 </select>
             </div>
@@ -1324,6 +1320,9 @@
     });
 
     // Bulk Subject Builder Logic
+    const configuredPeriodOptions = {{ grading_periods|tojson }}
+        .map(period => `<option value="${period} Term">${period} Term</option>`).join('');
+
     function addRow() {
         const container = document.getElementById('subjectEntries');
         const newRow = document.createElement('div');
@@ -1349,9 +1348,7 @@
             </select>
             <select name="terms" class="form-control" style="font-size: 0.72rem; padding: 10px 6px;">
                 <option value="Full Year" selected>Full Year</option>
-                <option value="1st Term">1st Term</option>
-                <option value="2nd Term">2nd Term</option>
-                <option value="3rd Term">3rd Term</option>
+                ${configuredPeriodOptions}
             </select>
             <button type="button" class="btn-remove-row" onclick="removeRow(this)" title="Remove Subject" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0;">
                 <i class="fas fa-times" style="font-size: 0.9rem;"></i>
@@ -1381,7 +1378,7 @@ if (newTrackSelect) {
     }
 
     function autoDetectTermForSections() {
-        const activeTermLabel = "{{ active_term_label or '1st Term' }}";
+        const activeTermLabel = {{ (active_term_label or '')|tojson }};
         const sectionCheckboxes = document.querySelectorAll('input[name="section_ids"]:checked');
         let isSHS = false;
         sectionCheckboxes.forEach(cb => {

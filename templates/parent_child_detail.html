@@ -685,14 +685,20 @@
             <div class="panel-header">
                 <h3>Term Grade Ledger</h3> <i class="fas fa-star-of-life"></i>
             </div>
+            {% if grading_policy_error %}
+            <div class="alert alert-warning" role="alert" style="margin: 16px;">
+                Grades are temporarily unavailable because this school year's grading periods have not been configured.
+                Please contact the school administrator.
+            </div>
+            {% else %}
             <div class="table-responsive" style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
                 <table class="data-table" style="white-space: nowrap; min-width: 520px;">
                     <thead>
                         <tr>
                             <th>Subject</th>
-                            <th style="text-align:center;">1st Term</th>
-                            <th style="text-align:center;">2nd Term</th>
-                            <th style="text-align:center;">3rd Term</th>
+                            {% for period in grading_periods %}
+                            <th style="text-align:center;">{{ period }} Term</th>
+                            {% endfor %}
                             <th style="text-align:center; background:rgba(0,0,0,0.02);">Finals</th>
                         </tr>
                     </thead>
@@ -700,15 +706,11 @@
                         {% for subj in grade_data %}
                         <tr>
                             <td style="color: var(--royal-blue); font-weight: 800;">{{ subj.subject_name }}</td>
-                            <td style="text-align:center;">{% if subj.grades.get('1st') %}<span
-                                    class="grade-marker {{ 'pass-bg' if subj.grades.get('1st')|float >= 75 else 'fail-bg' }}">{{
-                                    subj.grades.get('1st')|int }}</span>{% else %}--{% endif %}</td>
-                            <td style="text-align:center;">{% if subj.grades.get('2nd') %}<span
-                                    class="grade-marker {{ 'pass-bg' if subj.grades.get('2nd')|float >= 75 else 'fail-bg' }}">{{
-                                    subj.grades.get('2nd')|int }}</span>{% else %}--{% endif %}</td>
-                            <td style="text-align:center;">{% if subj.grades.get('3rd') %}<span
-                                    class="grade-marker {{ 'pass-bg' if subj.grades.get('3rd')|float >= 75 else 'fail-bg' }}">{{
-                                    subj.grades.get('3rd')|int }}</span>{% else %}--{% endif %}</td>
+                            {% for period in grading_periods %}
+                            <td style="text-align:center;">{% if subj.grades.get(period) is not none %}<span
+                                    class="grade-marker {{ 'pass-bg' if subj.grades.get(period)|float >= 75 else 'fail-bg' }}">{{
+                                    subj.grades.get(period)|int }}</span>{% else %}--{% endif %}</td>
+                            {% endfor %}
                             <td style="text-align:center; background:rgba(0,0,0,0.01);">{% if subj.final_grade %}<span
                                     class="grade-marker {{ 'pass-bg' if subj.final_grade|float >= 75 else 'fail-bg' }}">{{
                                     subj.final_grade|int }}</span>{% else %}--{% endif %}</td>
@@ -717,6 +719,7 @@
                     </tbody>
                 </table>
             </div>
+            {% endif %}
         </div>
     </div>
 

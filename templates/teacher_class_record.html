@@ -1392,11 +1392,11 @@
         <div class="period-tabs">
             {% for p in grading_periods %}
             <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=p) }}"
-                class="ptab {% if p == period %}active{% endif %}">{{ PERIOD_LABELS.get(p, p) }}</a>
+                class="ptab {% if p == period %}active{% endif %}">{{ PERIOD_LABELS.get(p, p ~ ' Term') }}</a>
             {% endfor %}
         </div>
         {% if period != 'final' %}
-        <button type="button" class="cr-btn period-components-btn" onclick="openComponentModal()" title="Configure {{ PERIOD_LABELS.get(period, period) }} grading weights">
+        <button type="button" class="cr-btn period-components-btn" onclick="openComponentModal()" title="Configure {{ PERIOD_LABELS.get(period, period ~ ' Term') }} grading weights">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
             Grading Weights
         </button>
@@ -1409,9 +1409,9 @@
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
             <span style="font-weight:800; color:#fff; font-size:0.9rem;">Final Grade Summary</span>
-            <span style="color:#93c5fd; font-size:0.8rem;">(1st Term + 2nd Term + 3rd Term Overview)</span>
+            <span style="color:#93c5fd; font-size:0.8rem;">({{ grading_periods[:-1] | join(' Term + ') }} Term Overview)</span>
         </div>
-        <button type="button" onclick="alert('Final Grade Computation:\n\n• Displays 1st Term, 2nd Term, and 3rd Term transmuted grades.\n• Overall Final Grade is automatically computed as the average of all completed term grades once posted.')" class="deped-help-btn" style="background:rgba(255,255,255,0.2); color:#fff;" title="View Final Grade Info">?</button>
+        <button type="button" onclick="alert('Final Grade Computation:\n\nDisplays every grading period required by the active policy. The final grade appears only when every required period is complete.')" class="deped-help-btn" style="background:rgba(255,255,255,0.2); color:#fff;" title="View Final Grade Info">?</button>
     </div>
 
     {% if records %}
@@ -1422,9 +1422,9 @@
                     <th style="text-align:left; width:28px; padding:10px 4px 10px 10px;">#</th>
                     <th style="text-align:left; width:110px; padding:10px 6px;">STUDENT ID</th>
                     <th style="text-align:left; padding:10px 6px;">STUDENT NAME</th>
-                    <th style="text-align:center;">1st Term</th>
-                    <th style="text-align:center;">2nd Term</th>
-                    <th style="text-align:center;">3rd Term</th>
+                    {% for required_period in grading_periods if required_period != 'final' %}
+                    <th style="text-align:center;">{{ required_period }} Term</th>
+                    {% endfor %}
                     <th style="text-align:center;">Final Grade</th>
                     <th style="text-align:center;">Status</th>
                 </tr>
@@ -1435,31 +1435,20 @@
                     <td style="text-align:left; padding:8px 4px 8px 10px; color:#94a3b8; font-weight:600;">{{ loop.index }}</td>
                     <td style="text-align:left; padding:8px 6px; font-weight:700; color:#1e293b; font-size:0.88rem; white-space:nowrap;">{{ r.student_number or ('LDMAJ_' ~ ('%04d'|format(r.enrollment_id|int))) }}</td>
                     <td style="text-align:left; padding:8px 6px; font-weight:700; color:var(--text); font-size:0.88rem; white-space:nowrap;">{{ r.student_name }}</td>
+                    {% for required_period in grading_periods if required_period != 'final' %}
+                    {% set term_grade = r.period_grades.get(required_period) %}
                     <td style="text-align:center;">
-                        {% if r.grade_1st is not none %}
-                            <span style="color:#1d4ed8; font-weight:800; font-size:0.95rem;">{{ "%0.2f" | format(r.grade_1st | float) }}</span>
+                        {% if term_grade is not none %}
+                            <span style="color:#1d4ed8; font-weight:800; font-size:0.95rem;">{{ "%0.2f" | format(term_grade | float) }}</span>
                         {% else %}
                             <span style="color:#94a3b8; font-style:italic;">—</span>
                         {% endif %}
                     </td>
-                    <td style="text-align:center;">
-                        {% if r.grade_2nd is not none %}
-                            <span style="color:#1d4ed8; font-weight:800; font-size:0.95rem;">{{ "%0.2f" | format(r.grade_2nd | float) }}</span>
-                        {% else %}
-                            <span style="color:#94a3b8; font-style:italic;">—</span>
-                        {% endif %}
-                    </td>
-                    <td style="text-align:center;">
-                        {% if r.grade_3rd is not none %}
-                            <span style="color:#1d4ed8; font-weight:800; font-size:0.95rem;">{{ "%0.2f" | format(r.grade_3rd | float) }}</span>
-                        {% else %}
-                            <span style="color:#94a3b8; font-style:italic;">—</span>
-                        {% endif %}
-                    </td>
+                    {% endfor %}
                     <td style="text-align:center;">
                         {% if r.final_grade is not none %}
                             <span class="grade-pill {% if r.final_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}" style="font-size:0.95rem; padding:6px 16px;">
-                                {{ "%0.2f" | format(r.final_grade | float) }}
+                                {{ r.final_grade | int }}
                             </span>
                         {% else %}
                             <span class="grade-pill" style="background:var(--bg); color:var(--muted); font-style:italic; font-size:0.8rem;">—</span>
@@ -1900,7 +1889,7 @@
 {% set qa_total_weight = weights.exam_pct|float %}
 {% set component_locked = submission_req.status in ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted'] %}
 <div id="componentModal" class="component-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="componentModalTitle" onclick="componentModalBackdrop(event)">
-  <div class="component-modal-card"><div class="component-modal-head"><div><h3 id="componentModalTitle">{{ PERIOD_LABELS.get(period, period) }} Grading Weights</h3><p>{{ context.subject_name }} &middot; {{ context.section_name }}</p></div><button type="button" class="component-modal-close" onclick="closeComponentModal()" aria-label="Close">&times;</button></div>
+  <div class="component-modal-card"><div class="component-modal-head"><div><h3 id="componentModalTitle">{{ PERIOD_LABELS.get(period, period ~ ' Term') }} Grading Weights</h3><p>{{ context.subject_name }} &middot; {{ context.section_name }}</p></div><button type="button" class="component-modal-close" onclick="closeComponentModal()" aria-label="Close">&times;</button></div>
     <form method="post" action="{{ url_for('teacher.grading_component_distribution', section_id=section_id, subject_id=subject_id, period=period) }}" id="componentForm" class="component-modal-body" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="return_to" value="class_record">
       <div class="component-policy">{{ 'Saved teacher configuration' if weights.configured else 'Initial default — save to configure this term' }}. Scores and HPS inside each component are pooled automatically.</div>{% if component_locked %}<div class="component-lock">This class record is locked. Close this window and use Cancel Submission or Reopen for Editing first.</div>{% endif %}
       <fieldset {% if component_locked %}disabled{% endif %} style="border:0;padding:0;margin:0;"><section class="component-group"><div class="component-group-title"><span>Major Components</span><span class="component-total" id="overallWeightTotal">100.00%</span></div><div class="component-rows">

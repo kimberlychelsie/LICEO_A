@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = (ROOT / "migrations" / "add_internal_student_transfers.sql").read_text(encoding="utf-8")
+DYNAMIC_TERMS_MIGRATION = (ROOT / "migrations" / "extend_dynamic_grading_terms.sql").read_text(encoding="utf-8")
 ROUTES = (ROOT / "routes" / "registrar.py").read_text(encoding="utf-8")
 TEMPLATE = (ROOT / "templates" / "registrar_student_transfers.html").read_text(encoding="utf-8")
 BASE = (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
@@ -20,6 +21,11 @@ class InternalStudentTransferTests(unittest.TestCase):
         self.assertIn("must allow transferred_out", MIGRATION)
         self.assertNotIn("TRUNCATE", MIGRATION.upper())
 
+    def test_transfer_constraint_supports_policy_defined_later_terms(self):
+        self.assertIn("effective_term ~ '^[1-9][0-9]*(st|nd|rd|th)$'", MIGRATION)
+        self.assertIn("DROP CONSTRAINT chk_transfer_term", DYNAMIC_TERMS_MIGRATION)
+        self.assertIn("VALIDATE CONSTRAINT chk_transfer_term", DYNAMIC_TERMS_MIGRATION)
+
     def test_routes_are_registrar_and_branch_scoped(self):
         block = ROUTES[ROUTES.index("def registrar_student_transfers"):ROUTES.index("def toggle_new_student_enrollment")]
         self.assertIn('session.get("role") != "registrar"', block)
@@ -33,7 +39,8 @@ class InternalStudentTransferTests(unittest.TestCase):
         self.assertIn("form 137", block.lower())
         self.assertIn("form 138", block.lower())
         self.assertIn("student_transfer_history", block)
-        self.assertIn('required_terms = {"1st": (), "2nd": ("1st",), "3rd": ("1st", "2nd")}', block)
+        self.assertIn("required_grading_periods(", block)
+        self.assertIn("required_terms = configured_terms[:configured_terms.index(effective_term)]", block)
         self.assertIn("COUNT(DISTINCT pg.subject_id) AS posted_subjects", block)
         self.assertIn("posted_subjects < assigned_subjects", block)
 

@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.teacher_grading_weights (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT teacher_grading_weights_period_check CHECK (
-        grading_period IN ('1st', '2nd', '3rd')
+        grading_period ~ '^[1-9][0-9]*(st|nd|rd|th)$'
     ),
     CONSTRAINT teacher_grading_weights_ranges_check CHECK (
         ww_pct BETWEEN 0 AND 100
