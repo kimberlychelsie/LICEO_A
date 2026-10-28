@@ -7,13 +7,14 @@ APP = (ROOT / "app.py").read_text(encoding="utf-8")
 AUTH = (ROOT / "utils" / "auth_sessions.py").read_text(encoding="utf-8")
 PORTAL = (ROOT / "routes" / "student_portal.py").read_text(encoding="utf-8")
 BASE = (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
+SESSION_TIMEOUT = (ROOT / "templates" / "_session_timeout.html").read_text(encoding="utf-8")
 TAKE = (ROOT / "templates" / "student_exam_take.html").read_text(encoding="utf-8")
 
 
 class AssessmentSessionPolicyTests(unittest.TestCase):
     def test_default_idle_timeout_is_five_minutes(self):
         self.assertIn('AUTH_SESSION_IDLE_TIMEOUT_SECONDS", "300"', APP)
-        self.assertIn("auth_idle_timeout_seconds", BASE)
+        self.assertIn("auth_idle_timeout_seconds", SESSION_TIMEOUT)
 
     def test_only_live_owned_assessment_bypasses_idle_cutoff(self):
         self.assertIn("def _student_has_live_assessment_attempt", APP)
@@ -26,10 +27,31 @@ class AssessmentSessionPolicyTests(unittest.TestCase):
         self.assertIn('route("/student/exams/heartbeat"', PORTAL)
         self.assertIn("window.LICEO_ACTIVE_ASSESSMENT = true", TAKE)
         self.assertIn("setInterval(assessmentHeartbeat, 120000)", TAKE)
+        self.assertGreaterEqual(
+            TAKE.count("localStorage.removeItem('liceoAssessmentHeartbeatAt')"), 3
+        )
 
     def test_normal_activity_keepalive_is_throttled(self):
         self.assertIn('@app.post("/auth/session/keepalive")', APP)
-        self.assertIn("now - lastKeepaliveAt < 120000", BASE)
+        self.assertIn("now - lastKeepaliveAt < 120000", SESSION_TIMEOUT)
+
+    def test_timeout_performs_csrf_protected_server_logout(self):
+        self.assertIn("method: 'POST'", SESSION_TIMEOUT)
+        self.assertIn("'X-CSRFToken': csrfToken()", SESSION_TIMEOUT)
+        self.assertIn("url_for('auth.logout')", SESSION_TIMEOUT)
+        self.assertIn("window.location.replace", SESSION_TIMEOUT)
+
+    def test_automatic_polling_endpoints_are_passive(self):
+        for endpoint in (
+            "cashier.cashier_sidebar_badges",
+            "registrar.registrar_sidebar_badges",
+            "registrar.registrar_inventory_stats_api",
+            "teacher.teacher_exam_results_status",
+            "student_portal.check_exam_status",
+            "student_portal.student_exam_heartbeat",
+        ):
+            self.assertIn(endpoint, APP)
+        self.assertIn("refresh_idle=bool", APP)
 
     def test_answer_save_requires_active_matching_attempt(self):
         save = PORTAL[PORTAL.index("def save_answer"):PORTAL.index("def student_exam_tab_switch")]

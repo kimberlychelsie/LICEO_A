@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 AUTH_SESSION_KEY = "_auth_session_id"
 DEFAULT_ABSOLUTE_LIFETIME_SECONDS = 24 * 60 * 60
-DEFAULT_IDLE_TIMEOUT_SECONDS = 60 * 60
+DEFAULT_IDLE_TIMEOUT_SECONDS = 5 * 60
 DEFAULT_RETENTION_DAYS = 7
 DEFAULT_CLEANUP_BATCH_SIZE = 1000
 DEFAULT_CLEANUP_MAX_BATCHES = 100
@@ -45,9 +45,14 @@ def issue_auth_session(cursor, user_id, absolute_lifetime_seconds=None):
 
 
 def touch_auth_session(
-    cursor, raw_session_id, user_id, idle_timeout_seconds, allow_idle_expired=False
+    cursor,
+    raw_session_id,
+    user_id,
+    idle_timeout_seconds,
+    allow_idle_expired=False,
+    refresh_idle=True,
 ):
-    """Validate and refresh one active session without extending its absolute expiry."""
+    """Validate one active session and optionally refresh its idle timestamp."""
     if not raw_session_id or not user_id:
         return False
 
@@ -57,19 +62,28 @@ def touch_auth_session(
     params = [_hash_session_id(raw_session_id), user_id]
     if not allow_idle_expired:
         params.append(int(idle_timeout_seconds))
-    cursor.execute(
-        f"""
-        UPDATE auth_sessions
-        SET last_seen_at = NOW()
-        WHERE session_id_hash = %s
-          AND user_id = %s
-          AND revoked_at IS NULL
-          AND expires_at > NOW()
-          {idle_clause}
-        RETURNING session_id_hash
-        """,
-        tuple(params),
-    )
+    if refresh_idle:
+        sql = f"""
+            UPDATE auth_sessions
+            SET last_seen_at = NOW()
+            WHERE session_id_hash = %s
+              AND user_id = %s
+              AND revoked_at IS NULL
+              AND expires_at > NOW()
+              {idle_clause}
+            RETURNING session_id_hash
+        """
+    else:
+        sql = f"""
+            SELECT session_id_hash
+            FROM auth_sessions
+            WHERE session_id_hash = %s
+              AND user_id = %s
+              AND revoked_at IS NULL
+              AND expires_at > NOW()
+              {idle_clause}
+        """
+    cursor.execute(sql, tuple(params))
     return cursor.fetchone() is not None
 
 
@@ -185,6 +199,7 @@ def enforce_active_auth_session(
     idle_timeout_seconds=DEFAULT_IDLE_TIMEOUT_SECONDS,
     login_endpoint="auth.login",
     allow_idle_expired=False,
+    refresh_idle=True,
 ):
     """Fail closed unless the authenticated cookie maps to an active server session."""
     user_id = session.get("user_id")
@@ -209,6 +224,7 @@ def enforce_active_auth_session(
             user_id,
             idle_timeout_seconds,
             allow_idle_expired=allow_idle_expired,
+            refresh_idle=refresh_idle,
         )
         db.commit()
     except Exception:

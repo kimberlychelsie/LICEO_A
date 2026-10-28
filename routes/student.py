@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort
 from werkzeug.utils import secure_filename
 import os
 import uuid
@@ -39,6 +39,45 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+def _authorized_legacy_enrollment(cursor, branch_id, enrollment_id, for_update=False):
+    """Return a legacy enrollment only to its student or same-branch staff."""
+    role = session.get("role")
+    user_id = session.get("user_id")
+    if not role or not user_id:
+        abort(401)
+    if role not in {"student", "registrar", "branch_admin"}:
+        abort(403)
+
+    try:
+        session_branch_id = int(session.get("branch_id"))
+    except (TypeError, ValueError):
+        abort(403)
+    if session_branch_id != int(branch_id):
+        abort(404)
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM enrollments
+        WHERE enrollment_id = %s
+          AND branch_id = %s
+        """ + (" FOR UPDATE" if for_update else ""),
+        (enrollment_id, branch_id),
+    )
+    enrollment = cursor.fetchone()
+    if not enrollment:
+        abort(404)
+
+    if role == "student":
+        try:
+            owns_enrollment = int(session.get("enrollment_id")) == int(enrollment_id)
+        except (TypeError, ValueError):
+            owns_enrollment = False
+        if not owns_enrollment:
+            abort(403)
+    return enrollment
 
 def is_valid_email(email):
     # Strict email validation: username@domain.com
@@ -1604,6 +1643,9 @@ def enroll_books(branch_id, enrollment_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
+        _authorized_legacy_enrollment(
+            cursor, branch_id, enrollment_id, for_update=request.method == "POST"
+        )
         books_available = ["Math Book", "Science Book", "English Book"]
 
         if request.method == "POST":
@@ -1637,6 +1679,9 @@ def enroll_uniform(branch_id, enrollment_id):
     ]
 
     try:
+        _authorized_legacy_enrollment(
+            cursor, branch_id, enrollment_id, for_update=request.method == "POST"
+        )
         if request.method == "POST":
             for uniform in uniforms:
                 uniform_type = uniform["type"]
@@ -1666,8 +1711,9 @@ def enroll_summary(branch_id, enrollment_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        cursor.execute("SELECT * FROM enrollments WHERE enrollment_id=%s", (enrollment_id,))
-        enrollment = cursor.fetchone()
+        enrollment = _authorized_legacy_enrollment(
+            cursor, branch_id, enrollment_id, for_update=request.method == "POST"
+        )
 
         cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (enrollment_id,))
         documents = cursor.fetchall()
@@ -1679,7 +1725,14 @@ def enroll_summary(branch_id, enrollment_id):
         uniforms = cursor.fetchall()
 
         if request.method == "POST":
-            cursor.execute("UPDATE enrollments SET status='pending' WHERE enrollment_id=%s", (enrollment_id,))
+            cursor.execute(
+                """
+                UPDATE enrollments
+                SET status='pending'
+                WHERE enrollment_id=%s AND branch_id=%s
+                """,
+                (enrollment_id, branch_id),
+            )
             db.commit()
 
             # Use branch_enrollment_no (per-branch #1, #2...) for display

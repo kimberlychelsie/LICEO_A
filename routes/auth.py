@@ -983,7 +983,7 @@ def reset_password(token):
         db.close()
 
 
-@auth_bp.route("/logout", methods=["GET", "POST"])
+@auth_bp.post("/logout")
 def logout():
     if not revoke_current_auth_session():
         return render_template(

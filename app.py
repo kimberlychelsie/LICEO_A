@@ -44,6 +44,9 @@ app.config["AUTH_SESSION_ABSOLUTE_LIFETIME_SECONDS"] = int(
 app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"] = int(
     os.getenv("AUTH_SESSION_IDLE_TIMEOUT_SECONDS", "300")
 )
+app.config["AUTH_SESSION_IDLE_WARNING_SECONDS"] = int(
+    os.getenv("AUTH_SESSION_IDLE_WARNING_SECONDS", "60")
+)
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
     seconds=app.config["AUTH_SESSION_ABSOLUTE_LIFETIME_SECONDS"]
 )
@@ -285,6 +288,23 @@ def _student_has_live_assessment_attempt():
     finally:
         db.close()
 
+
+# These endpoints are automatic background traffic. Their requests are still
+# authenticated, but they must never make an unattended browser look active.
+_PASSIVE_SESSION_ENDPOINTS = frozenset({
+    "cashier.cashier_sidebar_badges",
+    "registrar.registrar_sidebar_badges",
+    "registrar.registrar_inventory_stats_api",
+    "teacher.teacher_exam_results_status",
+    "student_portal.check_exam_status",
+    "student_portal.student_exam_heartbeat",
+})
+
+
+def _request_refreshes_session_idle():
+    endpoint = request.endpoint or ""
+    return endpoint != "static" and endpoint not in _PASSIVE_SESSION_ENDPOINTS
+
 @app.before_request
 def check_maintenance_and_session_timeout():
     run_auto_finalize_expired_exams()
@@ -292,6 +312,7 @@ def check_maintenance_and_session_timeout():
     
     # 1. Session Inactivity Timeout
     g.assessment_session_exempt = False
+    g.session_request_refreshes_idle = _request_refreshes_session_idle()
     if session.get("user_id") or session.get("role"):
         last_act = session.get("last_activity")
         idle_expired = bool(
@@ -305,7 +326,8 @@ def check_maintenance_and_session_timeout():
             session.clear()
             flash("Your session expired due to inactivity for security reasons.", "warning")
             return redirect(url_for("auth.login"))
-        session["last_activity"] = now
+        if g.session_request_refreshes_idle or g.assessment_session_exempt:
+            session["last_activity"] = now
 
     # 2. Maintenance Mode Enforcement
     endpoint = request.endpoint or ""
@@ -337,17 +359,37 @@ def validate_server_auth_session():
     return enforce_active_auth_session(
         idle_timeout_seconds=app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"],
         allow_idle_expired=bool(getattr(g, "assessment_session_exempt", False)),
+        refresh_idle=bool(
+            getattr(g, "session_request_refreshes_idle", True)
+            or getattr(g, "assessment_session_exempt", False)
+        ),
     )
 
 
 @app.context_processor
 def inject_session_timeout_policy():
+    def duration_label(seconds):
+        seconds = int(seconds)
+        if seconds % 3600 == 0:
+            hours = seconds // 3600
+            return f"{hours} hour" + ("s" if hours != 1 else "")
+        if seconds % 60 == 0:
+            minutes = seconds // 60
+            return f"{minutes} minute" + ("s" if minutes != 1 else "")
+        return f"{seconds} seconds"
+
+    idle_seconds = app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"]
+    warning_seconds = app.config["AUTH_SESSION_IDLE_WARNING_SECONDS"]
     return {
-        "auth_idle_timeout_seconds": app.config["AUTH_SESSION_IDLE_TIMEOUT_SECONDS"]
+        "auth_idle_timeout_seconds": idle_seconds,
+        "auth_idle_warning_seconds": warning_seconds,
+        "auth_idle_timeout_label": duration_label(idle_seconds),
+        "auth_idle_warning_label": duration_label(warning_seconds),
     }
 
 
 @app.post("/auth/session/keepalive")
+@limiter.limit("30 per minute")
 def authenticated_session_keepalive():
     """Refresh an already-validated session after genuine browser activity."""
     if not (session.get("user_id") or session.get("role")):

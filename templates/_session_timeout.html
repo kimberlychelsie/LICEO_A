@@ -1,0 +1,165 @@
+{% if session.get('user_id') or session.get('role') %}
+<script>
+  (function () {
+    'use strict';
+
+    var maxIdleMs = {{ auth_idle_timeout_seconds | default(300) | int }} * 1000;
+    var warningMs = Math.min(
+      {{ auth_idle_warning_seconds | default(60) | int }} * 1000,
+      maxIdleMs
+    );
+    var activityKey = 'liceoLastUserActivityAt';
+    var assessmentKey = 'liceoAssessmentHeartbeatAt';
+    var lastKeepaliveAt = Date.now();
+    var lastLocalWriteAt = 0;
+    var keepalivePending = false;
+    var keepaliveTimer = null;
+    var logoutStarted = false;
+    var warningElement = null;
+
+    function csrfToken() {
+      return {{ csrf_token() | tojson }};
+    }
+
+    function sharedActivityAt() {
+      try {
+        return Number(localStorage.getItem(activityKey) || 0);
+      } catch (_) {
+        return lastLocalWriteAt;
+      }
+    }
+
+    function writeSharedActivity(now) {
+      lastLocalWriteAt = now;
+      try { localStorage.setItem(activityKey, String(now)); } catch (_) {}
+    }
+
+    function assessmentIsActive() {
+      if (window.LICEO_ACTIVE_ASSESSMENT) return true;
+      try {
+        var heartbeatAt = Number(localStorage.getItem(assessmentKey) || 0);
+        return heartbeatAt > 0 && Date.now() - heartbeatAt < 150000;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function hideWarning() {
+      if (warningElement) warningElement.style.display = 'none';
+    }
+
+    function refreshServerActivity(now) {
+      if (keepalivePending) return;
+      if (now - lastKeepaliveAt < 120000) {
+        if (!keepaliveTimer) {
+          keepaliveTimer = window.setTimeout(function () {
+            keepaliveTimer = null;
+            refreshServerActivity(Date.now());
+          }, 120000 - (now - lastKeepaliveAt));
+        }
+        return;
+      }
+      keepalivePending = true;
+      fetch({{ url_for('authenticated_session_keepalive') | tojson }}, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-CSRFToken': csrfToken(), 'Accept': 'application/json' }
+      }).then(function (response) {
+        if (response.redirected || response.status === 401) beginLogout();
+        else if (response.ok) lastKeepaliveAt = Date.now();
+      }).catch(function () {
+        // A temporary network failure must not disable the local safety timer.
+      }).finally(function () {
+        keepalivePending = false;
+      });
+    }
+
+    function recordGenuineActivity(event) {
+      if (logoutStarted || document.hidden) return;
+      if (event && event.isTrusted === false) return;
+      var now = Date.now();
+      if (now - lastLocalWriteAt >= 1000) writeSharedActivity(now);
+      hideWarning();
+      refreshServerActivity(now);
+    }
+
+    function coverSensitivePage() {
+      var cover = document.createElement('div');
+      cover.setAttribute('role', 'alert');
+      cover.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#f8fafc;color:#0f172a;display:flex;align-items:center;justify-content:center;font:600 16px system-ui,sans-serif;text-align:center;padding:24px;';
+      cover.textContent = 'Your session expired. Returning to Login...';
+      document.documentElement.appendChild(cover);
+    }
+
+    function beginLogout() {
+      if (logoutStarted) return;
+      logoutStarted = true;
+      coverSensitivePage();
+      fetch({{ url_for('auth.logout') | tojson }}, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-CSRFToken': csrfToken(), 'Accept': 'text/html' }
+      }).catch(function () {
+        // Server enforcement still expires/rejects the session on the next request.
+      }).finally(function () {
+        window.location.replace({{ url_for('auth.login') | tojson }});
+      });
+    }
+
+    function showWarning(remainingMs) {
+      if (!warningElement) {
+        warningElement = document.createElement('div');
+        warningElement.id = 'idle-warning-banner';
+        warningElement.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99999;background:#1e293b;color:#fff;padding:16px 20px;border-radius:14px;box-shadow:0 10px 25px rgba(0,0,0,.3);border:1px solid #334155;font:14px system-ui,sans-serif;display:flex;align-items:center;gap:12px;';
+        var text = document.createElement('span');
+        text.className = 'idle-warning-text';
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Stay Logged In';
+        button.style.cssText = 'background:#2563eb;color:#fff;border:0;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;';
+        button.addEventListener('click', recordGenuineActivity);
+        warningElement.appendChild(text);
+        warningElement.appendChild(button);
+        document.body.appendChild(warningElement);
+      }
+      var seconds = Math.max(1, Math.ceil(remainingMs / 1000));
+      warningElement.querySelector('.idle-warning-text').textContent =
+        'Your session will expire in ' + seconds + ' seconds due to inactivity.';
+      warningElement.style.display = 'flex';
+    }
+
+    function checkIdle() {
+      if (logoutStarted || assessmentIsActive()) {
+        hideWarning();
+        return;
+      }
+      var idleMs = Date.now() - sharedActivityAt();
+      if (idleMs >= maxIdleMs) {
+        beginLogout();
+      } else if (idleMs >= maxIdleMs - warningMs) {
+        showWarning(maxIdleMs - idleMs);
+      } else {
+        hideWarning();
+      }
+    }
+
+    var now = Date.now();
+    if (!sharedActivityAt() || Date.now() - sharedActivityAt() > maxIdleMs) {
+      writeSharedActivity(now);
+    } else {
+      lastLocalWriteAt = sharedActivityAt();
+    }
+
+    ['mousemove', 'mousedown', 'touchstart', 'click', 'keydown', 'scroll'].forEach(function (name) {
+      window.addEventListener(name, recordGenuineActivity, { passive: true });
+    });
+    window.addEventListener('storage', function (event) {
+      if (event.key === activityKey) hideWarning();
+    });
+    window.addEventListener('pageshow', function (event) {
+      if (event.persisted) window.location.reload();
+    });
+    setInterval(checkIdle, 1000);
+  })();
+</script>
+{% endif %}

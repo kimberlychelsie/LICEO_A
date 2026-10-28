@@ -10,6 +10,7 @@ import json
 from utils.send_email import send_email
 from utils.parent_sync import sync_user_parent_links, sync_all_users_for_enrollment_guardian_email
 from utils.grade_approval_history import record_grade_history
+from utils.auth_sessions import revoke_current_auth_session
 from services.final_grades import (
     GradingPolicyError,
     required_grading_periods,
@@ -33,6 +34,14 @@ try:
 except ImportError:
     xlrd = None
 import pandas as pd
+
+
+def _logout_invalid_registrar_session():
+    """Fail closed without relying on the POST-only public logout route."""
+    revoke_current_auth_session()
+    session.clear()
+    flash("Your registrar session is no longer valid. Please sign in again.", "warning")
+    return redirect(url_for("auth.login"))
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
@@ -425,7 +434,7 @@ def registrar_home():
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session. Please login again.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -565,7 +574,7 @@ def registrar_enrollments():
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session. Please login again.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -2444,7 +2453,7 @@ def toggle_new_student_enrollment():
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     action = request.form.get("action")
     year_id = request.form.get("year_id", type=int)
@@ -2535,7 +2544,7 @@ def toggle_reenrollment():
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     action = request.form.get("action")
     if action not in ("open", "close"):
@@ -2593,7 +2602,7 @@ def decide_identity_review(enrollment_id):
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session. Please login again.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     decision = request.form.get("decision")
     reason = (request.form.get("reason") or "").strip()
@@ -2673,7 +2682,7 @@ def create_student_account(enrollment_id):
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session. Please login again.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -2866,7 +2875,7 @@ def create_parent_account(enrollment_id):
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session. Please login again.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -3083,7 +3092,7 @@ def link_parent_account(enrollment_id):
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session. Please login again.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -3177,7 +3186,7 @@ def registrar_profile_pictures():
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session. Please login again.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -3408,7 +3417,7 @@ def registrar_students_by_grade():
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session. Please login again.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -3588,7 +3597,7 @@ def registrar_students_by_grade_update(enrollment_id):
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     db = get_db_connection()
     cursor = db.cursor()
@@ -3745,7 +3754,7 @@ def registrar_delete_student_enrollment(enrollment_id):
     branch_id = session.get("branch_id")
     if not branch_id:
         flash("Missing branch in session.", "error")
-        return redirect("/logout")
+        return _logout_invalid_registrar_session()
 
     delete_parent_account = request.form.get("delete_parent_account") == "1"
 

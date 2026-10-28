@@ -51,8 +51,12 @@ class FakeCursor:
                 "revoked": False,
                 "expired": False,
                 "idle": False,
+                "refresh_count": 0,
             }
-        elif "SET LAST_SEEN_AT = NOW()" in normalized:
+        elif (
+            normalized.startswith("UPDATE AUTH_SESSIONS SET LAST_SEEN_AT =")
+            or normalized.startswith("SELECT SESSION_ID_HASH FROM AUTH_SESSIONS")
+        ):
             session_hash, user_id = params[:2]
             record = self.store.sessions.get(session_hash)
             if (
@@ -63,6 +67,8 @@ class FakeCursor:
                 and (len(params) == 2 or not record["idle"])
             ):
                 self.result = (session_hash,)
+                if "SET LAST_SEEN_AT = NOW()" in normalized:
+                    record["refresh_count"] += 1
         elif "SET REVOKED_AT = COALESCE" in normalized:
             session_hash, user_id = params
             record = self.store.sessions.get(session_hash)
@@ -92,6 +98,7 @@ def build_test_app(store):
             db_factory=store.connect,
             idle_timeout_seconds=3600,
             login_endpoint="login",
+            refresh_idle=request.endpoint != "poll",
         )
 
     @app.route("/login", methods=["GET", "POST"])
@@ -123,6 +130,10 @@ def build_test_app(store):
     @app.route("/protected")
     def protected():
         return f"protected:{session['role']}"
+
+    @app.route("/poll")
+    def poll():
+        return "poll"
 
     @app.route("/switch-role", methods=["POST"])
     def switch_role():
@@ -187,6 +198,28 @@ class AuthSessionRevocationTests(unittest.TestCase):
                 cursor, raw_session_id, 42, 300, allow_idle_expired=True
             )
         )
+
+    def test_passive_poll_validates_without_refreshing_idle_timestamp(self):
+        self.login()
+        with self.client.session_transaction() as current:
+            raw_session_id = current[AUTH_SESSION_KEY]
+        from utils.auth_sessions import _hash_session_id
+
+        record = self.store.sessions[_hash_session_id(raw_session_id)]
+        starting_refreshes = record["refresh_count"]
+        self.assertEqual(self.client.get("/poll").status_code, 200)
+        self.assertEqual(record["refresh_count"], starting_refreshes)
+
+        self.assertEqual(self.client.get("/protected").status_code, 200)
+        self.assertEqual(record["refresh_count"], starting_refreshes + 1)
+
+    def test_poll_cannot_restore_a_revoked_session(self):
+        restored_cookie = self.login()
+        self.assertEqual(self.client.post("/logout").status_code, 200)
+        self.client.set_cookie("session", restored_cookie)
+        response = self.client.get("/poll", follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers["Location"].endswith("/login"))
 
     def test_role_switch_keeps_same_server_session(self):
         self.login(role="teacher", roles=["teacher", "parent"])

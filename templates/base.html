@@ -2809,16 +2809,19 @@
             {% endfor %}
             {% endif %}
 
-            <a href="/logout" class="profile-dropdown-link"
-              style="color: #ef4444; border-top: 1px solid #f8fafc; margin-top: 4px; padding-top: 8px;">
+            <form action="{{ url_for('auth.logout') }}" method="POST" style="margin: 0;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="profile-dropdown-link"
+              style="width:100%; border-left:0; border-right:0; border-bottom:0; background:transparent; cursor:pointer; color: #ef4444; border-top: 1px solid #f8fafc; margin-top: 4px; padding-top: 8px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                 <polyline points="16 17 21 12 16 7"></polyline>
                 <line x1="21" y1="12" x2="9" y2="12"></line>
               </svg>
-              Logout
-            </a>
+                Logout
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -3667,87 +3670,7 @@
     });
   </script>
 
-  <script>
-    // Inactivity Auto-Logout JS Guard
-    (function () {
-      if (window.LICEO_ACTIVE_ASSESSMENT) return;
-      var idleSeconds = 0;
-      var maxIdleSeconds = {{ auth_idle_timeout_seconds | default(300) | int }};
-      var warningSeconds = Math.max(0, maxIdleSeconds - 60);
-      var warningShown = false;
-      var lastKeepaliveAt = Date.now();
-      var keepalivePending = false;
-
-      function refreshServerActivity() {
-        var now = Date.now();
-        if (keepalivePending || document.hidden || now - lastKeepaliveAt < 120000) return;
-        keepalivePending = true;
-        fetch('/auth/session/keepalive', { method: 'POST' })
-          .then(function (response) {
-            if (response.redirected || response.status === 401) {
-              window.location.href = '/login';
-              return;
-            }
-            if (response.ok) lastKeepaliveAt = Date.now();
-          })
-          .finally(function () { keepalivePending = false; });
-      }
-
-      function resetIdle() {
-        idleSeconds = 0;
-        refreshServerActivity();
-        if (warningShown) {
-          var warnEl = document.getElementById('idle-warning-banner');
-          if (warnEl) warnEl.style.display = 'none';
-          warningShown = false;
-        }
-      }
-
-      function assessmentActiveInAnotherTab() {
-        try {
-          var heartbeatAt = Number(localStorage.getItem('liceoAssessmentHeartbeatAt') || 0);
-          return heartbeatAt > 0 && (Date.now() - heartbeatAt) < 150000;
-        } catch (_) {
-          return false;
-        }
-      }
-
-      window.addEventListener('load', resetIdle);
-      window.addEventListener('mousemove', resetIdle);
-      window.addEventListener('mousedown', resetIdle);
-      window.addEventListener('touchstart', resetIdle);
-      window.addEventListener('click', resetIdle);
-      window.addEventListener('keypress', resetIdle);
-      window.addEventListener('scroll', resetIdle);
-
-      setInterval(function () {
-        if (assessmentActiveInAnotherTab()) {
-          resetIdle();
-          return;
-        }
-        idleSeconds++;
-
-        // Show warning one minute before logout.
-        if (idleSeconds >= warningSeconds && idleSeconds < maxIdleSeconds && !warningShown) {
-          warningShown = true;
-          var warnEl = document.getElementById('idle-warning-banner');
-          if (!warnEl) {
-            warnEl = document.createElement('div');
-            warnEl.id = 'idle-warning-banner';
-            warnEl.style.cssText = 'position:fixed; bottom:24px; right:24px; z-index:99999; background:#1e293b; color:#fff; padding:16px 20px; border-radius:14px; box-shadow:0 10px 25px rgba(0,0,0,0.3); border:1px solid #334155; font-family:sans-serif; font-size:0.9rem; display:flex; align-items:center; gap:12px;';
-            warnEl.innerHTML = '<span>Your session will expire in 1 minute due to inactivity.</span><button onclick="window.location.reload()" style="background:#2563eb; color:#fff; border:none; padding:6px 14px; border-radius:8px; font-weight:700; cursor:pointer;">Stay Logged In</button>';
-            document.body.appendChild(warnEl);
-          } else {
-            warnEl.style.display = 'flex';
-          }
-        }
-
-        if (idleSeconds >= maxIdleSeconds) {
-          window.location.href = "/login";
-        }
-      }, 1000);
-    })();
-  </script>
+  {% include '_session_timeout.html' %}
   {% endif %}
 
 </body>
