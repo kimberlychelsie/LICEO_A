@@ -4636,6 +4636,14 @@ def branch_admin_grade_approval():
         """, (branch_id, year_id))
         grade_levels = cur.fetchall() or []
 
+        if not grade_levels:
+            flash(
+                "No sections are set up yet for this branch and school year. "
+                "Please configure sections first.",
+                "warning",
+            )
+            return redirect(url_for("branch_admin.dashboard"))
+
         selected_grade_id = request.args.get("grade_level_id", type=int)
         selected_section_id = request.args.get("section_id", type=int)
         requested_period = request.args.get("period")
