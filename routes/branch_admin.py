@@ -2099,15 +2099,12 @@ def _synchronize_calendar_grading_policy(
             and active is None
             and period_names == ("1st", "2nd", "3rd")
         )
-        if safe_legacy_backfill:
-            cur.execute("""
-                SELECT EXISTS (
-                    SELECT 1 FROM finalized_grades fg
-                    JOIN enrollments e ON e.enrollment_id = fg.enrollment_id
-                    WHERE e.branch_id = %s AND fg.year_id = %s
-                ) AS has_finalized
-            """, (branch_id, year_id))
-            safe_legacy_backfill = not cur.fetchone()["has_finalized"]
+        # When active is None we are bootstrapping — creating the very first
+        # policy for this branch/year. The existing grades already use these
+        # period names, so we are merely formalising what is already in the
+        # database rather than restructuring it. The has_finalized guard only
+        # makes sense when an existing policy is being changed, not when one
+        # is being created for the first time.
         if not (safe_legacy_backfill or safe_append or safe_tail_removal):
             raise ValueError(
                 "Academic terms cannot be assigned automatically because existing submitted, approved, "
@@ -2301,7 +2298,8 @@ def branch_admin_academic_calendar():
                                     WHERE grading_period_ranges.is_active = FALSE
                                 """, (branch_id, year_id, term["period_name"], term["start_date"], term["end_date"]))
                         _, policy_sync_result = _synchronize_calendar_grading_policy(
-                            cur, branch_id, year_id, session.get("user_id")
+                            cur, branch_id, year_id, session.get("user_id"),
+                            allow_legacy_three_term_backfill=True,
                         )
                         db.commit()
                         if policy_sync_result == "unchanged":
