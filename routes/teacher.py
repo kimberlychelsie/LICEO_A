@@ -37,6 +37,8 @@ from services.final_grades import (
     required_grading_periods,
     validate_required_period,
 )
+import logging
+logger = logging.getLogger(__name__)
 
 try:
     import pytesseract
