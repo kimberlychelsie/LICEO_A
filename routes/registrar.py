@@ -2136,7 +2136,10 @@ def registrar_student_transfers():
             SELECT e.enrollment_id, e.branch_enrollment_no, e.lrn, e.grade_level,
                    CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name) AS student_name,
                    EXISTS (SELECT 1 FROM enrollment_documents d WHERE d.enrollment_id=e.enrollment_id AND (LOWER(d.doc_type) LIKE '%%form 137%%' OR LOWER(d.doc_type) LIKE '%%form137%%' OR LOWER(d.doc_type) LIKE '%%sf10%%' OR LOWER(d.doc_type) LIKE '%%cumulative%%')) AS has_sf10,
-                   EXISTS (SELECT 1 FROM enrollment_documents d WHERE d.enrollment_id=e.enrollment_id AND (LOWER(d.doc_type) LIKE '%%form 138%%' OR LOWER(d.doc_type) LIKE '%%form138%%' OR LOWER(d.doc_type) LIKE '%%sf9%%' OR LOWER(d.doc_type) LIKE '%%report card%%' OR LOWER(d.doc_type) = 'card')) AS has_sf9
+                   EXISTS (SELECT 1 FROM enrollment_documents d WHERE d.enrollment_id=e.enrollment_id AND (LOWER(d.doc_type) LIKE '%%form 138%%' OR LOWER(d.doc_type) LIKE '%%form138%%' OR LOWER(d.doc_type) LIKE '%%sf9%%' OR LOWER(d.doc_type) LIKE '%%report card%%' OR LOWER(d.doc_type) = 'card')) AS has_sf9,
+                   EXISTS (SELECT 1 FROM enrollment_documents d WHERE d.enrollment_id=e.enrollment_id AND (LOWER(d.doc_type) LIKE '%%psa%%' OR LOWER(d.doc_type) LIKE '%%birth cert%%' OR LOWER(d.doc_type) LIKE '%%birth certificate%%')) AS has_psa,
+                   EXISTS (SELECT 1 FROM enrollment_documents d WHERE d.enrollment_id=e.enrollment_id AND (LOWER(d.doc_type) LIKE '%%baptismal%%')) AS has_baptismal,
+                   EXISTS (SELECT 1 FROM enrollment_documents d WHERE d.enrollment_id=e.enrollment_id AND (LOWER(d.doc_type) LIKE '%%good moral%%' OR LOWER(d.doc_type) LIKE '%%goodmoral%%' OR LOWER(d.doc_type) LIKE '%%conduct%%')) AS has_good_moral
             FROM enrollments e
             WHERE e.branch_id=%s AND e.year_id=%s
               AND e.status IN ('approved','enrolled','open_for_enrollment','completed')
@@ -2260,11 +2263,20 @@ def registrar_request_student_transfer():
         cursor.execute("""
             SELECT
               EXISTS(SELECT 1 FROM enrollment_documents WHERE enrollment_id=%s AND (LOWER(doc_type) LIKE '%%form 137%%' OR LOWER(doc_type) LIKE '%%form137%%' OR LOWER(doc_type) LIKE '%%sf10%%' OR LOWER(doc_type) LIKE '%%cumulative%%')) AS has_sf10,
-              EXISTS(SELECT 1 FROM enrollment_documents WHERE enrollment_id=%s AND (LOWER(doc_type) LIKE '%%form 138%%' OR LOWER(doc_type) LIKE '%%form138%%' OR LOWER(doc_type) LIKE '%%sf9%%' OR LOWER(doc_type) LIKE '%%report card%%' OR LOWER(doc_type) = 'card')) AS has_sf9
-        """, (enrollment_id, enrollment_id))
+              EXISTS(SELECT 1 FROM enrollment_documents WHERE enrollment_id=%s AND (LOWER(doc_type) LIKE '%%form 138%%' OR LOWER(doc_type) LIKE '%%form138%%' OR LOWER(doc_type) LIKE '%%sf9%%' OR LOWER(doc_type) LIKE '%%report card%%' OR LOWER(doc_type) = 'card')) AS has_sf9,
+              EXISTS(SELECT 1 FROM enrollment_documents WHERE enrollment_id=%s AND (LOWER(doc_type) LIKE '%%psa%%' OR LOWER(doc_type) LIKE '%%birth cert%%' OR LOWER(doc_type) LIKE '%%birth certificate%%')) AS has_psa,
+              EXISTS(SELECT 1 FROM enrollment_documents WHERE enrollment_id=%s AND (LOWER(doc_type) LIKE '%%baptismal%%')) AS has_baptismal,
+              EXISTS(SELECT 1 FROM enrollment_documents WHERE enrollment_id=%s AND (LOWER(doc_type) LIKE '%%good moral%%' OR LOWER(doc_type) LIKE '%%goodmoral%%' OR LOWER(doc_type) LIKE '%%conduct%%')) AS has_good_moral
+        """, (enrollment_id, enrollment_id, enrollment_id, enrollment_id, enrollment_id))
         docs = cursor.fetchone()
-        if not docs["has_sf10"] or not docs["has_sf9"]:
-            raise ValueError("Upload both the Permanent Record (SF10 / Form 137) and Report Card (SF9 / Form 138) before requesting transfer.")
+        missing = []
+        if not docs["has_sf10"]: missing.append("Permanent Record (SF10 / Form 137)")
+        if not docs["has_sf9"]: missing.append("Report Card (SF9 / Form 138)")
+        if not docs["has_psa"]: missing.append("PSA Birth Certificate")
+        if not docs["has_baptismal"]: missing.append("Baptismal Certificate")
+        if not docs["has_good_moral"]: missing.append("Good Moral Certificate")
+        if missing:
+            raise ValueError("Upload the following required documents before requesting transfer: " + ", ".join(missing) + ".")
         cursor.execute("""
             INSERT INTO student_transfer_requests
               (source_enrollment_id, source_branch_id, destination_branch_id, source_year_id,
