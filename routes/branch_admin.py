@@ -24,6 +24,9 @@ from services.final_grades import (
     validate_required_period,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 branch_admin_bp = Blueprint("branch_admin", __name__)
 
 
