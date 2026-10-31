@@ -2148,7 +2148,7 @@ def branch_admin_academic_calendar():
         year_id = _get_active_school_year(cur, branch_id)
         if not year_id:
             flash("No active school year found for this branch.", "error")
-            return redirect(url_for("branch_admin.branch_admin_dashboard"))
+            return redirect(url_for("branch_admin.dashboard"))
 
         today = datetime.now().date()
         today_str = today.strftime('%Y-%m-%d')
@@ -2410,9 +2410,14 @@ def list_and_add_schedules():
             legacy_periods=("1st", "2nd", "3rd"),
         )) if active_year else []
     except GradingPolicyError as exc:
-        flash(f"Grading policy configuration error: {exc}", "error")
+        logger.warning("Grading policy not configured for branch %s: %s", branch_id, exc)
+        flash(
+            "Grading terms are not set up yet for this branch. "
+            "Please save the Academic Calendar first.",
+            "error",
+        )
         cursor.close(); db.close()
-        return redirect(url_for("branch_admin.branch_admin_dashboard"))
+        return redirect(url_for("branch_admin.dashboard"))
 
     # Fetch unique Grades and Sections for filtering
     cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
@@ -2746,9 +2751,14 @@ def edit_schedule(schedule_id):
             legacy_periods=("1st", "2nd", "3rd"),
         )) if active_year else []
     except GradingPolicyError as exc:
-        flash(f"Grading policy configuration error: {exc}", "error")
+        logger.warning("Grading policy not configured for branch %s: %s", branch_id, exc)
+        flash(
+            "Grading terms are not set up yet for this branch. "
+            "Please save the Academic Calendar first.",
+            "error",
+        )
         cursor.close(); db.close()
-        return redirect(url_for("branch_admin.branch_admin_dashboard"))
+        return redirect(url_for("branch_admin.dashboard"))
 
     if request.method == "POST":
         combo = request.form["combo"]
@@ -3300,9 +3310,14 @@ def branch_admin_subjects():
             legacy_periods=("1st", "2nd", "3rd"),
         )) if active_year_id else []
     except GradingPolicyError as exc:
-        flash(f"Grading policy configuration error: {exc}", "error")
+        logger.warning("Grading policy not configured for branch %s: %s", branch_id, exc)
+        flash(
+            "Grading terms are not set up yet for this branch. "
+            "Please save the Academic Calendar first.",
+            "error",
+        )
         cursor.close(); db.close()
-        return redirect(url_for("branch_admin.branch_admin_dashboard"))
+        return redirect(url_for("branch_admin.dashboard"))
 
     if request.method == "POST":
         names = request.form.getlist("names")
@@ -4587,8 +4602,13 @@ def branch_admin_grade_approval():
                 legacy_periods=("1st", "2nd", "3rd"),
             ))
         except GradingPolicyError as exc:
-            flash(f"Grading policy configuration error: {exc}", "error")
-            return redirect(url_for("branch_admin.branch_admin_dashboard"))
+            logger.warning("Grading policy not configured for branch %s: %s", branch_id, exc)
+            flash(
+                "Grading terms are not set up yet for this branch. "
+                "Please save the Academic Calendar first.",
+                "error",
+            )
+            return redirect(url_for("branch_admin.dashboard"))
 
         cur.execute("""
             SELECT MIN(g.id) AS id, MIN(g.name) AS name

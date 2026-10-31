@@ -3213,7 +3213,12 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                     year_id=selected_transfer["destination_year_id"],
                 )
             except GradingPolicyError as exc:
-                flash(f"Grading policy configuration error: {exc}", "error")
+                logger.warning("Grading policy error for branch %s: %s", selected_transfer["destination_branch_id"], exc)
+                flash(
+                    "Grading terms are not yet configured for the destination branch. "
+                    "Please contact the Branch Admin.",
+                    "error",
+                )
                 return redirect(url_for("student_portal.student_grades"))
             grading_periods = list(policy.required_periods if policy else GRADING_PERIODS)
             if selected_transfer["effective_term"] not in grading_periods:
@@ -3565,8 +3570,13 @@ def student_my_schedule():
                     cur, branch_id=effective_branch_id, year_id=active_year_id
                 )
             except GradingPolicyError as exc:
-                flash(f"Grading policy configuration error: {exc}", "error")
-                return redirect(url_for("student_portal.student_dashboard"))
+                logger.warning("Grading policy error for branch %s: %s", effective_branch_id, exc)
+                flash(
+                    "Grading terms are not yet configured for this branch. "
+                    "Please contact the Branch Admin.",
+                    "warning",
+                )
+                return redirect(url_for("student_portal.dashboard"))
             schedule_periods = list(
                 schedule_policy.required_periods if schedule_policy else GRADING_PERIODS
             )
