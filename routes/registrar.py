@@ -412,10 +412,22 @@ def registrar_sidebar_badges():
             """, (branch_id, year_id))
             grade_reviews = int(cursor.fetchone()["n"] or 0)
 
+        pending_transfers = 0
+        try:
+            cursor.execute("""
+                SELECT COUNT(*) AS n
+                FROM student_transfer_requests
+                WHERE destination_branch_id = %s AND status = 'pending_destination'
+            """, (branch_id,))
+            pending_transfers = int(cursor.fetchone()["n"] or 0)
+        except Exception:
+            pass  # table may not exist yet on older deployments
+
         return jsonify({
             "enrollments_pending": pending,
             "enrollments": pending,
             "grade_reviews": grade_reviews,
+            "pending_transfers": pending_transfers,
         })
     finally:
         cursor.close()
