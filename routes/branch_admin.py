@@ -228,6 +228,11 @@ def dashboard():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+    # Safe defaults — always defined even if the DB block raises early
+    announcements_list = []
+    grades = []
+    recent_grade_requests = []
+
     try:
         # ✅ Auto-seed grade levels if table is empty
         cursor.execute("SELECT COUNT(*) FROM grade_levels")
