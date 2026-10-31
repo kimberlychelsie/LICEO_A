@@ -5028,10 +5028,19 @@ def shs_offerings():
             """, (branch_id, year_id))
             raw_periods = cur.fetchall()
             terms = [p["period_name"] for p in raw_periods]
-            configured_terms = list(required_grading_periods(
-                cur, branch_id=branch_id, year_id=year_id,
-                legacy_periods=("1st", "2nd", "3rd"),
-            ))
+            try:
+                configured_terms = list(required_grading_periods(
+                    cur, branch_id=branch_id, year_id=year_id,
+                    legacy_periods=("1st", "2nd", "3rd"),
+                ))
+            except GradingPolicyError as exc:
+                logger.warning("Grading policy not configured for branch %s: %s", branch_id, exc)
+                flash(
+                    "Grading terms are not set up yet for this branch. "
+                    "Please save the Academic Calendar first.",
+                    "error",
+                )
+                return redirect(url_for("branch_admin.dashboard"))
             terms = [term for term in configured_terms if term in terms]
             if not terms and not grading_policy_final_grades_enabled():
                 terms = configured_terms
