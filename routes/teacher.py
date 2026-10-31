@@ -7059,10 +7059,18 @@ def teacher_submit_grades(section_id, subject_id, period):
             return redirect(url_for("teacher.teacher_dashboard"))
 
         # Sequential term check: the immediately preceding policy term must be posted.
-        configured_periods = list(required_grading_periods(
-            cur, branch_id=branch_id, year_id=year_id,
-            legacy_periods=GRADING_PERIODS,
-        ))
+        try:
+            configured_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=GRADING_PERIODS,
+            ))
+        except GradingPolicyError as exc:
+            flash(
+                "Grading terms are not set up yet for this branch. "
+                "Please ask the Branch Admin to save the Academic Calendar first.",
+                "error",
+            )
+            return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
         period_index = configured_periods.index(period)
         if period_index > 0:
             previous_period = configured_periods[period_index - 1]
@@ -7288,10 +7296,18 @@ def teacher_unsubmit_grades(section_id, subject_id, period):
             flash("This class record is already editable.", "info")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
-        configured_periods = list(required_grading_periods(
-            cur, branch_id=branch_id, year_id=year_id,
-            legacy_periods=GRADING_PERIODS,
-        ))
+        try:
+            configured_periods = list(required_grading_periods(
+                cur, branch_id=branch_id, year_id=year_id,
+                legacy_periods=GRADING_PERIODS,
+            ))
+        except GradingPolicyError as exc:
+            flash(
+                "Grading terms are not set up yet for this branch. "
+                "Please ask the Branch Admin to save the Academic Calendar first.",
+                "error",
+            )
+            return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
         later_periods = configured_periods[configured_periods.index(period) + 1:]
         if later_periods:
             cur.execute("""
