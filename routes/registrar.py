@@ -3986,9 +3986,14 @@ def list_and_add_schedules():
             legacy_periods=("1st", "2nd", "3rd"),
         )) if active_year else []
     except GradingPolicyError as exc:
-        flash(f"Grading policy configuration error: {exc}", "error")
+        logger.warning("Grading policy not configured for branch %s: %s", branch_id, exc)
+        flash(
+            "Grading terms are not set up yet for this branch. "
+            "Please ask the Branch Admin to save the Academic Calendar first.",
+            "error",
+        )
         cursor.close(); db.close()
-        return redirect(url_for("registrar.registrar_dashboard"))
+        return redirect(url_for("registrar.registrar_home"))
 
     # Fetch unique Grades and Sections for filtering
     cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
@@ -4239,9 +4244,14 @@ def edit_schedule(schedule_id):
             legacy_periods=("1st", "2nd", "3rd"),
         )) if active_year else []
     except GradingPolicyError as exc:
-        flash(f"Grading policy configuration error: {exc}", "error")
+        logger.warning("Grading policy not configured for branch %s: %s", branch_id, exc)
+        flash(
+            "Grading terms are not set up yet for this branch. "
+            "Please ask the Branch Admin to save the Academic Calendar first.",
+            "error",
+        )
         cursor.close(); db.close()
-        return redirect(url_for("registrar.registrar_dashboard"))
+        return redirect(url_for("registrar.registrar_home"))
 
     if request.method == "POST":
         combo = request.form["combo"]
@@ -4832,9 +4842,14 @@ def registrar_subjects():
             legacy_periods=("1st", "2nd", "3rd"),
         )) if active_year_id else []
     except GradingPolicyError as exc:
-        flash(f"Grading policy configuration error: {exc}", "error")
+        logger.warning("Grading policy not configured for branch %s: %s", branch_id, exc)
+        flash(
+            "Grading terms are not set up yet for this branch. "
+            "Please ask the Branch Admin to save the Academic Calendar first.",
+            "error",
+        )
         cursor.close(); db.close()
-        return redirect(url_for("registrar.registrar_dashboard"))
+        return redirect(url_for("registrar.registrar_home"))
 
     if request.method == "POST":
         names = request.form.getlist("names")
@@ -6457,8 +6472,13 @@ def registrar_grade_review():
                 legacy_periods=("1st", "2nd", "3rd"),
             ))
         except GradingPolicyError as exc:
-            flash(f"Grading policy configuration error: {exc}", "error")
-            return redirect(url_for("registrar.registrar_dashboard"))
+            logger.warning("Grading policy not configured for branch %s: %s", branch_id, exc)
+            flash(
+                "Grading terms are not set up yet for this branch. "
+                "Please ask the Branch Admin to save the Academic Calendar first.",
+                "error",
+            )
+            return redirect(url_for("registrar.registrar_home"))
 
         # Restrict choices to this branch/year and collapse legacy duplicate names.
         cur.execute("""

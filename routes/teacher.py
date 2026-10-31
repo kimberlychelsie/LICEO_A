@@ -723,7 +723,12 @@ def teacher_dashboard():
             )) if year_id else []
         except GradingPolicyError as exc:
             configured_periods = []
-            flash(f"Grading policy configuration error: {exc}", "error")
+            logger.warning("Grading policy not configured for branch %s: %s", branch_id, exc)
+            flash(
+                "Grading terms are not set up yet for this branch. "
+                "Please ask the Branch Admin to save the Academic Calendar first.",
+                "warning",
+            )
         cur.execute("""
             SELECT period_name FROM grading_period_ranges
             WHERE branch_id = %s AND year_id = %s AND %s BETWEEN start_date AND end_date
@@ -8834,7 +8839,12 @@ def academic_coordinator_grade_review():
                 legacy_periods=GRADING_PERIODS,
             ))
         except GradingPolicyError as exc:
-            flash(f"Grading policy configuration error: {exc}", "error")
+            logger.warning("Grading policy not configured for branch %s: %s", branch_id, exc)
+            flash(
+                "Grading terms are not set up yet for this branch. "
+                "Please ask the Branch Admin to save the Academic Calendar first.",
+                "error",
+            )
             return redirect(url_for("teacher.teacher_dashboard"))
         # Filters describe the active branch/year, even when there are no
         # submissions currently waiting at the coordinator step.
