@@ -2136,6 +2136,14 @@ def registrar_student_transfers():
     if session.get("role") != "registrar":
         return redirect("/")
     branch_id = session.get("branch_id")
+    # ── pagination / filter params ──────────────────────────────
+    PER_PAGE = 15
+    active_tab = request.args.get("tab", "incoming")
+    if active_tab not in ("incoming", "outgoing"):
+        active_tab = "incoming"
+    page      = max(1, request.args.get("page", 1, type=int))
+    status_f  = (request.args.get("status") or "all").strip()
+    q         = (request.args.get("q") or "").strip()
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
@@ -2177,10 +2185,56 @@ def registrar_student_transfers():
             JOIN branches db ON db.branch_id=tr.destination_branch_id
             LEFT JOIN sections sec ON sec.section_id=tr.destination_section_id
         """
-        cursor.execute(base_select + " WHERE tr.destination_branch_id=%s ORDER BY tr.requested_at DESC", (branch_id,))
+
+        # build shared extra filter (status + name search)
+        extra_parts, extra_params = [], []
+        if status_f and status_f != "all":
+            extra_parts.append("tr.status = %s")
+            extra_params.append(status_f)
+        if q:
+            extra_parts.append(
+                "CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name) ILIKE %s"
+            )
+            extra_params.append(f"%{q}%")
+        extra_filter = (" AND " + " AND ".join(extra_parts)) if extra_parts else ""
+
+        # ── incoming ─────────────────────────────────────────────
+        cursor.execute(
+            "SELECT COUNT(*) AS n FROM student_transfer_requests tr "
+            "JOIN enrollments e ON e.enrollment_id=tr.source_enrollment_id "
+            "WHERE tr.destination_branch_id=%s" + extra_filter,
+            [branch_id] + extra_params,
+        )
+        in_total = int(cursor.fetchone()["n"] or 0)
+        in_pages = max(1, (in_total + PER_PAGE - 1) // PER_PAGE)
+        in_page  = min(page, in_pages) if active_tab == "incoming" else 1
+        cursor.execute(
+            base_select
+            + " WHERE tr.destination_branch_id=%s" + extra_filter
+            + " ORDER BY CASE WHEN tr.status='pending_destination' THEN 0 ELSE 1 END,"
+              " tr.requested_at DESC LIMIT %s OFFSET %s",
+            [branch_id] + extra_params + [PER_PAGE, (in_page - 1) * PER_PAGE],
+        )
         incoming = cursor.fetchall() or []
-        cursor.execute(base_select + " WHERE tr.source_branch_id=%s ORDER BY tr.requested_at DESC", (branch_id,))
+
+        # ── outgoing ─────────────────────────────────────────────
+        cursor.execute(
+            "SELECT COUNT(*) AS n FROM student_transfer_requests tr "
+            "JOIN enrollments e ON e.enrollment_id=tr.source_enrollment_id "
+            "WHERE tr.source_branch_id=%s" + extra_filter,
+            [branch_id] + extra_params,
+        )
+        out_total = int(cursor.fetchone()["n"] or 0)
+        out_pages = max(1, (out_total + PER_PAGE - 1) // PER_PAGE)
+        out_page  = min(page, out_pages) if active_tab == "outgoing" else 1
+        cursor.execute(
+            base_select
+            + " WHERE tr.source_branch_id=%s" + extra_filter
+            + " ORDER BY tr.requested_at DESC LIMIT %s OFFSET %s",
+            [branch_id] + extra_params + [PER_PAGE, (out_page - 1) * PER_PAGE],
+        )
         outgoing = cursor.fetchall() or []
+
         cursor.execute("""
             SELECT s.section_id, s.section_name, g.name AS grade_level_name, s.capacity,
                    COUNT(e.enrollment_id) FILTER (WHERE e.status IN ('approved','enrolled','open_for_enrollment','completed')) AS current_count
@@ -2195,10 +2249,19 @@ def registrar_student_transfers():
             cursor, branch_id=branch_id, year_id=active_year["year_id"],
             legacy_periods=("1st", "2nd", "3rd"),
         ))
-        return render_template("registrar_student_transfers.html", active_year=active_year,
-            eligible_students=eligible_students, destinations=destinations,
-            incoming=incoming, outgoing=outgoing, sections=sections,
-            transfer_terms=transfer_terms)
+        return render_template("registrar_student_transfers.html",
+            active_year=active_year,
+            eligible_students=eligible_students,
+            destinations=destinations,
+            incoming=incoming, outgoing=outgoing,
+            sections=sections,
+            transfer_terms=transfer_terms,
+            # filter / pagination context
+            active_tab=active_tab, page=page, q=q, status_f=status_f,
+            in_total=in_total,  in_pages=in_pages,  in_page=in_page,
+            out_total=out_total, out_pages=out_pages, out_page=out_page,
+            per_page=PER_PAGE,
+        )
     except Exception as exc:
         db.rollback()
         if _student_transfers_table_missing(exc):

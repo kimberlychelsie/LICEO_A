@@ -2,49 +2,339 @@
 {% block title %}Student Transfers — Liceo LMS{% endblock %}
 {% block content %}
 <style>
-.tr-wrap{max-width:1120px;margin:0 auto;padding:28px 18px 60px}.tr-hero{background:linear-gradient(135deg,#123b8f,#1d4ed8);color:#fff;border-radius:18px;padding:25px 28px;margin-bottom:18px}.tr-hero h1{margin:0 0 5px;font-size:1.65rem}.tr-hero p{margin:0;color:#dbeafe}.tr-grid{display:grid;grid-template-columns:360px minmax(0,1fr);gap:18px;align-items:start}.tr-card{background:#fff;border:1px solid #dbe4f0;border-radius:15px;padding:18px;box-shadow:0 5px 20px rgba(15,23,42,.04)}.tr-card h2{margin:0 0 5px;color:#123b8f;font-size:1.05rem}.tr-note{margin:0 0 15px;color:#64748b;font-size:.79rem;line-height:1.5}.tr-field{display:block;margin-bottom:11px;color:#334155;font-size:.75rem;font-weight:800}.tr-input{width:100%;box-sizing:border-box;margin-top:5px;border:1px solid #cbd5e1;border-radius:9px;padding:9px 10px;background:#fff;color:#0f172a;font:inherit}.tr-input:focus{outline:0;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}.tr-btn{border:0;border-radius:9px;padding:9px 13px;font-weight:800;cursor:pointer}.tr-btn.primary{background:#1d4ed8;color:#fff}.tr-btn.approve{background:#dcfce7;color:#166534}.tr-btn.reject{background:#fff1f2;color:#be123c;border:1px solid #fecdd3}.tr-btn:disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed}.tr-tabs{display:flex;gap:7px;margin-bottom:12px}.tr-tab{border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#475569;padding:7px 13px;font-weight:800;cursor:pointer}.tr-tab.active{background:#123b8f;color:#fff;border-color:#123b8f}.tr-list{display:flex;flex-direction:column;gap:10px}.tr-item{border:1px solid #e2e8f0;border-radius:12px;padding:13px}.tr-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.tr-name{color:#0f2f75;font-weight:850}.tr-meta{color:#64748b;font-size:.76rem;margin-top:3px}.tr-status{border-radius:999px;padding:4px 8px;font-size:.66rem;font-weight:850;text-transform:uppercase;background:#fef3c7;color:#92400e}.tr-status.approved{background:#dcfce7;color:#166534}.tr-status.rejected,.tr-status.cancelled{background:#fee2e2;color:#991b1b}.tr-reason{margin:9px 0 0;background:#f8fafc;border-radius:8px;padding:8px 10px;color:#475569;font-size:.78rem}.tr-actions{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;gap:7px;margin-top:10px;align-items:end}.tr-empty{text-align:center;color:#94a3b8;padding:30px 10px;border:1px dashed #cbd5e1;border-radius:12px}.doc-state{font-size:.69rem;margin-top:5px}.doc-ok{color:#15803d}.doc-missing{color:#b91c1c}@media(max-width:850px){.tr-grid{grid-template-columns:1fr}.tr-actions{grid-template-columns:1fr}.tr-wrap{padding:18px 10px 50px}}
-.tr-hero{display:flex;align-items:center;justify-content:space-between;gap:20px}.tr-hero .tr-btn.primary{background:#fff;color:#123b8f;white-space:nowrap}.tr-grid{display:block}.tr-modal{position:fixed;inset:0;z-index:2200;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(8,25,61,.62)}.tr-modal.open{display:flex}.tr-dialog{width:min(560px,100%);max-height:calc(100vh - 36px);overflow:auto;background:#fff;border-radius:19px;box-shadow:0 25px 70px rgba(0,0,0,.3)}.tr-modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 21px;border-bottom:1px solid #e2e8f0}.tr-modal-head h2{margin:0;color:#123b8f;font-size:1.15rem}.tr-close{width:36px;height:36px;border:0;border-radius:9px;background:#eef2f7;color:#475569;font-size:1.3rem;cursor:pointer}.tr-modal-body{padding:20px 21px}.tr-modal-body.tr-card{border:0;border-radius:0;box-shadow:none}.tr-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:17px}.tr-btn.secondary{background:#eef2f7;color:#475569}@media(max-width:850px){.tr-hero{align-items:flex-start;flex-direction:column}.tr-hero .tr-btn{width:100%}}
-.tr-modal-body>h2{display:none}.tr-student-filters{display:grid;grid-template-columns:1fr;gap:9px;margin-bottom:11px}.tr-student-filters .tr-input{margin-top:5px}.tr-filter-label{color:#334155;font-size:.75rem;font-weight:800}.tr-filter-result{margin:-2px 0 0;color:#64748b;font-size:.7rem}.tr-modal textarea.tr-input{height:88px;min-height:88px;max-height:88px;resize:none;overflow-y:auto}.doc-state{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.doc-badge{display:inline-flex;align-items:center;padding:4px 7px;border-radius:7px;font-size:.68rem;font-weight:800}.doc-badge.ok{background:#dcfce7;color:#166534}.doc-badge.missing{background:#fee2e2;color:#b91c1c}.doc-manage{margin-left:auto;color:#1d4ed8;font-size:.7rem;font-weight:800;text-decoration:none}.doc-manage:hover{text-decoration:underline}
+.tr-wrap{max-width:1120px;margin:0 auto;padding:28px 18px 60px}.tr-hero{background:linear-gradient(135deg,#123b8f,#1d4ed8);color:#fff;border-radius:18px;padding:25px 28px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:20px}.tr-hero h1{margin:0 0 5px;font-size:1.65rem}.tr-hero p{margin:0;color:#dbeafe}.tr-hero .tr-btn.primary{background:#fff;color:#123b8f;white-space:nowrap}.tr-grid{display:block}.tr-card{background:#fff;border:1px solid #dbe4f0;border-radius:15px;padding:18px;box-shadow:0 5px 20px rgba(15,23,42,.04)}.tr-card h2{margin:0 0 5px;color:#123b8f;font-size:1.05rem}.tr-note{margin:0 0 15px;color:#64748b;font-size:.79rem;line-height:1.5}.tr-field{display:block;margin-bottom:11px;color:#334155;font-size:.75rem;font-weight:800}.tr-input{width:100%;box-sizing:border-box;margin-top:5px;border:1px solid #cbd5e1;border-radius:9px;padding:9px 10px;background:#fff;color:#0f172a;font:inherit}.tr-input:focus{outline:0;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}.tr-btn{border:0;border-radius:9px;padding:9px 13px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;font-size:.8rem}.tr-btn.primary{background:#1d4ed8;color:#fff}.tr-btn.approve{background:#dcfce7;color:#166534}.tr-btn.reject{background:#fff1f2;color:#be123c;border:1px solid #fecdd3}.tr-btn.secondary{background:#eef2f7;color:#475569}.tr-btn:disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed}.tr-tabs{display:flex;gap:7px;margin-bottom:12px}.tr-tab{border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#475569;padding:7px 14px;font-weight:800;cursor:pointer;font-size:.8rem}.tr-tab.active{background:#123b8f;color:#fff;border-color:#123b8f}.tr-list{display:flex;flex-direction:column;gap:10px}.tr-item{border:1px solid #e2e8f0;border-radius:12px;padding:13px;transition:box-shadow .15s}.tr-item:hover{box-shadow:0 4px 12px rgba(15,23,42,.07)}.tr-item.is-pending{border-color:#bfdbfe;background:#f0f7ff}.tr-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.tr-name{color:#0f2f75;font-weight:850}.tr-meta{color:#64748b;font-size:.76rem;margin-top:3px}.tr-status{border-radius:999px;padding:4px 9px;font-size:.66rem;font-weight:850;text-transform:uppercase;background:#fef3c7;color:#92400e;white-space:nowrap}.tr-status.approved{background:#dcfce7;color:#166534}.tr-status.rejected,.tr-status.cancelled{background:#fee2e2;color:#991b1b}.tr-status.pending_destination{background:#dbeafe;color:#1e40af}.tr-reason{margin:9px 0 0;background:#f8fafc;border-radius:8px;padding:8px 10px;color:#475569;font-size:.78rem}.tr-actions{display:grid;grid-template-columns:minmax(180px,1fr) auto auto;gap:7px;margin-top:10px;align-items:end}.tr-empty{text-align:center;color:#94a3b8;padding:30px 10px;border:1px dashed #cbd5e1;border-radius:12px}.doc-state{font-size:.69rem;margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.doc-badge{display:inline-flex;align-items:center;padding:4px 7px;border-radius:7px;font-size:.68rem;font-weight:800}.doc-badge.ok{background:#dcfce7;color:#166534}.doc-badge.missing{background:#fee2e2;color:#b91c1c}.doc-manage{margin-left:auto;color:#1d4ed8;font-size:.7rem;font-weight:800;text-decoration:none}.doc-manage:hover{text-decoration:underline}
+/* Filter bar */
+.tr-filter-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;padding:10px 12px}.tr-filter-bar .tr-input{margin-top:0;flex:1;min-width:140px}.tr-filter-bar select.tr-input{flex:0 0 auto;width:auto;min-width:130px}.tr-clear-link{color:#64748b;font-size:.75rem;font-weight:700;text-decoration:none;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;background:#fff}.tr-clear-link:hover{background:#f1f5f9}
+/* Pagination */
+.tr-pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:16px;flex-wrap:wrap}.tr-page-btn{border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#475569;padding:7px 12px;font-size:.75rem;font-weight:800;cursor:pointer;text-decoration:none;transition:background .12s}.tr-page-btn:hover{background:#f1f5f9}.tr-page-btn.active-page{background:#123b8f;color:#fff;border-color:#123b8f;pointer-events:none}.tr-page-btn.disabled{opacity:.4;pointer-events:none}.tr-page-info{color:#64748b;font-size:.74rem;padding:0 4px}
+/* Modal */
+.tr-modal{position:fixed;inset:0;z-index:2200;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(8,25,61,.62)}.tr-modal.open{display:flex}.tr-dialog{width:min(560px,100%);max-height:calc(100vh - 36px);overflow:auto;background:#fff;border-radius:19px;box-shadow:0 25px 70px rgba(0,0,0,.3)}.tr-modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 21px;border-bottom:1px solid #e2e8f0}.tr-modal-head h2{margin:0;color:#123b8f;font-size:1.15rem}.tr-close{width:36px;height:36px;border:0;border-radius:9px;background:#eef2f7;color:#475569;font-size:1.3rem;cursor:pointer}.tr-modal-body{padding:20px 21px}.tr-modal-body.tr-card{border:0;border-radius:0;box-shadow:none}.tr-modal-body>h2{display:none}.tr-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:17px}.tr-student-filters{display:grid;grid-template-columns:1fr;gap:9px;margin-bottom:11px}.tr-student-filters .tr-input{margin-top:5px}.tr-filter-label{color:#334155;font-size:.75rem;font-weight:800}.tr-filter-result{margin:-2px 0 0;color:#64748b;font-size:.7rem}.tr-modal textarea.tr-input{height:88px;min-height:88px;max-height:88px;resize:none;overflow-y:auto}
+@media(max-width:850px){.tr-hero{align-items:flex-start;flex-direction:column}.tr-hero .tr-btn{width:100%}.tr-actions{grid-template-columns:1fr}.tr-wrap{padding:18px 10px 50px}}
 </style>
+
 <div class="tr-wrap">
-  <section class="tr-hero"><div><h1>Student Branch Transfers</h1><p>Registrar-managed internal transfers for S.Y. {{ active_year.label }}. Historical records remain in the source branch.</p></div><button class="tr-btn primary" type="button" id="openTransferModal">+ Request Transfer</button></section>
-  <div class="tr-grid">
-    <section class="tr-card">
-      <h2>Request Transfer</h2><p class="tr-note">Only branches with open enrollment are selectable. All 5 enrollment documents are required: Permanent Record (SF10 / Form 137), Report Card (SF9 / Form 138), PSA Birth Certificate, Baptismal Certificate, and Good Moral Certificate.</p>
-      <form method="post" action="{{ url_for('registrar.registrar_request_student_transfer') }}" id="transferRequestForm">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="tr-student-filters"><label class="tr-filter-label">Grade level<select class="tr-input" id="transferGradeFilter"><option value="">All grade levels</option></select></label><label class="tr-filter-label">Search student<input class="tr-input" id="transferStudentSearch" type="search" maxlength="100" placeholder="Name or grade level..."></label><div class="tr-filter-result" id="transferFilterResult" aria-live="polite"></div></div>
-        <label class="tr-field">Student<select class="tr-input" name="enrollment_id" id="transferStudent" required><option value="">Select student</option>{% for s in eligible_students %}<option value="{{ s.enrollment_id }}" data-grade="{{ s.grade_level|e }}" data-name="{{ s.student_name|e }}" data-sf10="{{ 1 if s.has_sf10 else 0 }}" data-sf9="{{ 1 if s.has_sf9 else 0 }}" data-psa="{{ 1 if s.has_psa else 0 }}" data-baptismal="{{ 1 if s.has_baptismal else 0 }}" data-goodmoral="{{ 1 if s.has_good_moral else 0 }}">{{ s.student_name }} — {{ s.grade_level }}</option>{% endfor %}</select><span id="transferDocs" class="doc-state"></span></label>
-        <label class="tr-field">Destination branch<select class="tr-input" name="destination_branch_id" required><option value="">Select open branch</option>{% for b in destinations %}<option value="{{ b.branch_id }}">{{ b.branch_name }} — {{ b.school_year }}</option>{% endfor %}</select></label>
-        <label class="tr-field">Destination grade level<input class="tr-input" name="grade_level" id="transferGrade" maxlength="100" required></label>
-        <label class="tr-field">Effective term<select class="tr-input" name="effective_term" required>{% for term in transfer_terms %}<option value="{{ term }}">{{ term }} Term</option>{% endfor %}</select></label>
-        <label class="tr-field">Reason<textarea class="tr-input" name="reason" rows="3" maxlength="1000" required></textarea></label>
-        <button class="tr-btn primary" type="submit" {% if not destinations or not eligible_students %}disabled{% endif %}>Send Transfer Request</button>
-      </form>
-    </section>
-    <section class="tr-card">
-      <div class="tr-tabs"><button class="tr-tab active" type="button" data-panel="incoming">Incoming ({{ incoming|length }})</button><button class="tr-tab" type="button" data-panel="outgoing">Outgoing ({{ outgoing|length }})</button></div>
-      <div id="incomingPanel" class="tr-list">{% for tr in incoming %}<article class="tr-item"><div class="tr-head"><div><div class="tr-name">{{ tr.student_name }}</div><div class="tr-meta">From {{ tr.source_branch_name }} · {{ tr.requested_grade_level }} · {{ tr.effective_term|title }} Term</div></div><span class="tr-status {{ tr.status }}">{{ tr.status|replace('_',' ') }}</span></div><p class="tr-reason">{{ tr.reason }}</p>{% if tr.status == 'pending_destination' %}<form class="tr-actions" method="post" action="{{ url_for('registrar.registrar_decide_student_transfer', transfer_id=tr.transfer_id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><select class="tr-input" name="section_id" required><option value="">Select matching section</option>{% for sec in sections %}{% if sec.grade_level_name|lower == tr.requested_grade_level|lower %}<option value="{{ sec.section_id }}" {% if sec.capacity is not none and sec.current_count >= sec.capacity %}disabled{% endif %}>{{ sec.section_name }} ({{ sec.current_count }}/{{ sec.capacity or '∞' }})</option>{% endif %}{% endfor %}</select><button class="tr-btn approve" name="action" value="approve" onclick="return confirm('Approve this transfer? The student account will move to this branch while source history remains preserved.');">Approve</button><button class="tr-btn reject" type="button" onclick="rejectTransfer(this)">Reject</button><input type="hidden" name="decision_reason" value=""></form>{% elif tr.decision_reason %}<p class="tr-reason">Decision: {{ tr.decision_reason }}</p>{% endif %}</article>{% else %}<div class="tr-empty">No incoming transfer requests.</div>{% endfor %}</div>
-      <div id="outgoingPanel" class="tr-list" hidden>{% for tr in outgoing %}<article class="tr-item"><div class="tr-head"><div><div class="tr-name">{{ tr.student_name }}</div><div class="tr-meta">To {{ tr.destination_branch_name }} · {{ tr.requested_grade_level }} · {{ tr.effective_term|title }} Term{% if tr.section_name %} · {{ tr.section_name }}{% endif %}</div></div><span class="tr-status {{ tr.status }}">{{ tr.status|replace('_',' ') }}</span></div><p class="tr-reason">{{ tr.reason }}</p>{% if tr.decision_reason %}<p class="tr-reason">Decision: {{ tr.decision_reason }}</p>{% endif %}</article>{% else %}<div class="tr-empty">No outgoing transfer requests.</div>{% endfor %}</div>
-    </section>
+  <section class="tr-hero">
+    <div><h1>Student Branch Transfers</h1><p>Registrar-managed internal transfers for S.Y. {{ active_year.label }}. Historical records remain in the source branch.</p></div>
+    <button class="tr-btn primary" type="button" id="openTransferModal">+ Request Transfer</button>
+  </section>
+
+  {# ── Request Transfer form (hidden, moved to modal by JS) ── #}
+  <section class="tr-card" id="transferRequestCard" style="display:none">
+    <h2>Request Transfer</h2>
+    <p class="tr-note">Only branches with open enrollment are selectable. All 5 enrollment documents are required: Permanent Record (SF10 / Form 137), Report Card (SF9 / Form 138), PSA Birth Certificate, Baptismal Certificate, and Good Moral Certificate.</p>
+    <form method="post" action="{{ url_for('registrar.registrar_request_student_transfer') }}" id="transferRequestForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="tr-student-filters"><label class="tr-filter-label">Grade level<select class="tr-input" id="transferGradeFilter"><option value="">All grade levels</option></select></label><label class="tr-filter-label">Search student<input class="tr-input" id="transferStudentSearch" type="search" maxlength="100" placeholder="Name or grade level..."></label><div class="tr-filter-result" id="transferFilterResult" aria-live="polite"></div></div>
+      <label class="tr-field">Student
+        <select class="tr-input" name="enrollment_id" id="transferStudent" required>
+          <option value="">Select student</option>
+          {% for s in eligible_students %}
+          <option value="{{ s.enrollment_id }}"
+            data-grade="{{ s.grade_level|e }}"
+            data-name="{{ s.student_name|e }}"
+            data-sf10="{{ 1 if s.has_sf10 else 0 }}"
+            data-sf9="{{ 1 if s.has_sf9 else 0 }}"
+            data-psa="{{ 1 if s.has_psa else 0 }}"
+            data-baptismal="{{ 1 if s.has_baptismal else 0 }}"
+            data-goodmoral="{{ 1 if s.has_good_moral else 0 }}">
+            {{ s.student_name }} — {{ s.grade_level }}
+          </option>
+          {% endfor %}
+        </select>
+        <span id="transferDocs" class="doc-state"></span>
+      </label>
+      <label class="tr-field">Destination branch<select class="tr-input" name="destination_branch_id" required><option value="">Select open branch</option>{% for b in destinations %}<option value="{{ b.branch_id }}">{{ b.branch_name }} — {{ b.school_year }}</option>{% endfor %}</select></label>
+      <label class="tr-field">Destination grade level<input class="tr-input" name="grade_level" id="transferGrade" maxlength="100" required></label>
+      <label class="tr-field">Effective term<select class="tr-input" name="effective_term" required>{% for term in transfer_terms %}<option value="{{ term }}">{{ term }} Term</option>{% endfor %}</select></label>
+      <label class="tr-field">Reason<textarea class="tr-input" name="reason" rows="3" maxlength="1000" required></textarea></label>
+    </form>
+  </section>
+
+  {# ── List card ── #}
+  <section class="tr-card">
+
+    {# Filter bar #}
+    <form method="get" id="trFilterForm">
+      <div class="tr-filter-bar">
+        <input type="search" name="q" value="{{ q }}" placeholder="Search by student name…" class="tr-input" id="trSearchInput">
+        <select name="status" class="tr-input" id="trStatusFilter">
+          <option value="all"                {% if status_f=='all' %}selected{% endif %}>All statuses</option>
+          <option value="pending_destination" {% if status_f=='pending_destination' %}selected{% endif %}>Pending</option>
+          <option value="approved"            {% if status_f=='approved' %}selected{% endif %}>Approved</option>
+          <option value="rejected"            {% if status_f=='rejected' %}selected{% endif %}>Rejected</option>
+          <option value="cancelled"           {% if status_f=='cancelled' %}selected{% endif %}>Cancelled</option>
+        </select>
+        <input type="hidden" name="tab" id="trTabInput" value="{{ active_tab }}">
+        <button type="submit" class="tr-btn primary">Search</button>
+        {% if q or status_f != 'all' %}
+        <a href="?tab={{ active_tab }}" class="tr-clear-link">✕ Clear</a>
+        {% endif %}
+      </div>
+    </form>
+
+    {# Tabs #}
+    <div class="tr-tabs">
+      <button class="tr-tab {% if active_tab=='incoming' %}active{% endif %}" type="button" data-tab="incoming">
+        Incoming ({{ in_total }}){% if in_total > per_page %} · page {{ in_page }}/{{ in_pages }}{% endif %}
+      </button>
+      <button class="tr-tab {% if active_tab=='outgoing' %}active{% endif %}" type="button" data-tab="outgoing">
+        Outgoing ({{ out_total }}){% if out_total > per_page %} · page {{ out_page }}/{{ out_pages }}{% endif %}
+      </button>
+    </div>
+
+    {# ── Incoming panel ── #}
+    <div id="incomingPanel" {% if active_tab != 'incoming' %}hidden{% endif %}>
+      <div class="tr-list">
+        {% for tr in incoming %}
+        <article class="tr-item {% if tr.status == 'pending_destination' %}is-pending{% endif %}">
+          <div class="tr-head">
+            <div>
+              <div class="tr-name">{{ tr.student_name }}</div>
+              <div class="tr-meta">From {{ tr.source_branch_name }} · {{ tr.requested_grade_level }} · {{ tr.effective_term|title }} Term · <span style="color:#94a3b8">{{ tr.requested_at.strftime('%b %d, %Y') if tr.requested_at else '' }}</span></div>
+            </div>
+            <span class="tr-status {{ tr.status }}">{{ tr.status|replace('_',' ') }}</span>
+          </div>
+          <p class="tr-reason">{{ tr.reason }}</p>
+          {% if tr.status == 'pending_destination' %}
+          <form class="tr-actions" method="post" action="{{ url_for('registrar.registrar_decide_student_transfer', transfer_id=tr.transfer_id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select class="tr-input" name="section_id" required>
+              <option value="">Select matching section</option>
+              {% for sec in sections %}{% if sec.grade_level_name|lower == tr.requested_grade_level|lower %}
+              <option value="{{ sec.section_id }}" {% if sec.capacity is not none and sec.current_count >= sec.capacity %}disabled{% endif %}>
+                {{ sec.section_name }} ({{ sec.current_count }}/{{ sec.capacity or '∞' }})
+              </option>
+              {% endif %}{% endfor %}
+            </select>
+            <button class="tr-btn approve" name="action" value="approve" onclick="return confirm('Approve this transfer? The student account will move to this branch while source history remains preserved.');">✓ Approve</button>
+            <button class="tr-btn reject" type="button" onclick="rejectTransfer(this)">✕ Reject</button>
+            <input type="hidden" name="decision_reason" value="">
+          </form>
+          {% elif tr.decision_reason %}
+          <p class="tr-reason">Decision: {{ tr.decision_reason }}</p>
+          {% endif %}
+        </article>
+        {% else %}
+        <div class="tr-empty">
+          {% if q or status_f != 'all' %}No transfers match your filter.{% else %}No incoming transfer requests.{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {# Incoming pagination #}
+      {% if in_pages > 1 %}
+      <div class="tr-pagination">
+        <a href="?tab=incoming&page=1&q={{ q|urlencode }}&status={{ status_f }}"
+           class="tr-page-btn {% if in_page == 1 %}disabled{% endif %}">«</a>
+        <a href="?tab=incoming&page={{ [in_page-1,1]|max }}&q={{ q|urlencode }}&status={{ status_f }}"
+           class="tr-page-btn {% if in_page == 1 %}disabled{% endif %}">‹ Prev</a>
+        {% for p in range(1, in_pages+1) %}
+          {% if p == in_page %}
+          <span class="tr-page-btn active-page">{{ p }}</span>
+          {% elif p == 1 or p == in_pages or (p >= in_page-2 and p <= in_page+2) %}
+          <a href="?tab=incoming&page={{ p }}&q={{ q|urlencode }}&status={{ status_f }}" class="tr-page-btn">{{ p }}</a>
+          {% elif p == in_page-3 or p == in_page+3 %}
+          <span class="tr-page-info">…</span>
+          {% endif %}
+        {% endfor %}
+        <a href="?tab=incoming&page={{ [in_page+1,in_pages]|min }}&q={{ q|urlencode }}&status={{ status_f }}"
+           class="tr-page-btn {% if in_page == in_pages %}disabled{% endif %}">Next ›</a>
+        <a href="?tab=incoming&page={{ in_pages }}&q={{ q|urlencode }}&status={{ status_f }}"
+           class="tr-page-btn {% if in_page == in_pages %}disabled{% endif %}">»</a>
+        <span class="tr-page-info">{{ in_total }} total</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {# ── Outgoing panel ── #}
+    <div id="outgoingPanel" {% if active_tab != 'outgoing' %}hidden{% endif %}>
+      <div class="tr-list">
+        {% for tr in outgoing %}
+        <article class="tr-item">
+          <div class="tr-head">
+            <div>
+              <div class="tr-name">{{ tr.student_name }}</div>
+              <div class="tr-meta">To {{ tr.destination_branch_name }} · {{ tr.requested_grade_level }} · {{ tr.effective_term|title }} Term{% if tr.section_name %} · {{ tr.section_name }}{% endif %} · <span style="color:#94a3b8">{{ tr.requested_at.strftime('%b %d, %Y') if tr.requested_at else '' }}</span></div>
+            </div>
+            <span class="tr-status {{ tr.status }}">{{ tr.status|replace('_',' ') }}</span>
+          </div>
+          <p class="tr-reason">{{ tr.reason }}</p>
+          {% if tr.decision_reason %}<p class="tr-reason">Decision: {{ tr.decision_reason }}</p>{% endif %}
+        </article>
+        {% else %}
+        <div class="tr-empty">
+          {% if q or status_f != 'all' %}No transfers match your filter.{% else %}No outgoing transfer requests.{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {# Outgoing pagination #}
+      {% if out_pages > 1 %}
+      <div class="tr-pagination">
+        <a href="?tab=outgoing&page=1&q={{ q|urlencode }}&status={{ status_f }}"
+           class="tr-page-btn {% if out_page == 1 %}disabled{% endif %}">«</a>
+        <a href="?tab=outgoing&page={{ [out_page-1,1]|max }}&q={{ q|urlencode }}&status={{ status_f }}"
+           class="tr-page-btn {% if out_page == 1 %}disabled{% endif %}">‹ Prev</a>
+        {% for p in range(1, out_pages+1) %}
+          {% if p == out_page %}
+          <span class="tr-page-btn active-page">{{ p }}</span>
+          {% elif p == 1 or p == out_pages or (p >= out_page-2 and p <= out_page+2) %}
+          <a href="?tab=outgoing&page={{ p }}&q={{ q|urlencode }}&status={{ status_f }}" class="tr-page-btn">{{ p }}</a>
+          {% elif p == out_page-3 or p == out_page+3 %}
+          <span class="tr-page-info">…</span>
+          {% endif %}
+        {% endfor %}
+        <a href="?tab=outgoing&page={{ [out_page+1,out_pages]|min }}&q={{ q|urlencode }}&status={{ status_f }}"
+           class="tr-page-btn {% if out_page == out_pages %}disabled{% endif %}">Next ›</a>
+        <a href="?tab=outgoing&page={{ out_pages }}&q={{ q|urlencode }}&status={{ status_f }}"
+           class="tr-page-btn {% if out_page == out_pages %}disabled{% endif %}">»</a>
+        <span class="tr-page-info">{{ out_total }} total</span>
+      </div>
+      {% endif %}
+    </div>
+
+  </section>
+</div>
+
+{# ── Request Transfer modal ── #}
+<div class="tr-modal" id="transferModal" role="dialog" aria-modal="true" aria-labelledby="transferModalTitle">
+  <div class="tr-dialog" role="document">
+    <div class="tr-modal-head">
+      <h2 id="transferModalTitle">Request Student Transfer</h2>
+      <button class="tr-close" type="button" id="closeTransferModal" aria-label="Close dialog">&times;</button>
+    </div>
+    <div id="transferModalContent" class="tr-modal-body"></div>
   </div>
 </div>
-<div class="tr-modal" id="transferModal" role="dialog" aria-modal="true" aria-labelledby="transferModalTitle"><div class="tr-dialog" role="document"><div class="tr-modal-head"><h2 id="transferModalTitle">Request Student Transfer</h2><button class="tr-close" type="button" id="closeTransferModal" aria-label="Close dialog">&times;</button></div><div id="transferModalContent"></div></div></div>
+
 <script>
-const studentSelect=document.getElementById('transferStudent'),gradeInput=document.getElementById('transferGrade'),docsState=document.getElementById('transferDocs');
-const transferGradeFilter=document.getElementById('transferGradeFilter'),transferStudentSearch=document.getElementById('transferStudentSearch'),transferFilterResult=document.getElementById('transferFilterResult'),studentOptions=[...studentSelect.options].filter(option=>option.value);
-function academicGradeOrder(label){const value=String(label||'').trim().toLocaleLowerCase();if(value==='nursery')return 0;if(value==='pre-k'||value==='pre-kinder'||value==='prekindergarten')return 1;if(value==='kinder'||value==='kindergarten')return 2;if(value==='prep'||value==='preparatory')return 3;const match=value.match(/(?:grade|g)\s*(\d+)/);return match?10+Number(match[1]):999}
-const gradeLevels=[...new Set(studentOptions.map(option=>option.dataset.grade).filter(Boolean))].sort((a,b)=>academicGradeOrder(a)-academicGradeOrder(b)||a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));gradeLevels.forEach(grade=>transferGradeFilter.add(new Option(grade,grade)));
-function filterTransferStudents(){const grade=transferGradeFilter.value.toLocaleLowerCase(),query=transferStudentSearch.value.trim().toLocaleLowerCase();let visible=0;studentOptions.forEach(option=>{const matchesGrade=!grade||(option.dataset.grade||'').toLocaleLowerCase()===grade,matchesSearch=!query||(option.dataset.name||'').toLocaleLowerCase().includes(query)||(option.dataset.grade||'').toLocaleLowerCase().includes(query);option.hidden=!(matchesGrade&&matchesSearch);if(!option.hidden)visible+=1});const selected=studentSelect.options[studentSelect.selectedIndex];if(selected?.value&&selected.hidden){studentSelect.value='';syncTransferStudent()}transferFilterResult.textContent=visible+' eligible student'+(visible===1?'':'s')+' shown';}
-const transferModal=document.getElementById('transferModal'),openTransferModalButton=document.getElementById('openTransferModal'),closeTransferModalButton=document.getElementById('closeTransferModal'),transferModalContent=document.getElementById('transferModalContent'),transferRequestCard=document.querySelector('.tr-grid > .tr-card:first-child'),transferForm=document.getElementById('transferRequestForm');
-transferRequestCard.classList.add('tr-modal-body');transferModalContent.appendChild(transferRequestCard);const transferActions=document.createElement('div');transferActions.className='tr-modal-actions';const transferCancel=document.createElement('button');transferCancel.type='button';transferCancel.className='tr-btn secondary';transferCancel.textContent='Cancel';const transferSubmit=transferForm.querySelector('button[type="submit"]');transferActions.append(transferCancel,transferSubmit);transferForm.appendChild(transferActions);
-function openTransferDialog(){transferModal.classList.add('open');document.body.style.overflow='hidden';setTimeout(()=>studentSelect.focus(),0)}
-function closeTransferDialog(){transferModal.classList.remove('open');document.body.style.overflow='';openTransferModalButton.focus()}
-function syncTransferStudent(){const option=studentSelect.options[studentSelect.selectedIndex];gradeInput.value=option?.dataset.grade||'';docsState.replaceChildren();if(!option?.value)return;const statuses=[['Permanent Record (SF10 / Form 137)',option.dataset.sf10==='1'],['Report Card (SF9 / Form 138)',option.dataset.sf9==='1'],['PSA Birth Certificate',option.dataset.psa==='1'],['Baptismal Certificate',option.dataset.baptismal==='1'],['Good Moral Certificate',option.dataset.goodmoral==='1']];statuses.forEach(([label,available])=>{const badge=document.createElement('span');badge.className='doc-badge '+(available?'ok':'missing');badge.textContent=(available?'✓ ':'✕ ')+label+': '+(available?'Available':'Missing');docsState.appendChild(badge)});const manage=document.createElement('a');manage.className='doc-manage';manage.href='/registrar/students-by-grade';manage.textContent='Manage Documents';docsState.appendChild(manage)}
-studentSelect.addEventListener('change',syncTransferStudent);
-transferGradeFilter.addEventListener('change',filterTransferStudents);transferStudentSearch.addEventListener('input',filterTransferStudents);filterTransferStudents();
-openTransferModalButton.addEventListener('click',openTransferDialog);closeTransferModalButton.addEventListener('click',closeTransferDialog);transferCancel.addEventListener('click',closeTransferDialog);transferModal.addEventListener('click',event=>{if(event.target===transferModal)closeTransferDialog()});document.addEventListener('keydown',event=>{if(event.key==='Escape'&&transferModal.classList.contains('open'))closeTransferDialog()});
-document.querySelectorAll('.tr-tab').forEach(tab=>tab.addEventListener('click',()=>{document.querySelectorAll('.tr-tab').forEach(x=>x.classList.remove('active'));tab.classList.add('active');document.getElementById('incomingPanel').hidden=tab.dataset.panel!=='incoming';document.getElementById('outgoingPanel').hidden=tab.dataset.panel!=='outgoing'}));
-function rejectTransfer(button){const form=button.closest('form'),reason=prompt('Reason for rejecting this transfer:');if(!reason||!reason.trim())return;form.querySelector('[name="decision_reason"]').value=reason.trim();const action=document.createElement('input');action.type='hidden';action.name='action';action.value='reject';form.appendChild(action);form.querySelector('[name="section_id"]').required=false;if(confirm('Reject this transfer request?'))form.submit()}
+// ── student select helpers ─────────────────────────────────────────
+const studentSelect = document.getElementById('transferStudent');
+const gradeInput    = document.getElementById('transferGrade');
+const docsState     = document.getElementById('transferDocs');
+const transferGradeFilter   = document.getElementById('transferGradeFilter');
+const transferStudentSearch = document.getElementById('transferStudentSearch');
+const transferFilterResult  = document.getElementById('transferFilterResult');
+const studentOptions = [...studentSelect.options].filter(o => o.value);
+
+function academicGradeOrder(label) {
+  const v = String(label||'').trim().toLocaleLowerCase();
+  if(v==='nursery') return 0;
+  if(v==='pre-k'||v==='pre-kinder'||v==='prekindergarten') return 1;
+  if(v==='kinder'||v==='kindergarten') return 2;
+  if(v==='prep'||v==='preparatory') return 3;
+  const m = v.match(/(?:grade|g)\s*(\d+)/); return m ? 10+Number(m[1]) : 999;
+}
+const gradeLevels = [...new Set(studentOptions.map(o=>o.dataset.grade).filter(Boolean))]
+  .sort((a,b)=>academicGradeOrder(a)-academicGradeOrder(b)||a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));
+gradeLevels.forEach(g => transferGradeFilter.add(new Option(g,g)));
+
+function filterTransferStudents() {
+  const grade = transferGradeFilter.value.toLocaleLowerCase();
+  const query = transferStudentSearch.value.trim().toLocaleLowerCase();
+  let visible = 0;
+  studentOptions.forEach(opt => {
+    const mg = !grade || (opt.dataset.grade||'').toLocaleLowerCase()===grade;
+    const mq = !query || (opt.dataset.name||'').toLocaleLowerCase().includes(query) || (opt.dataset.grade||'').toLocaleLowerCase().includes(query);
+    opt.hidden = !(mg && mq);
+    if(!opt.hidden) visible++;
+  });
+  const sel = studentSelect.options[studentSelect.selectedIndex];
+  if(sel?.value && sel.hidden){ studentSelect.value=''; syncTransferStudent(); }
+  transferFilterResult.textContent = visible + ' eligible student' + (visible===1?'':'s') + ' shown';
+}
+
+function syncTransferStudent() {
+  const opt = studentSelect.options[studentSelect.selectedIndex];
+  gradeInput.value = opt?.dataset.grade || '';
+  docsState.replaceChildren();
+  if(!opt?.value) return;
+  const statuses = [
+    ['Permanent Record (SF10 / Form 137)', opt.dataset.sf10==='1'],
+    ['Report Card (SF9 / Form 138)',       opt.dataset.sf9==='1'],
+    ['PSA Birth Certificate',              opt.dataset.psa==='1'],
+    ['Baptismal Certificate',              opt.dataset.baptismal==='1'],
+    ['Good Moral Certificate',             opt.dataset.goodmoral==='1'],
+  ];
+  statuses.forEach(([label, ok]) => {
+    const b = document.createElement('span');
+    b.className = 'doc-badge ' + (ok ? 'ok' : 'missing');
+    b.textContent = (ok ? '✓ ' : '✕ ') + label + ': ' + (ok ? 'Available' : 'Missing');
+    docsState.appendChild(b);
+  });
+  const manage = document.createElement('a');
+  manage.className = 'doc-manage';
+  manage.href = '/registrar/students-by-grade';
+  manage.textContent = 'Manage Documents';
+  docsState.appendChild(manage);
+}
+
+studentSelect.addEventListener('change', syncTransferStudent);
+transferGradeFilter.addEventListener('change', filterTransferStudents);
+transferStudentSearch.addEventListener('input', filterTransferStudents);
+filterTransferStudents();
+
+// ── modal ──────────────────────────────────────────────────────────
+const transferModal   = document.getElementById('transferModal');
+const transferMC      = document.getElementById('transferModalContent');
+const openBtn         = document.getElementById('openTransferModal');
+const closeBtn        = document.getElementById('closeTransferModal');
+const requestCard     = document.getElementById('transferRequestCard');
+const transferForm    = document.getElementById('transferRequestForm');
+
+// Move form card into modal body
+requestCard.style.display = '';
+requestCard.classList.add('tr-modal-body');
+transferMC.appendChild(requestCard);
+
+// Append modal action buttons
+const modalActions = document.createElement('div');
+modalActions.className = 'tr-modal-actions';
+const cancelBtn = document.createElement('button');
+cancelBtn.type = 'button'; cancelBtn.className = 'tr-btn secondary'; cancelBtn.textContent = 'Cancel';
+const submitBtn = transferForm.querySelector('button[type="submit"]') || (() => {
+  const b = document.createElement('button'); b.type='submit'; b.className='tr-btn primary'; b.textContent='Send Transfer Request';
+  transferForm.appendChild(b); return b;
+})();
+if(!transferForm.querySelector('button[type="submit"]')) modalActions.append(cancelBtn, submitBtn);
+else { modalActions.append(cancelBtn, submitBtn); transferForm.appendChild(modalActions); }
+
+function openTransferDialog(){ transferModal.classList.add('open'); document.body.style.overflow='hidden'; setTimeout(()=>studentSelect.focus(),0); }
+function closeTransferDialog(){ transferModal.classList.remove('open'); document.body.style.overflow=''; openBtn.focus(); }
+
+openBtn.addEventListener('click', openTransferDialog);
+closeBtn.addEventListener('click', closeTransferDialog);
+cancelBtn.addEventListener('click', closeTransferDialog);
+transferModal.addEventListener('click', e => { if(e.target===transferModal) closeTransferDialog(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape' && transferModal.classList.contains('open')) closeTransferDialog(); });
+
+// ── tab switching (URL-based for pagination state) ─────────────────
+const trTabInput = document.getElementById('trTabInput');
+document.querySelectorAll('.tr-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.tab;
+    // Smooth client-side switch
+    document.querySelectorAll('.tr-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('incomingPanel').hidden = target !== 'incoming';
+    document.getElementById('outgoingPanel').hidden = target !== 'outgoing';
+    // Update URL so pagination/filter knows which tab is active
+    const url = new URL(window.location);
+    url.searchParams.set('tab', target);
+    url.searchParams.delete('page'); // reset to page 1 when switching
+    window.history.replaceState({}, '', url);
+    trTabInput.value = target;
+  });
+});
+
+// ── reject helper ──────────────────────────────────────────────────
+function rejectTransfer(button) {
+  const form   = button.closest('form');
+  const reason = prompt('Reason for rejecting this transfer:');
+  if(!reason || !reason.trim()) return;
+  form.querySelector('[name="decision_reason"]').value = reason.trim();
+  const act = document.createElement('input'); act.type='hidden'; act.name='action'; act.value='reject';
+  form.appendChild(act);
+  form.querySelector('[name="section_id"]').required = false;
+  if(confirm('Reject this transfer request?')) form.submit();
+}
 </script>
 {% endblock %}
