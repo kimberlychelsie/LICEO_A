@@ -6184,7 +6184,7 @@ Please log in and change your password immediately.
                 u.specialization_subject,
                 u.department,
                 (
-                    SELECT STRING_AGG(DISTINCT s.section_name, ', ')
+                    SELECT STRING_AGG(DISTINCT s.section_name, '|||')
                     FROM section_teachers st
                     JOIN sections s ON st.section_id = s.section_id
                     WHERE st.teacher_id = u.user_id

@@ -4196,7 +4196,7 @@ Please log in and change your password immediately.
                 COALESCE(u.is_dc, FALSE) AS is_dc,
                 COALESCE(u.is_academic_coordinator, FALSE) AS is_academic_coordinator,
                 (
-                    SELECT STRING_AGG(DISTINCT g.name || ' - ' || s.section_name, ', ')
+                    SELECT STRING_AGG(DISTINCT g.name || ' - ' || s.section_name, '|||')
                     FROM sections s
                     JOIN grade_levels g ON s.grade_level_id = g.id
                     JOIN school_years y ON s.year_id = y.year_id
@@ -4204,7 +4204,7 @@ Please log in and change your password immediately.
                 ) AS advisory_section,
                 NULL AS advisory_grade,
                 (
-                    SELECT STRING_AGG(DISTINCT g.name || ' - ' || s.section_name || ' (' || sub.name || ')', ', ')
+                    SELECT STRING_AGG(DISTINCT g.name || ' - ' || s.section_name || ' (' || sub.name || ')', '|||')
                     FROM section_teachers st
                     JOIN sections s ON st.section_id = s.section_id
                     JOIN grade_levels g ON s.grade_level_id = g.id
