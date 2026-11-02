@@ -1870,22 +1870,6 @@
       </button>
       <div class="sb-dropdown-content {% if '/teacher/subject/' in request.path %}show{% endif %}">
         {% for cls in teacher_global_classes %}
-        {% set _skey = cls.subject_id|string ~ ':' ~ cls.section_id|string %}
-        {% set _periods = teacher_grade_statuses.get(_skey, {}) %}
-        {% set _statuses = _periods.values() | list %}
-        {% if 'rejected' in _statuses %}
-          {% set _dot = '#ef4444' %}{% set _dot_tip = 'Grade returned' %}
-        {% elif 'pending_admin' in _statuses %}
-          {% set _dot = '#3b82f6' %}{% set _dot_tip = 'With Branch Admin' %}
-        {% elif 'pending_academic_coordinator' in _statuses %}
-          {% set _dot = '#8b5cf6' %}{% set _dot_tip = 'With Academic Coordinator' %}
-        {% elif 'pending_registrar' in _statuses %}
-          {% set _dot = '#f59e0b' %}{% set _dot_tip = 'With Registrar' %}
-        {% elif 'approved_for_posting' in _statuses or 'posted' in _statuses %}
-          {% set _dot = '#22c55e' %}{% set _dot_tip = 'Approved / Posted' %}
-        {% else %}
-          {% set _dot = '' %}{% set _dot_tip = '' %}
-        {% endif %}
         <a class="sb-link {% if '/teacher/subject/' ~ cls.subject_id in request.path and request.args.get('section')|int == cls.section_id|int %}active{% endif %}"
           href="/teacher/subject/{{ cls.subject_id }}?section={{ cls.section_id }}">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -1894,15 +1878,12 @@
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
           </svg>
-          <div style="display: flex; flex-direction: column; gap: 2px; overflow: hidden; flex: 1; min-width: 0;">
+          <div style="display: flex; flex-direction: column; gap: 2px; overflow: hidden;">
             <span style="font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ cls.subject_name }}</span>
             <span style="font-size: 0.7rem; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
               {{ cls.grade_level_name }} - {{ cls.section_name }}
             </span>
           </div>
-          {% if _dot %}
-          <span title="{{ _dot_tip }}" style="width:8px;height:8px;border-radius:50%;background:{{ _dot }};flex-shrink:0;margin-left:4px;box-shadow:0 0 0 2px rgba(255,255,255,0.2);"></span>
-          {% endif %}
         </a>
         {% endfor %}
       </div>

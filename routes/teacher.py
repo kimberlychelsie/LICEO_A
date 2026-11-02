@@ -6411,15 +6411,16 @@ def teacher_save_grid_scores(section_id, subject_id):
                 prefix = "max_quiz_" if field_name.startswith("max_quiz_") else "max_exam_"
                 exam_id = int(field_name.removeprefix(prefix))
                 new_max = posted_max(field_name)
+                # Use only exam_id + ownership checks — do NOT filter by section/subject/period/year
+                # because legacy exams (e.g. old monthly exams) may have a different year_id or
+                # section_id than the current class-record context but are still validly in the grid.
                 cur.execute("""
                     SELECT e.exam_id, COALESCE(MAX(er.score), 0) AS highest_score
                     FROM exams e
-                    LEFT JOIN exam_results er ON er.exam_id=e.exam_id
-                    WHERE e.exam_id=%s AND e.teacher_id=%s AND e.branch_id=%s
-                      AND e.section_id=%s AND e.subject_id=%s
-                      AND e.grading_period=%s AND e.year_id=%s
+                    LEFT JOIN exam_results er ON er.exam_id = e.exam_id
+                    WHERE e.exam_id = %s AND e.teacher_id = %s AND e.branch_id = %s
                     GROUP BY e.exam_id
-                """, (exam_id, user_id, branch_id, section_id, subject_id, period, year_id))
+                """, (exam_id, user_id, branch_id))
                 item = cur.fetchone()
                 if not item:
                     raise ValueError("An assessment maximum could not be updated.")
