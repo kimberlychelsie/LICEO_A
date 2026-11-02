@@ -1149,11 +1149,27 @@ def inject_parent_children():
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
             cursor.execute("""
-                SELECT ps.student_id as enrollment_id, 
+                SELECT ps.student_id as enrollment_id,
                        e.student_first_name, e.student_middle_name, e.student_last_name
                 FROM parent_student ps
                 JOIN enrollments e ON ps.student_id = e.enrollment_id
                 WHERE ps.parent_id = %s
+                  -- exclude old superseded enrollments (student re-enrolled → newer row exists)
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM   enrollments newer
+                      WHERE  newer.branch_id     = e.branch_id
+                        AND  newer.enrollment_id > e.enrollment_id
+                        AND  (
+                             (e.lrn IS NOT NULL AND e.lrn <> '' AND newer.lrn = e.lrn)
+                             OR
+                             ((e.lrn IS NULL OR e.lrn = '')
+                              AND newer.student_first_name  = e.student_first_name
+                              AND newer.student_last_name   = e.student_last_name
+                              AND newer.student_middle_name IS NOT DISTINCT FROM e.student_middle_name
+                              AND LOWER(TRIM(newer.guardian_email)) = LOWER(TRIM(e.guardian_email)))
+                             )
+                  )
                 ORDER BY e.created_at DESC
             """, (session['user_id'],))
             children = cursor.fetchall()

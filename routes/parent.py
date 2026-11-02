@@ -110,24 +110,24 @@ def dashboard():
 
     try:
         cursor.execute("""
-            SELECT ps.*, 
+            SELECT ps.*,
                    e.student_first_name,
                    e.student_middle_name,
-                   e.student_last_name, 
+                   e.student_last_name,
                    e.guardian_first_name,
                    e.guardian_middle_name,
                    e.guardian_last_name,
-                   e.grade_level, 
+                   e.grade_level,
                    e.status,
                    e.branch_enrollment_no,
-                   br.branch_name, 
-                   br.location, 
+                   br.branch_name,
+                   br.location,
                    br.branch_code,
                    sec.section_name,
-                   b.bill_id, 
-                   b.total_amount, 
-                   b.amount_paid, 
-                   b.balance, 
+                   b.bill_id,
+                   b.total_amount,
+                   b.amount_paid,
+                   b.balance,
                    b.status as bill_status,
                    e.enrollment_id
             FROM parent_student ps
@@ -136,6 +136,22 @@ def dashboard():
             LEFT JOIN sections sec ON e.section_id = sec.section_id
             LEFT JOIN billing b ON e.enrollment_id = b.enrollment_id
             WHERE ps.parent_id = %s
+              -- exclude superseded enrollments (student re-enrolled)
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM   enrollments newer
+                  WHERE  newer.branch_id     = e.branch_id
+                    AND  newer.enrollment_id > e.enrollment_id
+                    AND  (
+                         (e.lrn IS NOT NULL AND e.lrn <> '' AND newer.lrn = e.lrn)
+                         OR
+                         ((e.lrn IS NULL OR e.lrn = '')
+                          AND newer.student_first_name  = e.student_first_name
+                          AND newer.student_last_name   = e.student_last_name
+                          AND newer.student_middle_name IS NOT DISTINCT FROM e.student_middle_name
+                          AND LOWER(TRIM(newer.guardian_email)) = LOWER(TRIM(e.guardian_email)))
+                         )
+              )
             ORDER BY e.created_at DESC
         """, (session.get("user_id"),))
 
