@@ -6597,6 +6597,7 @@ def registrar_grade_review():
         selected_grade_id = request.args.get("grade_level_id", type=int)
         selected_section_id = request.args.get("section_id", type=int)
         requested_period = request.args.get("period")
+        grade_explicitly_set = "grade_level_id" in request.args
         invalid_period = False
         selected_period = None
         if requested_period:
@@ -6607,7 +6608,7 @@ def registrar_grade_review():
                 flash("The selected grading period is not part of the active policy.", "error")
         selected_teacher_id = request.args.get("teacher_id", type=int)
 
-        if not invalid_period and (not selected_grade_id or not selected_period):
+        if not invalid_period and not grade_explicitly_set and (not selected_grade_id or not selected_period):
             cur.execute("""
                 SELECT s.grade_level_id, r.grading_period
                 FROM grade_submission_requests r
@@ -6632,7 +6633,7 @@ def registrar_grade_review():
             selected_grade = cur.fetchone()
             selected_grade_name = selected_grade["name"] if selected_grade else None
 
-        if not selected_grade_name:
+        if not grade_explicitly_set and not selected_grade_name:
             nursery = next((g for g in grade_levels if "nursery" in g["name"].lower()), None)
             selected_grade = nursery or (grade_levels[0] if grade_levels else None)
             if selected_grade:
@@ -6646,14 +6647,22 @@ def registrar_grade_review():
         if not selected_period and not invalid_period and grading_periods:
             selected_period = grading_periods[0]
 
-        cur.execute("""
-            SELECT s.section_id, s.section_name
-            FROM sections s
-            JOIN grade_levels g ON g.id = s.grade_level_id
-            WHERE s.branch_id = %s AND s.year_id = %s
-              AND LOWER(TRIM(g.name)) = LOWER(TRIM(%s))
-            ORDER BY s.section_name, s.section_id
-        """, (branch_id, year_id, selected_grade_name))
+        if selected_grade_name:
+            cur.execute("""
+                SELECT s.section_id, s.section_name
+                FROM sections s
+                JOIN grade_levels g ON g.id = s.grade_level_id
+                WHERE s.branch_id = %s AND s.year_id = %s
+                  AND LOWER(TRIM(g.name)) = LOWER(TRIM(%s))
+                ORDER BY s.section_name, s.section_id
+            """, (branch_id, year_id, selected_grade_name))
+        else:
+            cur.execute("""
+                SELECT s.section_id, s.section_name
+                FROM sections s
+                WHERE s.branch_id = %s AND s.year_id = %s
+                ORDER BY s.section_name, s.section_id
+            """, (branch_id, year_id))
         sections = cur.fetchall() or []
         if selected_section_id not in {section["section_id"] for section in sections}:
             selected_section_id = None
@@ -6680,9 +6689,11 @@ def registrar_grade_review():
             JOIN subjects sub ON r.subject_id = sub.subject_id
             LEFT JOIN users u ON r.submitted_by = u.user_id
             WHERE r.branch_id = %s AND r.year_id = %s
-              AND LOWER(TRIM(g.name)) = LOWER(TRIM(%s))
         """
-        params = [branch_id, year_id, selected_grade_name]
+        params = [branch_id, year_id]
+        if selected_grade_name:
+            query += " AND LOWER(TRIM(g.name)) = LOWER(TRIM(%s))"
+            params.append(selected_grade_name)
         if selected_section_id:
             query += " AND r.section_id = %s"
             params.append(selected_section_id)

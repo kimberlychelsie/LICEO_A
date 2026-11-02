@@ -8892,6 +8892,7 @@ def academic_coordinator_grade_review():
         """, (branch_id, year_id))
         grade_levels = cur.fetchall() or []
         selected_grade_id = request.args.get("grade_level_id", type=int)
+        grade_explicitly_set = "grade_level_id" in request.args
         selected_section_id = request.args.get("section_id", type=int)
         requested_period = request.args.get("period")
         invalid_period = False
@@ -8903,7 +8904,7 @@ def academic_coordinator_grade_review():
                 invalid_period = True
                 flash("The selected grading period is not part of the active policy.", "error")
 
-        if not invalid_period and (not selected_grade_id or not selected_period):
+        if not invalid_period and not grade_explicitly_set and (not selected_grade_id or not selected_period):
             cur.execute("""
                 SELECT LOWER(TRIM(g.name)) AS grade_key, r.grading_period
                 FROM grade_submission_requests r
@@ -8935,8 +8936,10 @@ def academic_coordinator_grade_review():
         if not selected_period and not invalid_period and grading_periods:
             selected_period = grading_periods[0]
         selected_teacher_id = request.args.get("teacher_id", type=int)
-        if selected_grade_id not in {grade["id"] for grade in grade_levels}:
+        if not grade_explicitly_set and selected_grade_id not in {grade["id"] for grade in grade_levels}:
             selected_grade_id = grade_levels[0]["id"] if grade_levels else None
+        if selected_grade_id and selected_grade_id not in {grade["id"] for grade in grade_levels}:
+            selected_grade_id = None
         cur.execute("""
             SELECT s.section_id, s.section_name
             FROM sections s
