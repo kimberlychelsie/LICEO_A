@@ -699,12 +699,38 @@ def inject_teacher_subjects():
             """, (user_id, branch_id, year_id))
 
             classes = cursor.fetchall()
-            return dict(teacher_global_classes=classes)
+
+            # ── Grade submission status lookup per (subject_id, section_id, period) ──
+            grade_statuses = {}
+            if classes:
+                cursor.execute("""
+                    SELECT r.subject_id, r.section_id, r.grading_period, r.status
+                    FROM grade_submission_requests r
+                    JOIN sections s ON r.section_id = s.section_id
+                    WHERE r.submitted_by = %s
+                      AND r.branch_id = %s
+                      AND r.year_id = %s
+                    ORDER BY r.submitted_at DESC
+                """, (user_id, branch_id, year_id))
+                for row in cursor.fetchall():
+                    key = f"{row['subject_id']}:{row['section_id']}"
+                    period = row['grading_period']
+                    status = row['status']
+                    if key not in grade_statuses:
+                        grade_statuses[key] = {}
+                    # Keep first (most recent) status per period
+                    if period not in grade_statuses[key]:
+                        grade_statuses[key][period] = status
+
+            return dict(
+                teacher_global_classes=classes,
+                teacher_grade_statuses=grade_statuses,
+            )
         finally:
             cursor.close()
             db.close()
 
-    return dict(teacher_global_classes=[])
+    return dict(teacher_global_classes=[], teacher_grade_statuses={})
 
 
 @app.context_processor

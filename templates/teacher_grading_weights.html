@@ -572,10 +572,29 @@
                     {{ a.grading_category_name }}
                 </span>
             </div>
+            {# ── Grade Submission Status: compute lookup ── #}
+            {% set _skey = a.subject_id|string ~ ':' ~ a.section_id|string %}
+            {% set _periods = teacher_grade_statuses.get(_skey, {}) %}
             <div class="gw-term-group" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                 {% for grading_period in grading_periods %}
+                {% set _st = _periods.get(grading_period, '') %}
+                {% if _st == 'rejected' %}
+                  {% set _tborder = '#ef4444' %}{% set _tdot = '#ef4444' %}{% set _ttip = 'Returned by reviewer' %}
+                {% elif _st == 'pending_admin' %}
+                  {% set _tborder = '#3b82f6' %}{% set _tdot = '#3b82f6' %}{% set _ttip = 'With Branch Admin' %}
+                {% elif _st == 'pending_academic_coordinator' %}
+                  {% set _tborder = '#8b5cf6' %}{% set _tdot = '#8b5cf6' %}{% set _ttip = 'With Academic Coordinator' %}
+                {% elif _st == 'pending_registrar' %}
+                  {% set _tborder = '#f59e0b' %}{% set _tdot = '#f59e0b' %}{% set _ttip = 'With Registrar' %}
+                {% elif _st in ('approved_for_posting', 'posted') %}
+                  {% set _tborder = '#22c55e' %}{% set _tdot = '#22c55e' %}{% set _ttip = 'Approved / Posted' %}
+                {% else %}
+                  {% set _tborder = '' %}{% set _tdot = '' %}{% set _ttip = '' %}
+                {% endif %}
                 <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id, period=grading_period) }}"
-                    class="gw-term-btn" title="View {{ grading_period }} Term Class Record">
+                    class="gw-term-btn" title="{% if _ttip %}{{ _ttip }}{% else %}View {{ grading_period }} Term Class Record{% endif %}"
+                    {% if _tborder %}style="border-left: 3px solid {{ _tborder }};"{% endif %}>
+                    {% if _tdot %}<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:{{ _tdot }};margin-right:5px;vertical-align:middle;"></span>{% endif %}
                     {{ grading_period }} Term
                 </a>
                 {% endfor %}
