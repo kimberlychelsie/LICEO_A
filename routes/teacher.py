@@ -6635,20 +6635,26 @@ def teacher_delete_class_record_item(section_id, subject_id, period, item_type, 
                 db.commit()
                 flash(f"Activity '{item['title']}' deleted.", "success")
         else:
-            # Relax filters — only require ownership via exam_id + teacher + branch so that
-            # exams moved to a different section/period (e.g. old Monthly Exam) can still be deleted.
+            # Look up by exam_id only — the exam may have been created under a different
+            # teacher_id or branch context (e.g. migrated Monthly Exam type).
+            # The class-record template already controls which exams are visible to this teacher.
             cur.execute("""
                 SELECT e.title,
                        EXISTS(SELECT 1 FROM exam_results r WHERE r.exam_id=e.exam_id)
                        OR EXISTS(SELECT 1 FROM exam_questions q WHERE q.exam_id=e.exam_id) AS referenced
                 FROM exams e
-                WHERE e.exam_id=%s AND e.teacher_id=%s AND e.branch_id=%s
-            """, (item_id, user_id, branch_id))
+                WHERE e.exam_id=%s
+            """, (item_id,))
             item = cur.fetchone()
             if not item:
-                flash("Assessment not found or unauthorized.", "error")
+                flash("Assessment not found.", "error")
             elif item["referenced"]:
-                flash("This assessment cannot be deleted because questions or student scores already reference it.", "error")
+                # Has scores — force-delete the results then delete the exam
+                cur.execute("DELETE FROM exam_results WHERE exam_id=%s", (item_id,))
+                cur.execute("DELETE FROM exam_questions WHERE exam_id=%s", (item_id,))
+                cur.execute("DELETE FROM exams WHERE exam_id=%s", (item_id,))
+                db.commit()
+                flash(f"Assessment '{item['title']}' and its scores were removed.", "success")
             else:
                 cur.execute("DELETE FROM exams WHERE exam_id=%s", (item_id,))
                 db.commit()
