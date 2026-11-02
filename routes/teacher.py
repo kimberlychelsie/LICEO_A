@@ -6411,9 +6411,8 @@ def teacher_save_grid_scores(section_id, subject_id):
                 prefix = "max_quiz_" if field_name.startswith("max_quiz_") else "max_exam_"
                 exam_id = int(field_name.removeprefix(prefix))
                 new_max = posted_max(field_name)
-                # Use only exam_id + ownership checks — do NOT filter by section/subject/period/year
-                # because legacy exams (e.g. old monthly exams) may have a different year_id or
-                # section_id than the current class-record context but are still validly in the grid.
+                # Only check ownership (exam_id + teacher + branch); legacy/moved exams may have
+                # a different section_id / year_id than the current class-record context.
                 cur.execute("""
                     SELECT e.exam_id, COALESCE(MAX(er.score), 0) AS highest_score
                     FROM exams e
@@ -6423,7 +6422,8 @@ def teacher_save_grid_scores(section_id, subject_id):
                 """, (exam_id, user_id, branch_id))
                 item = cur.fetchone()
                 if not item:
-                    raise ValueError("An assessment maximum could not be updated.")
+                    # Exam no longer exists or belongs to another teacher — skip silently.
+                    continue
                 if new_max < float(item["highest_score"] or 0):
                     raise ValueError(f"Assessment maximum cannot be below the existing score {item['highest_score']}.")
                 cur.execute(
@@ -6635,14 +6635,15 @@ def teacher_delete_class_record_item(section_id, subject_id, period, item_type, 
                 db.commit()
                 flash(f"Activity '{item['title']}' deleted.", "success")
         else:
+            # Relax filters — only require ownership via exam_id + teacher + branch so that
+            # exams moved to a different section/period (e.g. old Monthly Exam) can still be deleted.
             cur.execute("""
                 SELECT e.title,
                        EXISTS(SELECT 1 FROM exam_results r WHERE r.exam_id=e.exam_id)
                        OR EXISTS(SELECT 1 FROM exam_questions q WHERE q.exam_id=e.exam_id) AS referenced
                 FROM exams e
                 WHERE e.exam_id=%s AND e.teacher_id=%s AND e.branch_id=%s
-                  AND e.section_id=%s AND e.subject_id=%s AND e.grading_period=%s AND e.year_id=%s
-            """, (item_id, user_id, branch_id, section_id, subject_id, period, year_id))
+            """, (item_id, user_id, branch_id))
             item = cur.fetchone()
             if not item:
                 flash("Assessment not found or unauthorized.", "error")
