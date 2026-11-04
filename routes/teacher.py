@@ -29,6 +29,7 @@ from werkzeug.utils import secure_filename
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from utils.grade_approval_history import fetch_grade_history, record_grade_history
+from utils.list_pagination import paginate_sequence, review_filter_query_args
 from services.final_grades import (
     GradingPolicyError,
     PeriodGrade,
@@ -8997,7 +8998,9 @@ def academic_coordinator_grade_review():
             params.append(selected_teacher_id)
         query += " ORDER BY r.registrar_approved_at DESC NULLS LAST, r.id DESC"
         cur.execute(query, params)
-        submissions = cur.fetchall() or []
+        submissions, current_page, total_pages, total_submissions, per_page = paginate_sequence(
+            cur.fetchall() or [], request.args.get("page", 1, type=int),
+        )
         return render_template(
             "registrar_grade_review.html",
             grade_levels=grade_levels, sections=sections, teachers=teachers,
@@ -9009,6 +9012,9 @@ def academic_coordinator_grade_review():
             review_list_endpoint="teacher.academic_coordinator_grade_review",
             review_detail_endpoint="teacher.academic_coordinator_view_class_record",
             grading_periods=grading_periods,
+            current_page=current_page, total_pages=total_pages,
+            total_submissions=total_submissions, per_page=per_page,
+            review_query_args=review_filter_query_args(request.args),
         )
     finally:
         cur.close()

@@ -10,6 +10,7 @@ import json
 from utils.send_email import send_email
 from utils.parent_sync import sync_user_parent_links, sync_all_users_for_enrollment_guardian_email
 from utils.grade_approval_history import record_grade_history
+from utils.list_pagination import paginate_sequence, review_filter_query_args
 from utils.auth_sessions import revoke_current_auth_session
 from services.final_grades import (
     GradingPolicyError,
@@ -6706,7 +6707,9 @@ def registrar_grade_review():
 
         query += " ORDER BY r.submitted_at DESC, r.id DESC, s.section_name, sub.name"
         cur.execute(query, params)
-        submissions = cur.fetchall() or []
+        submissions, current_page, total_pages, total_submissions, per_page = paginate_sequence(
+            cur.fetchall() or [], request.args.get("page", 1, type=int),
+        )
 
         return render_template(
             "registrar_grade_review.html",
@@ -6715,6 +6718,9 @@ def registrar_grade_review():
             selected_section_id=selected_section_id, selected_period=selected_period,
             selected_teacher_id=selected_teacher_id,
             grading_periods=grading_periods,
+            current_page=current_page, total_pages=total_pages,
+            total_submissions=total_submissions, per_page=per_page,
+            review_query_args=review_filter_query_args(request.args),
         )
     finally:
         cur.close()
