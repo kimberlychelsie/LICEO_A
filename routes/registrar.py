@@ -2503,6 +2503,9 @@ def registrar_decide_student_transfer(transfer_id):
               LOWER(doc_type) LIKE '%%form 137%%' OR LOWER(doc_type) LIKE '%%form137%%' OR LOWER(doc_type) LIKE '%%sf10%%' OR LOWER(doc_type) LIKE '%%cumulative%%'
               OR LOWER(doc_type) LIKE '%%form 138%%' OR LOWER(doc_type) LIKE '%%form138%%' OR LOWER(doc_type) LIKE '%%sf9%%'
               OR LOWER(doc_type) LIKE '%%report card%%'
+              OR LOWER(doc_type) LIKE '%%psa%%' OR LOWER(doc_type) LIKE '%%birth cert%%' OR LOWER(doc_type) LIKE '%%birth certificate%%'
+              OR LOWER(doc_type) LIKE '%%baptismal%%'
+              OR LOWER(doc_type) LIKE '%%good moral%%' OR LOWER(doc_type) LIKE '%%goodmoral%%' OR LOWER(doc_type) LIKE '%%conduct%%'
             )
         """, (destination_enrollment_id, transfer["source_enrollment_id"]))
         cursor.execute("UPDATE enrollments SET status='transferred_out' WHERE enrollment_id=%s", (transfer["source_enrollment_id"],))
