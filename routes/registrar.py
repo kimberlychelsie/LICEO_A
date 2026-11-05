@@ -3418,10 +3418,14 @@ def registrar_profile_pictures():
             active_year_id = active_year_row["year_id"] if active_year_row else None
 
             query = """
-                SELECT e.enrollment_id, e.branch_enrollment_no, e.student_first_name,
+                SELECT e.enrollment_id, e.branch_enrollment_no, e.lrn, e.student_first_name,
                 e.student_middle_name,
                 e.student_last_name, e.grade_level, 
-                       s.section_name, e.profile_image AS student_pic, e.status
+                       s.section_name, e.profile_image AS student_pic, e.status,
+                       (SELECT sa.username
+                        FROM student_accounts sa
+                        WHERE sa.enrollment_id = e.enrollment_id
+                        LIMIT 1) AS account_username
                 FROM enrollments e
                 LEFT JOIN sections s ON e.section_id = s.section_id
                 WHERE e.branch_id = %s AND e.status IN ('enrolled', 'approved', 'open_for_enrollment', 'completed')

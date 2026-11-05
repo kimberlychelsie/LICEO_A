@@ -858,13 +858,11 @@
                     </tr>
 
                     {% for enrollment in new_enrollments %}
-                    {% set display_id = branch_code ~ '_' ~ ("%04d"|format(enrollment.display_no|default(0)|int) if
-                    enrollment.display_no|int else enrollment.enrollment_id) %}
+                    {% set display_id = enrollment.lrn or 'Missing LRN' %}
                     <tr class="new-enroll-row" data-grade="{{ enrollment.grade_level | lower }}"
                         data-name="{{ enrollment.student_name | lower }}" data-id="{{ display_id | lower }} {{ enrollment.lrn | default('', true) | lower }}">
                         <td>
                             <span style="font-weight:800;">{{ display_id }}</span>
-                            <div class="muted-note">LRN: {{ enrollment.lrn or 'Not provided' }}</div>
                         </td>
                         <td>
                             <strong>{{ enrollment.student_name }}</strong>
@@ -1824,9 +1822,7 @@
                         <th class="th-actions">Actions</th>
                     </tr>
                     {% for e in enrolled_students %}
-                    {% set display_id = branch_code ~ '_' ~ ("%04d"|format(e.display_no|default(0)|int) if
-                    e.display_no|int else
-                    e.enrollment_id) %}
+                    {% set display_id = e.lrn or 'Missing LRN' %}
                     <tr class="enrolled-row" data-grade="{{ e.grade_level | lower }}"
                         data-name="{{ e.student_name | lower }}" data-id="{{ display_id | lower }}"
                         data-section="{{ e.section_name | lower if e.section_name else '' }}">
