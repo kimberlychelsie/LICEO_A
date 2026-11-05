@@ -2962,7 +2962,136 @@ def student_reservations_list():
                 pass
         conn.close()
 
-    return render_template("student_reservations_list.html", rows=rows)
+    # Keep filtering and pagination server-side at the page boundary.  The
+    # underlying reservation/payment rows remain untouched and cancellable
+    # records are still revalidated by the cancellation endpoint.
+    status_filter = (request.args.get("status") or "all").strip().upper()
+    type_filter = (request.args.get("type") or "all").strip().upper()
+    search = (request.args.get("q") or "").strip().lower()
+    allowed_statuses = {"ALL", "RESERVED", "PAID", "CLAIMED", "CANCELLED", "REJECTED"}
+    if status_filter not in allowed_statuses:
+        status_filter = "ALL"
+    if type_filter not in {"ALL", "RES", "UO"}:
+        type_filter = "ALL"
+
+    filtered_rows = []
+    for row in rows:
+        if status_filter != "ALL" and str(row.get("status") or "").upper() != status_filter:
+            continue
+        if type_filter != "ALL" and str(row.get("ref_type") or "").upper() != type_filter:
+            continue
+        if search:
+            ref_type = str(row.get("ref_type") or "").upper()
+            ref_id = row.get("ref_id")
+            formatted_ref = ""
+            if ref_id is not None:
+                try:
+                    formatted_ref = (
+                        f"RES-{int(ref_id):04d}"
+                        if ref_type == "RES"
+                        else f"UO-{int(ref_id):04d}"
+                    )
+                except (TypeError, ValueError):
+                    formatted_ref = str(ref_id)
+            haystack = " ".join([
+                str(ref_id or ""), formatted_ref,
+                str(row.get("order_number") or ""),
+                str(row.get("item_names") or ""),
+                str(row.get("status") or ""),
+            ]).lower()
+            if search not in haystack:
+                continue
+        filtered_rows.append(row)
+
+    try:
+        per_page = max(5, min(50, int(request.args.get("per_page", 10))))
+    except (TypeError, ValueError):
+        per_page = 10
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (TypeError, ValueError):
+        page = 1
+    total_rows = len(filtered_rows)
+    total_pages = max(1, (total_rows + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    start = (page - 1) * per_page
+    page_rows = filtered_rows[start:start + per_page]
+
+    return render_template(
+        "student_reservations_list.html",
+        rows=page_rows,
+        total_rows=total_rows,
+        page=page,
+        total_pages=total_pages,
+        per_page=per_page,
+        status_filter=status_filter,
+        type_filter=type_filter,
+        search=search,
+    )
+
+@student_bp.route("/student/reservations/bulk-cancel", methods=["POST"])
+def bulk_cancel_reservations():
+    """Cancel selected unpaid book reservations owned by the current student."""
+    if session.get("role") != "student":
+        return redirect(url_for("auth.login"))
+
+    raw_ids = request.form.getlist("reservation_ids")
+    reservation_ids = []
+    for raw_id in raw_ids:
+        try:
+            reservation_ids.append(int(raw_id))
+        except (TypeError, ValueError):
+            continue
+    reservation_ids = list(dict.fromkeys(reservation_ids))[:100]
+    if not reservation_ids:
+        flash("Select at least one unpaid reservation to cancel.", "error")
+        return redirect(url_for("student.student_reservations_list"))
+
+    branch_id = session.get("branch_id")
+    user_id = session.get("user_id")
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cancelled = 0
+    skipped = 0
+    try:
+        for reservation_id in reservation_ids:
+            try:
+                reservation = lock_reservation_for_cancellation(cur, reservation_id, branch_id)
+                resolved_enrollment_id = reservation.get("resolved_enrollment_id")
+                if (
+                    reservation.get("student_user_id") != user_id
+                    and resolved_enrollment_id != session.get("enrollment_id")
+                ):
+                    raise ReservationSecurityError("Reservation not found or access denied.")
+                cancel_inventory(cur, reservation, release_reserved_inventory)
+                cur.execute(
+                    """
+                    UPDATE reservations
+                    SET status = 'CANCELLED', cancelled_at = NOW()
+                    WHERE reservation_id = %s
+                      AND branch_id = %s
+                      AND status = 'RESERVED'
+                    """,
+                    (reservation_id, branch_id),
+                )
+                if cur.rowcount != 1:
+                    raise ReservationSecurityError("Reservation was already cancelled or changed.")
+                cancelled += 1
+            except ReservationSecurityError:
+                skipped += 1
+        conn.commit()
+        if cancelled:
+            flash(f"{cancelled} reservation(s) cancelled successfully." + (f" {skipped} skipped." if skipped else ""), "success")
+        else:
+            flash("No selected reservations could be cancelled.", "error")
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect(url_for("student.student_reservations_list"))
 
 @student_bp.route("/reservations/<int:reservation_id>/cancel", methods=["POST"])
 def cancel_reservation(reservation_id):
