@@ -825,6 +825,23 @@
         <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--cashier-primary); margin-bottom: 20px;">
             Payment History
         </h3>
+        <form method="get" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:18px;">
+            <label style="font-size:.75rem; font-weight:800; color:var(--cashier-muted);">Search receipt
+                <input type="search" name="payment_q" value="{{ payment_search or '' }}" placeholder="OR number or cashier"
+                    style="display:block; margin-top:5px; min-width:220px; padding:9px 11px; border:1px solid var(--cashier-border); border-radius:8px;">
+            </label>
+            <label style="font-size:.75rem; font-weight:800; color:var(--cashier-muted);">Payment type
+                <select name="payment_type" style="display:block; margin-top:5px; padding:9px 11px; border:1px solid var(--cashier-border); border-radius:8px;">
+                    <option value="all" {% if payment_type == 'all' %}selected{% endif %}>All payments</option>
+                    <option value="book" {% if payment_type == 'book' %}selected{% endif %}>Books</option>
+                    <option value="uniform" {% if payment_type == 'uniform' %}selected{% endif %}>Uniforms</option>
+                    <option value="tuition" {% if payment_type == 'tuition' %}selected{% endif %}>Tuition</option>
+                    <option value="general" {% if payment_type == 'general' %}selected{% endif %}>General</option>
+                </select>
+            </label>
+            <button type="submit" style="padding:9px 15px; border:0; border-radius:8px; background:var(--cashier-primary); color:#fff; font-weight:800; cursor:pointer;">Apply</button>
+            <a href="{{ url_for('cashier.view_bill', bill_id=bill.bill_id) }}" style="padding:9px 15px; color:var(--cashier-primary); font-weight:700;">Clear</a>
+        </form>
         {% if payments %}
         <div style="overflow-x: auto;">
             <table class="modern-table">
@@ -928,10 +945,28 @@
                 </tbody>
             </table>
         </div>
+        {% if payment_total > 0 %}
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:18px; flex-wrap:wrap;">
+            <span style="font-size:.8rem; color:var(--cashier-muted); font-weight:700;">
+                Showing {{ ((payment_page - 1) * 10) + 1 }}–{{ [payment_page * 10, payment_total]|min }} of {{ payment_total }}
+            </span>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                {% if payment_page > 1 %}
+                <a href="{{ url_for('cashier.view_bill', bill_id=bill.bill_id, payment_page=payment_page-1, payment_q=payment_search, payment_type=payment_type) }}" style="padding:8px 11px; border-radius:8px; text-decoration:none; font-weight:800; font-size:.78rem; border:1px solid var(--cashier-border); color:var(--cashier-primary);">Previous</a>
+                {% endif %}
+                {% for p in range(1, payment_total_pages + 1) %}
+                <a href="{{ url_for('cashier.view_bill', bill_id=bill.bill_id, payment_page=p, payment_q=payment_search, payment_type=payment_type) }}" style="min-width:34px; text-align:center; padding:8px 10px; border-radius:8px; text-decoration:none; font-weight:800; font-size:.8rem; {% if p == payment_page %}background:var(--cashier-primary); color:#fff;{% else %}background:#fff; color:var(--cashier-primary); border:1px solid var(--cashier-border);{% endif %}">{{ p }}</a>
+                {% endfor %}
+                {% if payment_page < payment_total_pages %}
+                <a href="{{ url_for('cashier.view_bill', bill_id=bill.bill_id, payment_page=payment_page+1, payment_q=payment_search, payment_type=payment_type) }}" style="padding:8px 11px; border-radius:8px; text-decoration:none; font-weight:800; font-size:.78rem; border:1px solid var(--cashier-border); color:var(--cashier-primary);">Next</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
         {% else %}
         <div
             style="text-align: center; padding: 48px; background: #fff; border: 1px dashed var(--cashier-border); border-radius: 20px; color: var(--cashier-muted);">
-            No transactions have been processed for this bill yet.
+            {% if payment_total %}No payments match the selected filters.{% else %}No transactions have been processed for this bill yet.{% endif %}
         </div>
         {% endif %}
     </div>

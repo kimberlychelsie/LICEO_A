@@ -1739,10 +1739,56 @@ def view_bill(bill_id):
                     
             p["breakdown_items"] = p_breakdown
 
+        # Payment history is paginated for display only.  All payment rows
+        # above remain available for balance allocation and receipt breakdowns.
+        payment_search = (request.args.get("payment_q") or "").strip().lower()
+        payment_type = (request.args.get("payment_type") or "all").strip().lower()
+        if payment_type not in {"all", "book", "uniform", "tuition", "general"}:
+            payment_type = "all"
+
+        filtered_payments = []
+        for payment in payments:
+            target_type = str(payment.get("target_type") or "").lower()
+            normalized_type = (
+                "book" if target_type in {"reservation", "reservation_batch"}
+                else "uniform" if target_type == "uniform_order"
+                else target_type if target_type in {"tuition", "general"}
+                else "general"
+            )
+            if payment_type != "all" and normalized_type != payment_type:
+                continue
+            if payment_search:
+                haystack = " ".join([
+                    str(payment.get("receipt_number") or ""),
+                    str(payment.get("received_by_name") or ""),
+                    target_type,
+                    normalized_type,
+                    str(payment.get("payment_date") or ""),
+                ]).lower()
+                if payment_search not in haystack:
+                    continue
+            filtered_payments.append(payment)
+
+        payment_page_size = 10
+        try:
+            payment_page = max(1, int(request.args.get("payment_page", 1)))
+        except (TypeError, ValueError):
+            payment_page = 1
+        payment_total = len(filtered_payments)
+        payment_total_pages = max(1, (payment_total + payment_page_size - 1) // payment_page_size)
+        payment_page = min(payment_page, payment_total_pages)
+        payment_start = (payment_page - 1) * payment_page_size
+        payments = filtered_payments[payment_start:payment_start + payment_page_size]
+
         return render_template(
             "cashier_view_bill.html",
             bill=bill,
             payments=payments,
+            payment_total=payment_total,
+            payment_page=payment_page,
+            payment_total_pages=payment_total_pages,
+            payment_search=payment_search,
+            payment_type=payment_type,
             reservation_details=reservation_details,
             uniform_order_details=uniform_order_details,
             branch_admin_name=branch_admin_name,
