@@ -5,6 +5,7 @@ from db import get_db_connection, is_branch_active
 from datetime import datetime, date
 from decimal import Decimal
 import secrets
+import logging
 import psycopg2.extras
 import pandas as pd
 from openpyxl.styles import Font, Fill, Alignment, PatternFill, Border, Side
@@ -39,6 +40,7 @@ from utils.payment_first_events import (
 from utils.payment_first_lifecycle import cancel_inventory, claim_inventory
 
 cashier_bp = Blueprint("cashier", __name__)
+logger = logging.getLogger(__name__)
 
 
 def _get_manila_now():
@@ -501,13 +503,26 @@ def _recalculate_bill(cursor, bill_id):
         # General-pool allocation is not durable settlement evidence. Only a
         # trusted direct reservation payment may create a new PAID transition.
         if (res.get("status") or "").upper() == "RESERVED":
-            trusted = lock_reservation(cursor, res["reservation_id"], bill["branch_id"])
-            settlement = get_verified_direct_settlement(cursor, trusted)
+            try:
+                trusted = lock_reservation(
+                    cursor,
+                    res["reservation_id"],
+                    bill["branch_id"],
+                    allow_transfer_reconciliation=True,
+                    reconciliation_enrollment_id=enrollment_id,
+                )
+                settlement = get_verified_direct_settlement(cursor, trusted)
+            except ReservationSecurityError as exc:
+                logger.warning(
+                    "Skipping reservation %s during bill %s reconciliation: %s",
+                    res["reservation_id"], bill_id, exc,
+                )
+                continue
             if settlement["is_settled"]:
                 cursor.execute(
                     """UPDATE reservations SET status = 'PAID', paid_at = NOW()
                        WHERE reservation_id = %s AND branch_id = %s AND status = 'RESERVED'""",
-                    (res["reservation_id"], bill["branch_id"]),
+                    (res["reservation_id"], trusted["branch_id"]),
                 )
 
     # -------------------------------------------------
@@ -1513,13 +1528,26 @@ def view_bill(bill_id):
             # Existing PAID rows remain legacy-unverified; only trusted direct
             # reservation payments can create a new PAID transition.
             if res.get("status") == "RESERVED":
-                trusted = lock_reservation(cursor, res["reservation_id"], bill["branch_id"])
-                settlement = get_verified_direct_settlement(cursor, trusted)
+                try:
+                    trusted = lock_reservation(
+                        cursor,
+                        res["reservation_id"],
+                        bill["branch_id"],
+                        allow_transfer_reconciliation=True,
+                        reconciliation_enrollment_id=bill["enrollment_id"],
+                    )
+                    settlement = get_verified_direct_settlement(cursor, trusted)
+                except ReservationSecurityError as exc:
+                    logger.warning(
+                        "Skipping reservation %s while displaying bill %s: %s",
+                        res["reservation_id"], bill_id, exc,
+                    )
+                    continue
                 if settlement["is_settled"]:
                     cursor.execute(
                         """UPDATE reservations SET status = 'PAID', paid_at = NOW()
                            WHERE reservation_id = %s AND branch_id = %s AND status = 'RESERVED'""",
-                        (res["reservation_id"], bill["branch_id"]),
+                        (res["reservation_id"], trusted["branch_id"]),
                     )
                     res["status"] = "PAID"
                 

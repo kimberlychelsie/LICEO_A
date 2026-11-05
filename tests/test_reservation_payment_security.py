@@ -48,6 +48,18 @@ class FakeCursor:
         return self.result
 
 
+class TransferReservationCursor:
+    def __init__(self, results):
+        self.results = list(results)
+
+    def execute(self, query, params=()):
+        self.query = " ".join(query.split())
+        self.params = params
+
+    def fetchone(self):
+        return self.results.pop(0)
+
+
 class ReservationSettlementTest(unittest.TestCase):
     def setUp(self):
         self.reservation = {
@@ -143,6 +155,40 @@ class ReservationSettlementTest(unittest.TestCase):
     def test_cross_branch_or_missing_reservation_is_rejected(self):
         with self.assertRaises(ReservationSecurityError):
             lock_reservation(FakeCursor(reservation=None), 7, 99)
+
+    def test_approved_transfer_allows_reconciliation_only(self):
+        origin = {
+            "reservation_id": 7,
+            "branch_id": 4,
+            "status": "RESERVED",
+            "enrollment_id": 21,
+            "student_user_id": 8,
+            "resolved_enrollment_id": 21,
+        }
+        cursor = TransferReservationCursor([
+            None,
+            {"column_count": 5},
+            origin,
+            {"matched": 1},
+        ])
+        result = lock_reservation(
+            cursor,
+            7,
+            9,
+            allow_transfer_reconciliation=True,
+            reconciliation_enrollment_id=31,
+        )
+        self.assertEqual(result, origin)
+        self.assertIn("student_transfer_requests", cursor.query)
+
+    def test_transfer_reconciliation_requires_explicit_destination_enrollment(self):
+        with self.assertRaises(ReservationSecurityError):
+            lock_reservation(
+                TransferReservationCursor([None]),
+                7,
+                9,
+                allow_transfer_reconciliation=True,
+            )
 
     def test_duplicate_or_invalid_stock_deduction_fails_closed(self):
         cursor = FakeCursor(stock_lines=[{"item_id": 3, "size_label": None, "qty": 2}])

@@ -9,7 +9,20 @@ class ReservationSecurityError(ValueError):
     pass
 
 
-def lock_reservation(cursor, reservation_id, branch_id):
+def lock_reservation(
+    cursor,
+    reservation_id,
+    branch_id,
+    *,
+    allow_transfer_reconciliation=False,
+    reconciliation_enrollment_id=None,
+):
+    """Lock a reservation, optionally proving an approved cross-branch transfer.
+
+    Normal payment, cancellation, and inventory callers remain strictly
+    branch-scoped.  Billing reconciliation may opt in only when the source
+    reservation and destination enrollment are joined by an approved transfer.
+    """
     cursor.execute(
         """
         SELECT r.reservation_id, r.branch_id, r.status, r.enrollment_id,
@@ -24,8 +37,68 @@ def lock_reservation(cursor, reservation_id, branch_id):
         (reservation_id, branch_id),
     )
     reservation = cursor.fetchone()
-    if not reservation:
+    if reservation:
+        return reservation
+
+    if not allow_transfer_reconciliation or not reconciliation_enrollment_id:
         raise ReservationSecurityError("Reservation not found or access denied.")
+
+    # Do not assume the transfer migration exists on older installations.
+    cursor.execute(
+        """
+        SELECT COUNT(*) AS column_count
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'student_transfer_requests'
+          AND column_name IN (
+              'source_enrollment_id', 'destination_enrollment_id',
+              'source_branch_id', 'destination_branch_id', 'status'
+          )
+        """
+    )
+    table = cursor.fetchone() or {}
+    column_count = table.get("column_count") if hasattr(table, "get") else table[0]
+    if int(column_count or 0) != 5:
+        raise ReservationSecurityError("Reservation transfer ownership cannot be verified.")
+
+    cursor.execute(
+        """
+        SELECT r.reservation_id, r.branch_id, r.status, r.enrollment_id,
+               r.student_user_id,
+               COALESCE(r.enrollment_id, sa.enrollment_id) AS resolved_enrollment_id
+        FROM reservations r
+        LEFT JOIN users u ON u.user_id = r.student_user_id
+        LEFT JOIN student_accounts sa ON sa.username = u.username
+        WHERE r.reservation_id = %s
+        FOR UPDATE OF r
+        """,
+        (reservation_id,),
+    )
+    origin = cursor.fetchone()
+    if not origin:
+        raise ReservationSecurityError("Reservation not found or access denied.")
+
+    cursor.execute(
+        """
+        SELECT 1
+        FROM student_transfer_requests tr
+        WHERE tr.status = 'approved'
+          AND tr.source_enrollment_id = %s
+          AND tr.destination_enrollment_id = %s
+          AND tr.source_branch_id = %s
+          AND tr.destination_branch_id = %s
+        LIMIT 1
+        """,
+        (
+            origin.get("resolved_enrollment_id"),
+            reconciliation_enrollment_id,
+            origin.get("branch_id"),
+            branch_id,
+        ),
+    )
+    if not cursor.fetchone():
+        raise ReservationSecurityError("Reservation not found or access denied.")
+    return origin
     return reservation
 
 
