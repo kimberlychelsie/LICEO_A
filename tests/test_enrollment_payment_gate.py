@@ -71,6 +71,11 @@ class EnrollmentPaymentGateTests(unittest.TestCase):
         self.assertNotIn('max="20000"', CREATE_BILL)
         self.assertNotIn("tuition_fee > 20000", CASHIER)
 
+    def test_create_bill_has_no_artificial_books_uniform_or_misc_caps(self):
+        for cap in ('max="15000"', 'max="10000"', "this.value = '15000'", "this.value = '10000'"):
+            self.assertNotIn(cap, CREATE_BILL)
+        self.assertNotIn("Maximum allowed", CREATE_BILL)
+
 
 if __name__ == "__main__":
     unittest.main()
