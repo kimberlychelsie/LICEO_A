@@ -971,8 +971,12 @@ def create_bill(enrollment_id):
 
     # Preserve old historical charges.
     # Add/update tuition without charging paid items again.
-                    new_books_fee = old_books_fee
-                    new_uniform_fee = old_uniform_fee
+                    # Priced reservations/orders are authoritative.  Keep any
+                    # historical category charge already on the bill, but do
+                    # not let a newly fetched outstanding item disappear when
+                    # an existing (tuition-only) bill is completed.
+                    new_books_fee = max(old_books_fee, books_total)
+                    new_uniform_fee = max(old_uniform_fee, uniform_total)
                     new_other_fees = old_other_fees + other_fees
 
                     new_total_amount = (
