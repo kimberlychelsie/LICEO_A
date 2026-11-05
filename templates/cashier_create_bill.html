@@ -386,8 +386,10 @@
                     <label class="form-label" for="books_fee">Books Total Amount (₱)</label>
                     <input type="number" id="books_fee" name="books_fee" class="form-input" 
                       step="0.01" min="0" value="{{ books_total|default(0) }}"
+                      {% if books_total_locked %}readonly aria-describedby="books-fee-note"{% endif %}
                       onkeydown="if(event.key==='-' || event.key==='+') return false;"
                       oninput="calculateTotal()" required>
+                    {% if books_total_locked %}<span id="books-fee-note" style="font-size: 0.7rem; color: var(--cashier-muted);">Auto-calculated from active book reservations.</span>{% endif %}
                 </div>
             </div>
 
@@ -407,8 +409,10 @@
                     <label class="form-label" for="uniform_fee">Uniform Total Amount (₱)</label>
                     <input type="number" id="uniform_fee" name="uniform_fee" class="form-input" 
                       step="0.01" min="0" value="{{ uniform_total|default(0) }}"
+                      {% if uniform_total_locked %}readonly aria-describedby="uniform-fee-note"{% endif %}
                       onkeydown="if(event.key==='-' || event.key==='+') return false;"
                       oninput="calculateTotal()" required>
+                    {% if uniform_total_locked %}<span id="uniform-fee-note" style="font-size: 0.7rem; color: var(--cashier-muted);">Auto-calculated from active uniform reservations/orders.</span>{% endif %}
                 </div>
             </div>
 

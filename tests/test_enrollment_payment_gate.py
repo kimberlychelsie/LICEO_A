@@ -76,6 +76,13 @@ class EnrollmentPaymentGateTests(unittest.TestCase):
             self.assertNotIn(cap, CREATE_BILL)
         self.assertNotIn("Maximum allowed", CREATE_BILL)
 
+    def test_priced_books_and_uniforms_are_display_only_and_server_authoritative(self):
+        self.assertIn("books_total_locked", CREATE_BILL)
+        self.assertIn("uniform_total_locked", CREATE_BILL)
+        self.assertIn("books_total if books_total_locked else posted_books_fee", CASHIER)
+        self.assertIn("uniform_total if uniform_total_locked else posted_uniform_fee", CASHIER)
+        self.assertIn("readonly", CREATE_BILL)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -877,15 +877,19 @@ def create_bill(enrollment_id):
         uniforms = []
         books_total = Decimal("0")
         uniform_total = Decimal("0")
+        books_total_locked = False
+        uniform_total_locked = False
 
         for item in reservation_items:
             cat = (item["category"] or "").upper()
             if cat == "BOOK":
                 books.append({"book_name": item["item_name"], "quantity": item["qty"]})
                 books_total += Decimal(str(item["line_total"] or "0"))
+                books_total_locked = True
             elif cat == "UNIFORM":
                 uniforms.append({"uniform_type": item["item_name"], "size": item["size_label"] or "N/A", "quantity": item["qty"]})
                 uniform_total += Decimal(str(item["line_total"] or "0"))
+                uniform_total_locked = True
 
         if existing_bill:
             # -----------------------------------------
@@ -906,6 +910,7 @@ def create_bill(enrollment_id):
             uniform_total = Decimal(
                 str(cursor.fetchone()["outstanding_uniform"] or 0)
             )
+            uniform_total_locked = True
 
             # -----------------------------------------
             # OUTSTANDING BOOKS
@@ -942,6 +947,7 @@ def create_bill(enrollment_id):
             books_total = Decimal(
                 str(cursor.fetchone()["outstanding_books"] or 0)
             )
+            books_total_locked = True
 
         # Legacy items (no price info directly attached, keeping for display)
         cursor.execute("SELECT * FROM enrollment_books WHERE enrollment_id = %s", (enrollment_id,))
@@ -954,12 +960,7 @@ def create_bill(enrollment_id):
 
         if request.method == "POST":
             tuition_fee = Decimal(request.form.get("tuition_fee", "0") or "0")
-
-            books_fee = Decimal(request.form.get("books_fee", "0") or "0")
-            uniform_fee = Decimal(request.form.get("uniform_fee", "0") or "0")
             other_fees = Decimal(request.form.get("other_fees", "0") or "0")
-
-            total_amount = tuition_fee + books_fee + uniform_fee + other_fees
 
             try:
                 if existing_bill:
@@ -1019,6 +1020,14 @@ def create_bill(enrollment_id):
 
                     bill_id = existing_bill["bill_id"]
                 else:
+                    # Priced reservations/orders are authoritative. The form
+                    # values for those fields are display-only; only legacy
+                    # items without a stored price may use a cashier amount.
+                    posted_books_fee = Decimal(request.form.get("books_fee", "0") or "0")
+                    posted_uniform_fee = Decimal(request.form.get("uniform_fee", "0") or "0")
+                    books_fee = books_total if books_total_locked else posted_books_fee
+                    uniform_fee = uniform_total if uniform_total_locked else posted_uniform_fee
+                    total_amount = tuition_fee + books_fee + uniform_fee + other_fees
                     # Insert new billing record
                     cursor.execute("""
                         INSERT INTO billing
@@ -1045,7 +1054,7 @@ def create_bill(enrollment_id):
                 
                 db.commit()
 
-                flash(f"Bill created successfully! Total: ₱{total_amount:,.2f}", "success")
+                flash(f"Bill created successfully! Total: ₱{(new_total_amount if existing_bill else total_amount):,.2f}", "success")
                 return redirect(url_for("cashier.view_bill", bill_id=bill_id))
 
             except Exception as e:
@@ -1058,7 +1067,9 @@ def create_bill(enrollment_id):
             books=books,
             uniforms=uniforms,
             books_total=books_total,
-            uniform_total=uniform_total
+            uniform_total=uniform_total,
+            books_total_locked=books_total_locked,
+            uniform_total_locked=uniform_total_locked,
         )
     finally:
         cursor.close()
