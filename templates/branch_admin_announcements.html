@@ -254,6 +254,36 @@
         display: none;
     }
 
+    .char-count {
+        display: none;
+        justify-content: flex-end;
+        margin-top: 6px;
+        color: #dc2626;
+        font-size: 0.75rem;
+        font-weight: 800;
+    }
+
+    .char-count.at-limit {
+        display: flex;
+    }
+
+    .limit-banner {
+        display: none;
+        margin: 0 0 18px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid #fecaca;
+        background: #fef2f2;
+        color: #b91c1c;
+        font-size: 0.84rem;
+        font-weight: 800;
+        line-height: 1.4;
+    }
+
+    .limit-banner.show {
+        display: block;
+    }
+
     .btn-gold-prestige.is-ready {
         background: #16a34a;
         color: #fff;
@@ -711,18 +741,21 @@
                 <input type="hidden" name="return_status" value="{{ status_filter }}">
                 <input type="hidden" name="return_search" value="{{ filter_search }}">
                 <input type="hidden" name="return_page" value="{{ page }}">
+                <div class="limit-banner" role="alert"></div>
 
                 <div class="form-group-prem">
                     <label>Announcement Title</label>
-                    <input class="input-prem" id="headline_input" name="announcement_title"
-                        placeholder="e.g. Enrollment is now OPEN!" required maxlength="120" oninput="syncCreateDraft()">
+                    <input class="input-prem js-char-count" id="headline_input" name="announcement_title"
+                        placeholder="e.g. Enrollment is now OPEN!" required maxlength="80" oninput="syncCreateDraft()">
+                    <div class="char-count" aria-live="polite"></div>
                 </div>
 
                 <div class="form-group-prem">
                     <label>Announcement Message</label>
-                    <textarea class="input-prem" id="summary_input" name="announcement_message"
+                    <textarea class="input-prem js-char-count" id="summary_input" name="announcement_message"
                         placeholder="A brief summary for the homepage..." style="resize: none; height: 100px; overflow-y: auto;"
-                        maxlength="1000" oninput="syncCreateDraft()"></textarea>
+                        maxlength="400" oninput="syncCreateDraft()"></textarea>
+                    <div class="char-count" aria-live="polite"></div>
                 </div>
                 <div class="form-group-prem">
                     <label>Audience</label>
@@ -871,13 +904,16 @@
                 <input type="hidden" name="return_search" value="{{ filter_search }}">
                 <input type="hidden" name="return_page" value="{{ page }}">
                 <div class="modal-body">
+                    <div class="limit-banner" role="alert"></div>
                     <div class="form-group-prem">
                         <label>Announcement Title</label>
-                        <input class="input-prem" name="announcement_title" value="{{ a.title }}" required maxlength="120" oninput="syncEditSaveState(this.form)">
+                        <input class="input-prem js-char-count" name="announcement_title" value="{{ a.title }}" required maxlength="80" oninput="syncEditSaveState(this.form)">
+                        <div class="char-count" aria-live="polite"></div>
                     </div>
                     <div class="form-group-prem">
                         <label>Announcement Message</label>
-                        <textarea class="input-prem" name="announcement_message" maxlength="1000" style="resize: none; min-height: 160px; overflow-y: auto;" oninput="syncEditSaveState(this.form)">{{ a.message or '' }}</textarea>
+                        <textarea class="input-prem js-char-count" name="announcement_message" maxlength="400" style="resize: none; min-height: 160px; overflow-y: auto;" oninput="syncEditSaveState(this.form)">{{ a.message or '' }}</textarea>
+                        <div class="char-count" aria-live="polite"></div>
                     </div>
                     <div class="form-group-prem">
                         <label>Audience</label>
@@ -1099,15 +1135,58 @@
             || Boolean(imageFile);
     }
 
+    function fieldLimit(field) {
+        return Number(field?.getAttribute('maxlength')) || 0;
+    }
+
+    function isOverCharLimit(form) {
+        return [...form.querySelectorAll('.js-char-count')].some((field) => {
+            const max = fieldLimit(field);
+            return max && field.value.length > max;
+        });
+    }
+
+    function syncCharCount(field) {
+        if (!field) return;
+        const counter = field.parentElement?.querySelector('.char-count');
+        const max = fieldLimit(field);
+        if (!counter || !max) return;
+        const count = field.value.length;
+        const atLimit = count >= max;
+        counter.classList.toggle('at-limit', atLimit);
+        counter.textContent = atLimit ? `${count}/${max}` : '';
+    }
+
+    function syncLimitBanner(form) {
+        const banner = form.querySelector('.limit-banner');
+        if (!banner) return;
+        const hits = [...form.querySelectorAll('.js-char-count')].flatMap((field) => {
+            const max = fieldLimit(field);
+            if (!max || field.value.length < max) return [];
+            const label = field.getAttribute('name') === 'announcement_title' ? 'Title' : 'Announcement message';
+            return [`${label} limit is ${max} characters (${field.value.length}/${max})`];
+        });
+        banner.classList.toggle('show', hits.length > 0);
+        banner.textContent = hits.length ? `Character limit reached. ${hits.join('. ')}.` : '';
+    }
+
+    function syncCharCounts(root) {
+        const scope = root || document;
+        scope.querySelectorAll('.js-char-count').forEach(syncCharCount);
+        const forms = scope.matches && scope.matches('form') ? [scope] : scope.querySelectorAll('form');
+        forms.forEach(syncLimitBanner);
+    }
+
     function syncEditSaveState(form) {
         const saveBtn = form.querySelector('.edit-save-btn');
         const imageIsValid = validateScopedImage(form);
+        syncCharCounts(form);
         if (!saveBtn) return;
-        saveBtn.disabled = !imageIsValid || !hasEditChanges(form);
+        saveBtn.disabled = !imageIsValid || !hasEditChanges(form) || isOverCharLimit(form);
     }
 
     function validateEditSubmit(form) {
-        if (!validateScopedImage(form)) return false;
+        if (!validateScopedImage(form) || isOverCharLimit(form)) return false;
         syncEditSaveState(form);
         return hasEditChanges(form);
     }
@@ -1120,7 +1199,10 @@
         document.getElementById('create_preview_title').innerText = title;
         document.getElementById('create_preview_message').innerText = message;
         document.getElementById('create_preview_audience').innerText = audience;
+        syncCharCounts(document.getElementById('announcement_form'));
     }
+
+    syncCharCounts();
 
     function previewImage(input) {
         if (!validateImageInput(input)) return;
@@ -1143,7 +1225,7 @@
         const form = event.target;
         const photoInput = document.getElementById('photo_input');
 
-        if (!form.reportValidity() || !validateImageInput(photoInput)) return false;
+        if (!form.reportValidity() || !validateImageInput(photoInput) || isOverCharLimit(form)) return false;
 
         syncCreateDraft();
         const previewImg = document.getElementById('create_preview_image');

@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 
 branch_admin_bp = Blueprint("branch_admin", __name__)
 
+ANNOUNCEMENT_TITLE_LIMIT = 80
+ANNOUNCEMENT_MESSAGE_LIMIT = 400
+
 
 # =======================
 # HELPERS
@@ -47,6 +50,16 @@ def _announcement_list_state(values, prefix=""):
     except (TypeError, ValueError):
         page = 1
     return audience, status, search, page
+
+
+def _clean_announcement_fields(title, message):
+    title = (title or "").strip()
+    message = (message or "").strip()
+    if len(title) > ANNOUNCEMENT_TITLE_LIMIT:
+        return None, None, f"Title exceeds the {ANNOUNCEMENT_TITLE_LIMIT}-character limit."
+    if len(message) > ANNOUNCEMENT_MESSAGE_LIMIT:
+        return None, None, f"Announcement message exceeds the {ANNOUNCEMENT_MESSAGE_LIMIT}-character limit."
+    return title, message, None
 
 
 def _broadcast_station_redirect_from_form():
@@ -384,8 +397,13 @@ def branch_admin_broadcast_station():
             # Add Homepage Announcement
             # -----------------------
             if request.form.get("add_announcement") == "1":
-                title   = (request.form.get("announcement_title") or "").strip()[:120]
-                message = (request.form.get("announcement_message") or "").strip()[:1000]
+                title, message, limit_error = _clean_announcement_fields(
+                    request.form.get("announcement_title"),
+                    request.form.get("announcement_message"),
+                )
+                if limit_error:
+                    flash(limit_error, "error")
+                    return _broadcast_station_redirect_from_form()
                 if title:
                     image_url = None
                     photo = request.files.get("announcement_photo")
@@ -510,8 +528,13 @@ def announcement_edit(announcement_id):
     if not branch_id:
         return redirect("/")
 
-    title   = (request.form.get("announcement_title") or "").strip()[:120]
-    message = (request.form.get("announcement_message") or "").strip()[:1000]
+    title, message, limit_error = _clean_announcement_fields(
+        request.form.get("announcement_title"),
+        request.form.get("announcement_message"),
+    )
+    if limit_error:
+        flash(limit_error, "error")
+        return _broadcast_station_redirect_from_form()
     audience = (request.form.get("audience") or "all").strip().lower()
     if audience not in ("all", "teacher"):
         audience = "all"
