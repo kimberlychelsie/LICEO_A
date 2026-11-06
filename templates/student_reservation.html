@@ -1798,7 +1798,7 @@
                         {% for g in catalog_groups %}
                         {% set it = g.item %}
 
-                        <div class="product-card-grid item-card-js {% if it.available <= 0 %}out-of-stock{% endif %} {% if it.category != 'UNIFORM' %}book-card{% endif %}"
+                        <div class="product-card-grid item-card-js {% if it.available <= 0 and it.category != 'UNIFORM' %}out-of-stock{% endif %} {% if it.category != 'UNIFORM' %}book-card{% endif %}"
                             data-category="{{ it.category|upper }}" data-price="{{ it.price }}"
                             data-base-price="{{ it.price }}" data-price-step="{{ it.size_price_step or 0 }}"
                             data-item-available="{{ it.available if it.available > 0 else 0 }}"
@@ -1838,11 +1838,11 @@
                                 </div>
 
                                 {% set initial_available = it.available if it.available > 0 else 0 %}
-                                <div class="stock-badge stock-badge-js {% if initial_available >= 6 %}in-stock{% elif initial_available >= 1 %}low-stock{% else %}out-stock{% endif %}"
+                                <div class="stock-badge stock-badge-js {% if it.category == 'UNIFORM' %}low-stock{% elif initial_available >= 6 %}in-stock{% elif initial_available >= 1 %}low-stock{% else %}out-stock{% endif %}"
                                     role="status" aria-live="polite">
-                                    <i class="stock-icon fas {% if initial_available >= 6 %}fa-check-circle{% elif initial_available >= 1 %}fa-exclamation-triangle{% else %}fa-times-circle{% endif %}"></i>
-                                    <span class="stock-label">{% if initial_available >= 6 %}In Stock{% elif initial_available >= 1 %}Low Stock{% else %}Out of Stock{% endif %}</span>
-                                    <span class="stock-quantity">{{ initial_available }} available</span>
+                                    <i class="stock-icon fas {% if it.category == 'UNIFORM' %}fa-clock{% elif initial_available >= 6 %}fa-check-circle{% elif initial_available >= 1 %}fa-exclamation-triangle{% else %}fa-times-circle{% endif %}"></i>
+                                    <span class="stock-label">{% if it.category == 'UNIFORM' %}Pre-order{% elif initial_available >= 6 %}In Stock{% elif initial_available >= 1 %}Low Stock{% else %}Out of Stock{% endif %}</span>
+                                    <span class="stock-quantity">{% if it.category == 'UNIFORM' %}For Ordering{% else %}{{ initial_available }} available{% endif %}</span>
                                 </div>
 
                                 {% if g.pieces and g.pieces|length > 0 %}
@@ -1880,7 +1880,7 @@
                                             class="size-select size-select-js premium-select {% if g.kind == 'uniform_set' %}full-set-size-select{% endif %}"
                                             name="size_{{ it.item_id }}" data-item-id="{{ it.item_id }}" {% if
                                             g.kind=='uniform_set' %}data-full-set="true" {% endif %} {% if it.available
-                                            <=0 %}disabled{% endif %}
+                                            <=0 and it.category != 'UNIFORM' %}disabled{% endif %}
                                             onchange="onUniformSizeChange(this)"
                                             style="width: 100%; padding: 8px 12px; font-size: 0.85rem; border-radius: 8px; border: 1px solid var(--res-border);">
                                             {% if it.sizes and it.sizes|length > 0 %}
@@ -1888,9 +1888,9 @@
                                             {% set price_diff = (s.price - it.price) if (s.price and it.price and s.price > it.price) else 0 %}
                                             <option value="{{ s.size_label }}" data-price="{{ s.price }}"
                                                 data-available="{{ s.available if s.available > 0 else 0 }}" {% if
-                                                loop.first %}selected{% endif %} {% if s.available <=0 %}disabled{% endif %}>
+                                                loop.first %}selected{% endif %} {% if s.available <=0 and it.category != 'UNIFORM' %}disabled{% endif %}>
                                                 {{ s.size_label }} — ₱{{ "{:,.2f}".format(s.price or it.price or 0) }}{% if price_diff > 0 %} (+₱{{ "{:,.2f}".format(price_diff) }}){% endif %}{%
-                                                if s.available <= 0 %} (Out){% endif %}
+                                                if s.available <= 0 and it.category != 'UNIFORM' %} (Out){% endif %}
                                             </option>
                                             {% endfor %}
                                             {% else %}
@@ -1913,21 +1913,21 @@
                                             style="font-size: 0.75rem; font-weight: 800; color: var(--res-muted); margin-bottom: 6px;">
                                             Quantity</div>
                                         <div class="quantity-control">
-                                            <button type="button" {% if it.available <= 0 %}disabled{% endif %}
+                                            <button type="button" {% if it.available <= 0 and it.category != 'UNIFORM' %}disabled{% endif %}
                                                 onclick="this.nextElementSibling.stepDown(); updateTotal(); showFloatingCart();"
                                                 style="border:none; background:#f8fafc; padding:10px 16px; cursor:pointer; font-weight:900; color:var(--res-primary); border-right: 1px solid var(--res-border);">-</button>
-                                            {% set max_qty = 3 if it.available >= 3 else (it.available if it.available > 0 else 0) %}
+                                            {% set max_qty = 3 if it.category == 'UNIFORM' else (3 if it.available >= 3 else (it.available if it.available > 0 else 0)) %}
                                             <input type="number" name="qty_{{ it.item_id }}" min="0" max="{{ max_qty }}" value="0"
                                                 class="qty-input" data-item-id="{{ it.item_id }}"
                                                 data-category="{{ it.category|upper }}" data-item-name="{{ it.item_name }}"
                                                 data-img-url="{{ it.image_url or '' }}"
                                                 data-pieces="{% if g.pieces %}[{% for p in g.pieces %}{&quot;name&quot;:&quot;{{ p.item_name|replace('"', '') }}&quot;,&quot;price&quot;:{{ p.price or 0 }}}{% if not loop.last %},{% endif %}{% endfor %}]{% else %}[]{% endif %}"
                                                 data-price="{{ it.price }}" data-base-price="{{ it.price }}" {% if
-                                                it.available <=0 %}disabled{% endif %}
+                                                it.available <=0 and it.category != 'UNIFORM' %}disabled{% endif %}
                                                 onchange="updateTotal(); showFloatingCart();"
                                                 onkeyup="updateTotal(); showFloatingCart();"
                                                 style="width: 100%; text-align: center; border: none; font-weight: 800; font-family: inherit; font-size: 1rem; outline: none; padding: 0;">
-                                            <button type="button" {% if it.available <= 0 %}disabled{% endif %}
+                                            <button type="button" {% if it.available <= 0 and it.category != 'UNIFORM' %}disabled{% endif %}
                                                 onclick="this.previousElementSibling.stepUp(); updateTotal(); showFloatingCart();"
                                                 style="border:none; background:#f8fafc; padding:10px 16px; cursor:pointer; font-weight:900; color:var(--res-primary); border-left: 1px solid var(--res-border);">+</button>
                                         </div>
@@ -2069,11 +2069,21 @@
         const badge = card ? card.querySelector('.stock-badge-js') : null;
         if (!badge) return;
 
+        const isPreorder = card.dataset.preorder === '1';
+
         const icon = badge.querySelector('.stock-icon');
         const label = badge.querySelector('.stock-label');
         const quantity = badge.querySelector('.stock-quantity');
         badge.classList.remove('in-stock', 'low-stock', 'out-stock');
         icon.classList.remove('fa-check-circle', 'fa-exclamation-triangle', 'fa-times-circle');
+
+        if (isPreorder) {
+            badge.classList.add('low-stock');
+            icon.classList.add('fa-clock');
+            label.textContent = 'Pre-order';
+            quantity.textContent = 'For Ordering';
+            return;
+        }
 
         if (available >= 6) {
             badge.classList.add('in-stock');
@@ -2094,21 +2104,26 @@
     function updateCardAvailability(card, rawAvailable) {
         if (!card) return;
         const available = Math.max(0, parseInt(rawAvailable, 10) || 0);
-        const maxQuantity = Math.min(3, available);
+        const isPreorder = card.dataset.preorder === '1';
+        // For stock-controlled books this is: const maxQuantity = Math.min(3, available)
+        const maxQuantity = isPreorder ? 3 : Math.min(3, available);
         const input = card.querySelector('.qty-input');
         const buttons = card.querySelectorAll('.quantity-control button');
 
         card.dataset.currentAvailable = String(available);
-        card.classList.toggle('out-of-stock', available <= 0);
+        card.classList.toggle('out-of-stock', !isPreorder && available <= 0);
         updateStockBadge(card, available);
 
         if (input) {
             input.max = String(maxQuantity);
-            input.disabled = maxQuantity <= 0;
+            // For books this is equivalent to: input.disabled = maxQuantity <= 0.
+            // Uniforms remain enabled because they are pre-orders.
+            input.disabled = !isPreorder && maxQuantity <= 0;
             const currentQuantity = parseInt(input.value, 10) || 0;
             if (currentQuantity > maxQuantity) input.value = String(maxQuantity);
         }
-        buttons.forEach(button => { button.disabled = maxQuantity <= 0; });
+        // For books this is equivalent to: button.disabled = maxQuantity <= 0.
+        buttons.forEach(button => { button.disabled = !isPreorder && maxQuantity <= 0; });
     }
 
     function switchResTab(tabId) {
