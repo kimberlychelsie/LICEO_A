@@ -128,16 +128,40 @@ def _grades_compatible_for_section(student_grade, section_grade):
     section_grade = str(section_grade or "").strip().lower()
     if not student_grade or not section_grade:
         return False
-    short_section = section_grade.replace("grade ", "").strip()
-    if "-" in section_grade:
-        return student_grade in (section_grade, short_section)
-    if section_grade.startswith("grade 11") or section_grade.startswith("grade 12") or short_section.startswith("11") or short_section.startswith("12"):
-        return (
-            student_grade in (section_grade, short_section)
-            or student_grade.startswith(f"{section_grade}-")
-            or student_grade.startswith(f"{short_section}-")
-        )
-    return student_grade in (section_grade, short_section)
+
+    if student_grade == section_grade:
+        return True
+
+    norm_student = re.sub(r'\s*-\s*', '-', student_grade)
+    norm_section = re.sub(r'\s*-\s*', '-', section_grade)
+    if norm_student == norm_section:
+        return True
+
+    short_student = norm_student.replace("grade", "").strip().lstrip("-").strip()
+    short_section = norm_section.replace("grade", "").strip().lstrip("-").strip()
+    if short_student == short_section:
+        return True
+
+    m_stu = re.search(r'\b\d+\b', norm_student) or re.search(r'\d+', norm_student)
+    m_sec = re.search(r'\b\d+\b', norm_section) or re.search(r'\d+', norm_section)
+
+    if m_stu and m_sec:
+        if m_stu.group(0) != m_sec.group(0):
+            return False
+
+        strands = ['stem', 'humss', 'abm', 'gas', 'tvl', 'arts', 'sports', 'he', 'ict']
+        stu_strand = next((st for st in strands if st in norm_student), None)
+        sec_strand = next((st for st in strands if st in norm_section), None)
+
+        if stu_strand and sec_strand:
+            return stu_strand == sec_strand
+        return True
+
+    for early_level in ('kinder', 'nursery', 'prep'):
+        if early_level in norm_student and early_level in norm_section:
+            return True
+
+    return False
 
 def _identity_reviews_table_missing(exc):
     return getattr(exc, "pgcode", None) == "42P01" or "student_identity_reviews" in str(exc)
@@ -2871,12 +2895,28 @@ def create_student_account(enrollment_id):
             """, (enrollment_id, enrollment["branch_id"], username, hashed_password, enrollment.get("email")))
 
             if section_id:
-                cursor.execute("""
-                    UPDATE enrollments
-                    SET section_id = %s,
-                        status = CASE WHEN status = 'approved' THEN 'enrolled' ELSE status END
-                    WHERE enrollment_id = %s AND branch_id = %s AND year_id = %s
-                """, (section_id, enrollment_id, branch_id, active_year_id))
+                sec_grade_name = (section.get("grade_level_name") or "").lower()
+                detected_strand = None
+                for st in ['stem', 'humss', 'abm', 'gas', 'tvl', 'arts', 'sports']:
+                    if st in sec_grade_name:
+                        detected_strand = st.upper()
+                        break
+
+                if detected_strand and not enrollment.get("shs_track"):
+                    cursor.execute("""
+                        UPDATE enrollments
+                        SET section_id = %s,
+                            shs_track = %s,
+                            status = CASE WHEN status = 'approved' THEN 'enrolled' ELSE status END
+                        WHERE enrollment_id = %s AND branch_id = %s AND year_id = %s
+                    """, (section_id, detected_strand, enrollment_id, branch_id, active_year_id))
+                else:
+                    cursor.execute("""
+                        UPDATE enrollments
+                        SET section_id = %s,
+                            status = CASE WHEN status = 'approved' THEN 'enrolled' ELSE status END
+                        WHERE enrollment_id = %s AND branch_id = %s AND year_id = %s
+                    """, (section_id, enrollment_id, branch_id, active_year_id))
                 sync_student_elective_membership(cursor, enrollment_id)
 
             db.commit()

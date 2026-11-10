@@ -215,5 +215,18 @@ class RegistrarApprovalSafetyTest(unittest.TestCase):
         self.assertIn("max_dob_date=max_dob_date", route_block)
 
 
+    def test_shs_grade_compatible_with_strand_section(self):
+        from routes.registrar import _grades_compatible_for_section
+        self.assertTrue(_grades_compatible_for_section("Grade 12", "Grade 12-ABM"))
+        self.assertTrue(_grades_compatible_for_section("Grade 12", "Grade 12-STEM"))
+        self.assertTrue(_grades_compatible_for_section("Grade 12", "Grade 12-HUMSS"))
+        self.assertTrue(_grades_compatible_for_section("Grade 12", "Grade 12-GAS"))
+        self.assertTrue(_grades_compatible_for_section("Grade 12 - ABM", "Grade 12-ABM"))
+        self.assertFalse(_grades_compatible_for_section("Grade 12 - STEM", "Grade 12-ABM"))
+        self.assertFalse(_grades_compatible_for_section("Grade 11", "Grade 12-ABM"))
+        self.assertTrue(_grades_compatible_for_section("Grade 11", "Grade 11-STEM"))
+        self.assertTrue(_grades_compatible_for_section("Kindergarten", "Kinder"))
+
+
 if __name__ == "__main__":
     unittest.main()
